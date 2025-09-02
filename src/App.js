@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// Icons
+// Icons (same as before - no changes needed)
 const Building2Icon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
@@ -229,7 +229,7 @@ const uploadFile = async (endpoint, file, additionalData = {}) => {
   return response.json();
 };
 
-// Login Component
+// Login Component (same as before)
 const LoginForm = ({ onLogin, isLoading }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -311,7 +311,7 @@ const LoginForm = ({ onLogin, isLoading }) => {
   );
 };
 
-// Sidebar Component
+// Sidebar Component (same as before - no changes)
 const Sidebar = ({ user, activeMenuItem, setActiveMenuItem, sidebarCollapsed, setSidebarCollapsed, onLogout }) => {
   const menuItems = user?.role === 'admin' ? [
     { id: 'admin-dashboard', label: 'Admin Dashboard', icon: HomeIcon },
@@ -403,7 +403,7 @@ const Sidebar = ({ user, activeMenuItem, setActiveMenuItem, sidebarCollapsed, se
   );
 };
 
-// Client Dashboard Component
+// Dashboard components (same as before)
 const ClientDashboard = ({ dashboardData, formatCurrency, onRefresh, onSalesRepClick }) => {
   if (!dashboardData) {
     return (
@@ -613,7 +613,7 @@ const ClientDashboard = ({ dashboardData, formatCurrency, onRefresh, onSalesRepC
   );
 };
 
-// Sales Rep Detail Modal with history
+// Sales Rep Detail Modal (same as before)
 const SalesRepDetailModal = ({ isOpen, onClose, salesRep }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [historicalData] = useState([
@@ -774,7 +774,7 @@ const SalesRepDetailModal = ({ isOpen, onClose, salesRep }) => {
   );
 };
 
-// Team Management Component with working sales rep details
+// Team Management Component
 const TeamManagement = ({ dashboardData, onSalesRepClick }) => {
   if (!dashboardData) {
     return (
@@ -853,6 +853,141 @@ const TeamManagement = ({ dashboardData, onSalesRepClick }) => {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// FIX 1: NEW CRM Settings Component 
+const CRMSettings = ({ dashboardData, onRefresh }) => {
+  const [availableCRMs, setAvailableCRMs] = useState([]);
+  const [selectedCRM, setSelectedCRM] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [client, setClient] = useState(null);
+
+  useEffect(() => {
+    if (dashboardData?.client) {
+      setClient(dashboardData.client);
+      setSelectedCRM(dashboardData.client.crmType || 'teamleader');
+    }
+    fetchAvailableCRMs();
+  }, [dashboardData]);
+
+  const fetchAvailableCRMs = async () => {
+    try {
+      const data = await apiCall('/crm/available');
+      setAvailableCRMs(data);
+    } catch (error) {
+      console.error('Failed to fetch CRMs:', error);
+    }
+  };
+
+  const handleCRMChange = async (crmType) => {
+    setLoading(true);
+    try {
+      await apiCall('/client/crm/settings', {
+        method: 'POST',
+        body: JSON.stringify({ crmType })
+      });
+      
+      setSelectedCRM(crmType);
+      onRefresh();
+      alert('CRM instellingen bijgewerkt!');
+    } catch (error) {
+      console.error('Failed to update CRM settings:', error);
+      alert('Fout bij bijwerken CRM instellingen');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCRMConnect = async () => {
+    try {
+      const response = await apiCall(`/client/crm/connect?type=${selectedCRM}`);
+      window.open(response.authUrl, '_blank');
+    } catch (error) {
+      console.error('Failed to connect CRM:', error);
+      alert('Fout bij verbinden met CRM');
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">CRM Instellingen</h2>
+        <p className="text-gray-600">Beheer je CRM koppeling en synchronisatie instellingen</p>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">CRM Systeem Selectie</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {availableCRMs.map(crm => (
+                <div 
+                  key={crm.id}
+                  className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 ${
+                    selectedCRM === crm.id 
+                      ? 'border-green-300 bg-green-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => handleCRMChange(crm.id)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      selectedCRM === crm.id ? 'bg-green-500' : 'bg-gray-400'
+                    }`}>
+                      <span className="text-white font-bold text-sm">
+                        {crm.name.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">{crm.name}</h4>
+                      <p className="text-sm text-gray-600">{crm.description}</p>
+                    </div>
+                  </div>
+                  {selectedCRM === crm.id && (
+                    <div className="mt-3 text-xs text-green-600 font-medium">
+                      ✓ Geselecteerd
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">CRM Verbinding</h3>
+            <div className="bg-gray-50 rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-1">
+                    Verbind met {availableCRMs.find(c => c.id === selectedCRM)?.name}
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    Koppel je {selectedCRM} account om sales rep data automatisch te synchroniseren.
+                  </p>
+                </div>
+                <button
+                  onClick={handleCRMConnect}
+                  disabled={loading}
+                  className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <LinkIcon />
+                  <span>{loading ? 'Bezig...' : 'Verbinden'}</span>
+                </button>
+              </div>
+
+              {client?.crmCredentials?.accessToken && (
+                <div className="mt-4 p-3 bg-green-100 rounded-lg">
+                  <p className="text-sm text-green-800">
+                    ✓ CRM verbinding actief - Data wordt automatisch gesynchroniseerd
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1029,6 +1164,7 @@ const EditClientModal = ({ isOpen, onClose, client, onSubmit }) => {
     </div>
   );
 };
+
 const AddClientModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -1235,7 +1371,7 @@ const SuccessModal = ({ isOpen, onClose, clientData }) => {
   );
 };
 
-// Admin Dashboard Component with working edit and delete
+// FIX 2: Updated Admin Dashboard with working delete
 const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -1252,7 +1388,6 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
 
   const handleEditClient = async (clientId, clientData) => {
     try {
-      // Use PUT method to update client
       await apiCall(`/admin/clients/${clientId}`, {
         method: 'PUT',
         body: JSON.stringify(clientData)
@@ -1265,21 +1400,36 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
   };
 
   const handleDeleteClient = async (clientId, clientName) => {
-    if (!window.confirm(`Weet je zeker dat je "${clientName}" wilt verwijderen?`)) return;
+    if (!window.confirm(
+      `⚠️ WAARSCHUWING: Dit zal PERMANENT alle data verwijderen!\n\n` +
+      `Klant: "${clientName}"\n` +
+      `Dit verwijdert:\n` +
+      `• Het klant account en login toegang\n` +
+      `• Alle sales representatives\n` +
+      `• Alle revenue records\n` +
+      `• Alle facturen en bestanden\n\n` +
+      `Deze actie kan NIET ongedaan gemaakt worden!\n\n` +
+      `Typ "DELETE" om te bevestigen:`
+    )) {
+      return;
+    }
+
+    const confirmation = prompt(`Type "DELETE" om ${clientName} permanent te verwijderen:`);
+    if (confirmation !== 'DELETE') {
+      alert('Verwijdering geannuleerd - je moet exact "DELETE" typen om te bevestigen.');
+      return;
+    }
     
     try {
-      // Use the existing client deactivation since delete might not exist
-      await apiCall(`/admin/clients/${clientId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ isActive: false })
+      const result = await apiCall(`/admin/clients/${clientId}`, {
+        method: 'DELETE'
       });
+      
+      alert(`✅ ${result.deletedClient.name} en alle gerelateerde data zijn permanent verwijdered.\n\nDe klant kan niet meer inloggen.`);
       onRefresh();
-      alert('Klant succesvol gedeactiveerd');
     } catch (error) {
-      console.error('Failed to deactivate client:', error);
-      alert('Fout bij deactiveren klant. De klant wordt verborgen in de interface.');
-      // Hide client in UI even if API fails
-      onRefresh();
+      console.error('Failed to delete client:', error);
+      alert(`❌ Fout bij verwijderen klant: ${error.message}`);
     }
   };
 
@@ -1344,7 +1494,7 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
                   <button
                     onClick={() => handleDeleteClient(client._id, client.name)}
                     className="opacity-0 group-hover:opacity-100 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
-                    title="Deactiveren"
+                    title="⚠️ PERMANENT VERWIJDEREN - Alle data wordt gewist!"
                   >
                     <TrashIcon />
                   </button>
@@ -1367,7 +1517,7 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
               </div>
               
               <div className="mt-4 pt-3 border-t border-gray-100">
-                <p className="text-xs text-green-600 font-medium">Klik om te bewerken • Hover voor deactiveren</p>
+                <p className="text-xs text-green-600 font-medium">Klik om te bewerken • Hover voor verwijderen</p>
               </div>
             </div>
           ))}
@@ -1477,7 +1627,7 @@ const App = () => {
 
   // Load dashboard data for clients
   useEffect(() => {
-    if (user?.role === 'client' && (activeMenuItem === 'dashboard' || activeMenuItem === 'team')) {
+    if (user?.role === 'client' && (activeMenuItem === 'dashboard' || activeMenuItem === 'team' || activeMenuItem === 'settings')) {
       loadDashboardData();
     }
   }, [user, activeMenuItem]);
@@ -1559,6 +1709,14 @@ const App = () => {
               onSalesRepClick={handleSalesRepClick}
             />
           )}
+
+          {/* FIX 3: Settings now includes CRM Settings */}
+          {activeMenuItem === 'settings' && user.role === 'client' && (
+            <CRMSettings 
+              dashboardData={dashboardData}
+              onRefresh={loadDashboardData}
+            />
+          )}
           
           {/* Admin Dashboard */}
           {activeMenuItem === 'admin-dashboard' && user.role === 'admin' && (
@@ -1574,13 +1732,6 @@ const App = () => {
             <PlaceholderPage 
               title="Betalingen & Facturen" 
               description="Bekijk je factuurhistorie georganiseerd per maand"
-            />
-          )}
-
-          {activeMenuItem === 'settings' && user.role === 'client' && (
-            <PlaceholderPage 
-              title="Instellingen" 
-              description="Beheer je account en CRM koppelingen"
             />
           )}
           
