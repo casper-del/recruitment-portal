@@ -522,13 +522,14 @@ app.get('/api/client/crm/connect', authenticateToken, async (req, res) => {
         authUrl = `https://app.teamleader.eu/oauth2/authorize?client_id=${process.env.TEAMLEADER_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.TEAMLEADER_REDIRECT_URI)}&state=${req.user.clientId}`;
         break;
       case 'hubspot':
-        // REAL HubSpot OAuth URL
-        authUrl = `https://app.hubspot.com/oauth/authorize?client_id=${process.env.HUBSPOT_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.HUBSPOT_REDIRECT_URI)}&scope=contacts&state=${req.user.clientId}`;
+        // FIXED: Using correct HubSpot scope syntax
+        authUrl = `https://app.hubspot.com/oauth/authorize?client_id=${process.env.HUBSPOT_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.HUBSPOT_REDIRECT_URI)}&scope=crm.objects.contacts.read&state=${req.user.clientId}`;
         break;
       default:
         return res.status(400).json({ message: 'Unsupported CRM type' });
     }
     
+    console.log('Generated HubSpot OAuth URL:', authUrl); // Debug logging
     res.json({ authUrl });
   } catch (error) {
     console.error('CRM connect error:', error);
