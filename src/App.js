@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// Icons - using simple SVG icons since we can't import lucide-react without proper setup
+// Icons
 const Building2Icon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
@@ -162,6 +162,16 @@ const LinkIcon = () => (
   </svg>
 );
 
+const TrashIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="m3 6 18 0"/>
+    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+    <line x1="10" x2="10" y1="11" y2="17"/>
+    <line x1="14" x2="14" y1="11" y2="17"/>
+  </svg>
+);
+
 // API Configuration
 const API_BASE = process.env.REACT_APP_API_URL || (
   window.location.hostname === 'localhost' 
@@ -186,6 +196,34 @@ const apiCall = async (endpoint, options = {}) => {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || `API Error: ${response.statusText}`);
+  }
+
+  return response.json();
+};
+
+// File upload API call
+const uploadFile = async (endpoint, file, additionalData = {}) => {
+  const token = localStorage.getItem('authToken');
+  
+  const formData = new FormData();
+  formData.append('invoice', file);
+  
+  // Add additional form fields
+  Object.keys(additionalData).forEach(key => {
+    formData.append(key, additionalData[key]);
+  });
+
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Upload failed`);
   }
 
   return response.json();
@@ -360,12 +398,13 @@ const AddClientModal = ({ isOpen, onClose, onSubmit }) => {
 };
 
 // Client Detail Modal Component
-const ClientDetailModal = ({ isOpen, onClose, client, onAddSalesRep, onUploadInvoice }) => {
+const ClientDetailModal = ({ isOpen, onClose, client, onRefresh }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [salesReps, setSalesReps] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [showAddRepForm, setShowAddRepForm] = useState(false);
   const [showUploadForm, setShowUploadForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Load client data when modal opens
   useEffect(() => {
@@ -375,14 +414,61 @@ const ClientDetailModal = ({ isOpen, onClose, client, onAddSalesRep, onUploadInv
   }, [isOpen, client]);
 
   const loadClientData = async () => {
-    // Mock data loading - in real app this would be API calls
-    setSalesReps([
-      { id: 1, name: 'Sarah Johnson', email: 'sarah@acmecorp.com', hireDate: '2024-01-15', isConnected: true },
-      { id: 2, name: 'Mike Chen', email: 'mike@acmecorp.com', hireDate: '2024-03-01', isConnected: false }
-    ]);
-    setInvoices([
-      { id: 1, number: 'INV-001', amount: 15000, month: 8, year: 2024, status: 'paid', uploadDate: '2024-09-01' }
-    ]);
+    setIsLoading(true);
+    try {
+      // Load sales reps and invoices from API
+      const repsResponse = await apiCall(`/admin/clients/${client._id}/salesreps`);
+      setSalesReps(repsResponse || []);
+      
+      const invoicesResponse = await apiCall(`/admin/clients/${client._id}/invoices`);
+      setInvoices(invoicesResponse || []);
+    } catch (error) {
+      console.error('Failed to load client data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddSalesRep = async (repData) => {
+    try {
+      await apiCall(`/admin/clients/${client._id}/salesreps`, {
+        method: 'POST',
+        body: JSON.stringify(repData)
+      });
+      loadClientData(); // Refresh data
+      setShowAddRepForm(false);
+      onRefresh(); // Refresh parent component
+    } catch (error) {
+      console.error('Failed to add sales rep:', error);
+      alert('Fout bij toevoegen sales rep: ' + error.message);
+    }
+  };
+
+  const handleUploadInvoice = async (file, invoiceData) => {
+    try {
+      await uploadFile(`/admin/clients/${client._id}/invoices`, file, invoiceData);
+      loadClientData(); // Refresh data
+      setShowUploadForm(false);
+      onRefresh(); // Refresh parent component
+    } catch (error) {
+      console.error('Failed to upload invoice:', error);
+      alert('Fout bij uploaden factuur: ' + error.message);
+    }
+  };
+
+  const handleDeleteSalesRep = async (repId) => {
+    if (!window.confirm('Weet je zeker dat je deze sales rep wilt verwijderen?')) return;
+    
+    try {
+      await apiCall(`/admin/clients/${client._id}/salesreps/${repId}`, {
+        method: 'DELETE'
+      });
+      loadClientData(); // Refresh data
+      onRefresh(); // Refresh parent component
+    } catch (error) {
+      console.error('Failed to delete sales rep:', error);
+      alert('Fout bij verwijderen sales rep: ' + error.message);
+    }
   };
 
   if (!isOpen) return null;
@@ -462,29 +548,39 @@ const ClientDetailModal = ({ isOpen, onClose, client, onAddSalesRep, onUploadInv
                 </button>
               </div>
               
-              <div className="space-y-3">
-                {salesReps.map(rep => (
-                  <div key={rep.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">{rep.name}</p>
-                      <p className="text-sm text-gray-600">{rep.email} • Aangenomen: {new Date(rep.hireDate).toLocaleDateString('nl-NL')}</p>
+              {isLoading ? (
+                <div className="text-center py-4">Laden...</div>
+              ) : (
+                <div className="space-y-3">
+                  {salesReps.map(rep => (
+                    <div key={rep._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900">{rep.name}</p>
+                        <p className="text-sm text-gray-600">{rep.email} • Aangenomen: {new Date(rep.hireDate).toLocaleDateString('nl-NL')}</p>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          rep.isConnected ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {rep.isConnected ? 'Gekoppeld' : 'Niet gekoppeld'}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteSalesRep(rep._id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Verwijderen"
+                        >
+                          <TrashIcon />
+                        </button>
+                      </div>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      rep.isConnected ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                    }`}>
-                      {rep.isConnected ? 'Gekoppeld' : 'Niet gekoppeld'}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {showAddRepForm && (
                 <AddSalesRepForm 
                   onClose={() => setShowAddRepForm(false)}
-                  onSubmit={(data) => {
-                    setSalesReps([...salesReps, { ...data, id: Date.now(), isConnected: false }]);
-                    setShowAddRepForm(false);
-                  }}
+                  onSubmit={handleAddSalesRep}
                 />
               )}
             </div>
@@ -499,36 +595,37 @@ const ClientDetailModal = ({ isOpen, onClose, client, onAddSalesRep, onUploadInv
                   className="flex items-center space-x-2 bg-green-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors"
                 >
                   <UploadIcon />
-                  <span>Factuur Uploaden</span>
+                  <span>PDF Uploaden</span>
                 </button>
               </div>
               
-              <div className="space-y-3">
-                {invoices.map(invoice => (
-                  <div key={invoice.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">Factuur #{invoice.number}</p>
-                      <p className="text-sm text-gray-600">
-                        €{invoice.amount.toLocaleString()} • {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', { month: 'long' })} {invoice.year}
-                        <span className="ml-2">Geüpload: {new Date(invoice.uploadDate).toLocaleDateString('nl-NL')}</span>
-                      </p>
+              {isLoading ? (
+                <div className="text-center py-4">Laden...</div>
+              ) : (
+                <div className="space-y-3">
+                  {invoices.map(invoice => (
+                    <div key={invoice._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900">Factuur #{invoice.invoiceNumber}</p>
+                        <p className="text-sm text-gray-600">
+                          €{invoice.amount.toLocaleString()} • {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', { month: 'long' })} {invoice.year}
+                          <span className="ml-2">Geüpload: {new Date(invoice.createdAt).toLocaleDateString('nl-NL')}</span>
+                        </p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        invoice.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                      }`}>
+                        {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
+                      </span>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      invoice.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                    }`}>
-                      {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {showUploadForm && (
                 <InvoiceUploadForm 
                   onClose={() => setShowUploadForm(false)}
-                  onSubmit={(data) => {
-                    setInvoices([...invoices, { ...data, id: Date.now(), uploadDate: new Date().toISOString() }]);
-                    setShowUploadForm(false);
-                  }}
+                  onSubmit={handleUploadInvoice}
                 />
               )}
             </div>
@@ -546,10 +643,18 @@ const AddSalesRepForm = ({ onClose, onSubmit }) => {
     email: '',
     hireDate: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    setIsLoading(true);
+    try {
+      await onSubmit(formData);
+    } catch (error) {
+      console.error('Error adding sales rep:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -564,6 +669,7 @@ const AddSalesRepForm = ({ onClose, onSubmit }) => {
             value={formData.name}
             onChange={(e) => setFormData({...formData, name: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            disabled={isLoading}
           />
         </div>
         <div>
@@ -574,6 +680,7 @@ const AddSalesRepForm = ({ onClose, onSubmit }) => {
             value={formData.email}
             onChange={(e) => setFormData({...formData, email: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            disabled={isLoading}
           />
         </div>
         <div>
@@ -584,6 +691,7 @@ const AddSalesRepForm = ({ onClose, onSubmit }) => {
             value={formData.hireDate}
             onChange={(e) => setFormData({...formData, hireDate: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            disabled={isLoading}
           />
         </div>
         <div className="flex space-x-3">
@@ -591,14 +699,16 @@ const AddSalesRepForm = ({ onClose, onSubmit }) => {
             type="button"
             onClick={onClose}
             className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            disabled={isLoading}
           >
             Annuleren
           </button>
           <button
             type="submit"
-            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            disabled={isLoading}
+            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
           >
-            Toevoegen
+            {isLoading ? 'Bezig...' : 'Toevoegen'}
           </button>
         </div>
       </form>
@@ -606,37 +716,63 @@ const AddSalesRepForm = ({ onClose, onSubmit }) => {
   );
 };
 
-// Invoice Upload Form
+// Invoice Upload Form (PDF Upload)
 const InvoiceUploadForm = ({ onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
-    number: '',
+    invoiceNumber: '',
     amount: '',
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
     status: 'pending'
   });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit({
-      ...formData,
-      amount: parseFloat(formData.amount)
-    });
+    if (!selectedFile) {
+      alert('Selecteer eerst een PDF bestand');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await onSubmit(selectedFile, {
+        ...formData,
+        amount: parseFloat(formData.amount)
+      });
+    } catch (error) {
+      console.error('Error uploading invoice:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 bg-white">
-      <h5 className="font-medium text-gray-900 mb-4">Factuur Uploaden</h5>
+      <h5 className="font-medium text-gray-900 mb-4">PDF Factuur Uploaden</h5>
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">PDF Bestand *</label>
+          <input
+            type="file"
+            accept=".pdf"
+            required
+            onChange={(e) => setSelectedFile(e.target.files[0])}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            disabled={isLoading}
+          />
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Factuurnummer *</label>
           <input
             type="text"
             required
-            value={formData.number}
-            onChange={(e) => setFormData({...formData, number: e.target.value})}
+            value={formData.invoiceNumber}
+            onChange={(e) => setFormData({...formData, invoiceNumber: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             placeholder="INV-2024-001"
+            disabled={isLoading}
           />
         </div>
         <div>
@@ -649,6 +785,7 @@ const InvoiceUploadForm = ({ onClose, onSubmit }) => {
             value={formData.amount}
             onChange={(e) => setFormData({...formData, amount: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            disabled={isLoading}
           />
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -658,6 +795,7 @@ const InvoiceUploadForm = ({ onClose, onSubmit }) => {
               value={formData.month}
               onChange={(e) => setFormData({...formData, month: parseInt(e.target.value)})}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={isLoading}
             >
               {Array.from({length: 12}, (_, i) => (
                 <option key={i + 1} value={i + 1}>
@@ -674,6 +812,7 @@ const InvoiceUploadForm = ({ onClose, onSubmit }) => {
               value={formData.year}
               onChange={(e) => setFormData({...formData, year: parseInt(e.target.value)})}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={isLoading}
             />
           </div>
         </div>
@@ -683,6 +822,7 @@ const InvoiceUploadForm = ({ onClose, onSubmit }) => {
             value={formData.status}
             onChange={(e) => setFormData({...formData, status: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            disabled={isLoading}
           >
             <option value="pending">Openstaand</option>
             <option value="paid">Betaald</option>
@@ -693,14 +833,16 @@ const InvoiceUploadForm = ({ onClose, onSubmit }) => {
             type="button"
             onClick={onClose}
             className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            disabled={isLoading}
           >
             Annuleren
           </button>
           <button
             type="submit"
-            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            disabled={isLoading}
+            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
           >
-            Uploaden
+            {isLoading ? 'Uploaden...' : 'Uploaden'}
           </button>
         </div>
       </form>
@@ -999,13 +1141,16 @@ const ClientDashboard = ({ dashboardData, formatCurrency, onRefresh, onSalesRepC
   const { client, salesReps, totals } = dashboardData;
   const connectedReps = salesReps.filter(rep => rep.isConnected);
   const unconnectedReps = salesReps.filter(rep => !rep.isConnected);
+  const allReps = salesReps; // Show all reps in dashboard
 
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">Welkom terug, {client?.contactName}!</h2>
-          <p className="text-gray-600 mt-1">Bekijk je recruitment performance en team overzicht</p>
+          <h2 className="text-3xl font-bold text-gray-900">Welkom terug, {client?.contactName?.split(' ')[0]}!</h2>
+          <p className="text-gray-600 mt-1">
+            {client?.name} • Bekijk je recruitment performance en team overzicht
+          </p>
         </div>
         <button 
           onClick={onRefresh}
@@ -1104,857 +1249,4 @@ const ClientDashboard = ({ dashboardData, formatCurrency, onRefresh, onSalesRepC
                 <UsersIcon />
               </div>
             </div>
-            <span className="text-sm text-gray-500">Actief</span>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{connectedReps.length}</p>
-            <p className="text-sm text-gray-600">Gekoppelde sales reps</p>
-          </div>
-        </div>
-      </div>
-
-      {connectedReps.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900">Team Performance</h3>
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
-              <EyeIcon />
-              <span>Realtime data</span>
-            </div>
-          </div>
-          
-          <div className="space-y-6">
-            {connectedReps
-              .sort((a, b) => (b.thisMonthRevenue || 0) - (a.thisMonthRevenue || 0))
-              .map((rep, index) => {
-                const maxRevenue = Math.max(...connectedReps.map(r => r.thisMonthRevenue || 0));
-                const barWidth = maxRevenue > 0 ? ((rep.thisMonthRevenue || 0) / maxRevenue) * 100 : 0;
-                
-                return (
-                  <div key={rep._id} className="relative">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${
-                          index === 0 ? 'bg-green-500' : 
-                          index === 1 ? 'bg-blue-500' : 
-                          'bg-gray-400'
-                        }`}>
-                          #{index + 1}
-                        </div>
-                        <div>
-                          <button 
-                            onClick={() => onSalesRepClick(rep)}
-                            className="font-medium text-gray-900 hover:text-green-600 transition-colors text-left"
-                          >
-                            {rep.name}
-                          </button>
-                          <p className="text-sm text-gray-500">
-                            Aangenomen: {new Date(rep.hireDate).toLocaleDateString('nl-NL', { 
-                              month: 'short', 
-                              year: 'numeric' 
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-gray-900">{formatCurrency(rep.thisMonthRevenue || 0)}</p>
-                        <p className="text-sm text-gray-500">Deze maand</p>
-                      </div>
-                    </div>
-                    
-                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                      <div 
-                        className={`h-3 rounded-full transition-all duration-1000 ease-out ${
-                          index === 0 ? 'bg-gradient-to-r from-green-400 to-green-600' : 
-                          index === 1 ? 'bg-gradient-to-r from-blue-400 to-blue-600' : 
-                          'bg-gradient-to-r from-gray-400 to-gray-500'
-                        }`}
-                        style={{ width: `${barWidth}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Team Management Component
-const TeamManagement = ({ dashboardData, onSalesRepClick }) => {
-  if (!dashboardData) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Team data laden...</div>
-      </div>
-    );
-  }
-
-  const { salesReps } = dashboardData;
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Team Management</h2>
-        <p className="text-gray-600">Beheer je sales team en bekijk individuele performance</p>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-gray-900">Sales Representatives</h3>
-          <div className="flex items-center space-x-4 text-sm text-gray-500">
-            <span>{salesReps.length} totaal</span>
-            <span>•</span>
-            <span>{salesReps.filter(r => r.isConnected).length} gekoppeld</span>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {salesReps.map((rep) => (
-            <div 
-              key={rep._id} 
-              onClick={() => onSalesRepClick(rep)}
-              className="p-6 border border-gray-200 rounded-xl hover:border-green-300 hover:shadow-sm transition-all duration-200 cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                    <span className="text-green-600 font-semibold text-sm">
-                      {rep.name.charAt(0)}
-                    </span>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">{rep.name}</h4>
-                    <p className="text-sm text-gray-600">{rep.email}</p>
-                  </div>
-                </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  rep.isConnected ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                }`}>
-                  {rep.isConnected ? 'Gekoppeld' : 'Niet gekoppeld'}
-                </span>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Aangenomen:</span>
-                  <span className="font-medium">
-                    {new Date(rep.hireDate).toLocaleDateString('nl-NL', { 
-                      day: 'numeric', month: 'short', year: 'numeric' 
-                    })}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Deze maand:</span>
-                  <span className="font-medium">€{(rep.thisMonthRevenue || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Commissie:</span>
-                  <span className="font-medium">€{(rep.thisMonthCommission || 0).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Settings Component
-const SettingsPage = ({ user, dashboardData, onCRMConnect }) => {
-  const [showCRMConnect, setShowCRMConnect] = useState(false);
-  
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Instellingen</h2>
-        <p className="text-gray-600">Beheer je account en CRM koppelingen</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Account Information */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Account Informatie</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Naam</label>
-              <input
-                type="text"
-                value={user?.name || ''}
-                disabled
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={user?.email || ''}
-                disabled
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bedrijf</label>
-              <input
-                type="text"
-                value={user?.client?.name || ''}
-                disabled
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* CRM Integration */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">CRM Koppeling</h3>
-          
-          {dashboardData?.salesReps?.some(rep => !rep.isConnected) ? (
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3 p-4 bg-orange-50 rounded-xl">
-                <div className="w-6 h-6 text-orange-500 flex-shrink-0 mt-0.5">
-                  <AlertCircleIcon />
-                </div>
-                <div>
-                  <p className="font-medium text-orange-900 mb-1">CRM koppeling vereist</p>
-                  <p className="text-sm text-orange-700">
-                    Sommige sales reps zijn nog niet gekoppeld aan je CRM systeem. 
-                    Verbind je CRM om data te synchroniseren.
-                  </p>
-                </div>
-              </div>
-              
-              <button
-                onClick={() => setShowCRMConnect(true)}
-                className="w-full flex items-center justify-center space-x-2 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <LinkIcon />
-                <span>CRM Verbinden</span>
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3 p-4 bg-green-50 rounded-xl">
-                <div className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5">
-                  <CheckCircle2Icon />
-                </div>
-                <div>
-                  <p className="font-medium text-green-900 mb-1">CRM succesvol gekoppeld</p>
-                  <p className="text-sm text-green-700">
-                    Alle sales reps zijn verbonden met je CRM systeem.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">CRM Type:</span>
-                  <span className="font-medium capitalize">{user?.client?.crmType || 'Teamleader'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Status:</span>
-                  <span className="font-medium text-green-600">Actief</span>
-                </div>
-              </div>
-              
-              <button
-                onClick={() => setShowCRMConnect(true)}
-                className="w-full flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                <RefreshCwIcon />
-                <span>Opnieuw Synchroniseren</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* CRM Connect Modal */}
-      {showCRMConnect && (
-        <CRMConnectModal 
-          isOpen={showCRMConnect} 
-          onClose={() => setShowCRMConnect(false)}
-          onConnect={onCRMConnect}
-        />
-      )}
-    </div>
-  );
-};
-
-// CRM Connect Modal
-const CRMConnectModal = ({ isOpen, onClose, onConnect }) => {
-  const [selectedCRM, setSelectedCRM] = useState('teamleader');
-  const [isConnecting, setIsConnecting] = useState(false);
-
-  const handleConnect = async () => {
-    setIsConnecting(true);
-    try {
-      await onConnect(selectedCRM);
-      onClose();
-    } catch (error) {
-      console.error('CRM connection failed:', error);
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-900">CRM Verbinden</h3>
-            <button 
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <XIcon />
-            </button>
-          </div>
-        </div>
-
-        <div className="p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">Selecteer je CRM systeem:</label>
-            <div className="space-y-3">
-              {[
-                { id: 'teamleader', name: 'Teamleader', desc: 'Populair CRM voor sales teams' },
-                { id: 'hubspot', name: 'HubSpot', desc: 'All-in-one marketing & sales platform' },
-                { id: 'pipedrive', name: 'Pipedrive', desc: 'Sales-focused CRM tool' }
-              ].map(crm => (
-                <label key={crm.id} className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="radio"
-                    name="crm"
-                    value={crm.id}
-                    checked={selectedCRM === crm.id}
-                    onChange={(e) => setSelectedCRM(e.target.value)}
-                    className="mt-1"
-                  />
-                  <div>
-                    <p className="font-medium text-gray-900">{crm.name}</p>
-                    <p className="text-sm text-gray-600">{crm.desc}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <p className="text-sm text-blue-700">
-              Je wordt doorgestuurd naar {selectedCRM} om de koppeling te autoriseren. 
-              Na goedkeuring komen je sales rep gegevens automatisch beschikbaar.
-            </p>
-          </div>
-
-          <div className="flex space-x-3">
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              disabled={isConnecting}
-            >
-              Annuleren
-            </button>
-            <button
-              onClick={handleConnect}
-              disabled={isConnecting}
-              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-            >
-              {isConnecting ? 'Verbinden...' : 'Verbinden'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Invoices Component
-const InvoicesPage = ({ invoices, formatCurrency, onDownload }) => {
-  if (!invoices) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Facturen laden...</div>
-      </div>
-    );
-  }
-
-  // Group invoices by month/year
-  const groupedInvoices = invoices.reduce((groups, invoice) => {
-    const key = `${invoice.year}-${String(invoice.month).padStart(2, '0')}`;
-    if (!groups[key]) {
-      groups[key] = [];
-    }
-    groups[key].push(invoice);
-    return groups;
-  }, {});
-
-  const sortedGroups = Object.keys(groupedInvoices).sort().reverse();
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Betalingen & Facturen</h2>
-        <p className="text-gray-600">Bekijk je factuurhistorie georganiseerd per maand</p>
-      </div>
-
-      <div className="space-y-6">
-        {sortedGroups.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-            <div className="text-center py-12">
-              <div className="text-gray-400 mb-4 flex justify-center">
-                <FileTextIcon />
-              </div>
-              <p className="text-gray-500">Geen facturen gevonden</p>
-            </div>
-          </div>
-        ) : (
-          sortedGroups.map(monthKey => {
-            const [year, month] = monthKey.split('-');
-            const monthInvoices = groupedInvoices[monthKey];
-            const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('nl-NL', { 
-              month: 'long', 
-              year: 'numeric' 
-            });
-
-            return (
-              <div key={monthKey} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-900 capitalize">{monthName}</h3>
-                  <span className="text-sm text-gray-500">{monthInvoices.length} factuur(en)</span>
-                </div>
-                
-                <div className="space-y-3">
-                  {monthInvoices.map((invoice) => (
-                    <div key={invoice._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                          <div className="text-green-600">
-                            <FileTextIcon />
-                          </div>
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">Factuur #{invoice.invoiceNumber}</p>
-                          <div className="flex items-center space-x-3">
-                            <p className="text-sm text-gray-600">{formatCurrency(invoice.amount)}</p>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              invoice.status === 'paid' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-orange-100 text-orange-800'
-                            }`}>
-                              {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              Geüpload: {new Date(invoice.createdAt).toLocaleDateString('nl-NL')}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      {invoice.filePath && (
-                        <button 
-                          onClick={() => onDownload(invoice._id)}
-                          className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition-colors"
-                        >
-                          <DownloadIcon />
-                          <span>Download</span>
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Admin Dashboard Component
-const AdminDashboard = ({ clients, onAddClient, onRefresh, onClientClick }) => {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [successData, setSuccessData] = useState(null);
-  
-  const handleAddClient = async (clientData) => {
-    const result = await onAddClient(clientData);
-    setSuccessData(result);
-    setShowSuccessModal(true);
-    onRefresh(); // Refresh client list
-  };
-
-  return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">Admin Dashboard</h2>
-          <p className="text-gray-600 mt-1">Beheer klanten en hun gegevens</p>
-        </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl transition-all duration-200"
-        >
-          <PlusIcon />
-          <span>Nieuwe Klant</span>
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {clients && clients.map(client => (
-          <div 
-            key={client._id} 
-            onClick={() => onClientClick(client)}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:border-green-300 hover:shadow-md transition-all duration-200"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <div className="text-green-600">
-                  <Building2Icon />
-                </div>
-              </div>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                client.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-              }`}>
-                {client.isActive ? 'Actief' : 'Inactief'}
-              </span>
-            </div>
-            
-            <h3 className="font-bold text-gray-900 mb-1">{client.name}</h3>
-            <p className="text-sm text-gray-600 mb-4">{client.contactName} • {client.email}</p>
-            
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Commissie:</span>
-                <span className="font-medium">{(client.commissionRate * 100).toFixed(1)}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">CRM:</span>
-                <span className="font-medium capitalize">{client.crmType}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Sales Reps:</span>
-                <span className="font-medium">{client.connectedCount || 0}/{client.salesRepCount || 0}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <AddClientModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSubmit={handleAddClient}
-      />
-
-      <SuccessModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        clientData={successData}
-      />
-    </div>
-  );
-};
-
-// Placeholder Components
-const PlaceholderPage = ({ title, description }) => (
-  <div className="space-y-6">
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-      <h2 className="text-3xl font-bold text-gray-900 mb-2">{title}</h2>
-      <p className="text-gray-600">{description}</p>
-    </div>
-  </div>
-);
-
-// Main App Component
-const App = () => {
-  const [user, setUser] = useState(null);
-  const [activeMenuItem, setActiveMenuItem] = useState('dashboard');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [dashboardData, setDashboardData] = useState(null);
-  const [invoices, setInvoices] = useState(null);
-  const [clients, setClients] = useState(null);
-  const [selectedClient, setSelectedClient] = useState(null);
-  const [selectedSalesRep, setSelectedSalesRep] = useState(null);
-  const [showClientDetail, setShowClientDetail] = useState(false);
-  const [showSalesRepDetail, setShowSalesRepDetail] = useState(false);
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('nl-NL', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
-
-  // Check for existing session
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('userData');
-    
-    if (token && userData) {
-      try {
-        const parsed = JSON.parse(userData);
-        setUser(parsed);
-        if (parsed.role === 'admin') {
-          setActiveMenuItem('admin-dashboard');
-        }
-      } catch (error) {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userData');
-      }
-    }
-  }, []);
-
-  const login = async (email, password) => {
-    setIsLoading(true);
-    try {
-      const response = await apiCall('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-      });
-
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('userData', JSON.stringify(response.user));
-      setUser(response.user);
-      
-      if (response.user.role === 'admin') {
-        setActiveMenuItem('admin-dashboard');
-      }
-    } catch (error) {
-      throw new Error(error.message || 'Login failed. Check your credentials.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
-    setUser(null);
-    setActiveMenuItem('dashboard');
-    setDashboardData(null);
-    setInvoices(null);
-    setClients(null);
-  };
-
-  // Load dashboard data for clients
-  useEffect(() => {
-    if (user?.role === 'client' && (activeMenuItem === 'dashboard' || activeMenuItem === 'team')) {
-      loadDashboardData();
-    }
-  }, [user, activeMenuItem]);
-
-  // Load invoices for clients
-  useEffect(() => {
-    if (user?.role === 'client' && activeMenuItem === 'invoices') {
-      loadInvoices();
-    }
-  }, [user, activeMenuItem]);
-
-  // Load clients for admin
-  useEffect(() => {
-    if (user?.role === 'admin' && activeMenuItem === 'admin-dashboard') {
-      loadClients();
-    }
-  }, [user, activeMenuItem]);
-
-  const loadDashboardData = async () => {
-    try {
-      const data = await apiCall('/client/dashboard');
-      setDashboardData(data);
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-    }
-  };
-
-  const loadInvoices = async () => {
-    try {
-      const data = await apiCall('/client/invoices');
-      setInvoices(data);
-    } catch (error) {
-      console.error('Failed to load invoices:', error);
-      setInvoices([]);
-    }
-  };
-
-  const loadClients = async () => {
-    try {
-      const data = await apiCall('/admin/clients');
-      setClients(data);
-    } catch (error) {
-      console.error('Failed to load clients:', error);
-      setClients([]);
-    }
-  };
-
-  const handleAddClient = async (clientData) => {
-    try {
-      const response = await apiCall('/admin/clients', {
-        method: 'POST',
-        body: JSON.stringify(clientData)
-      });
-      return response;
-    } catch (error) {
-      throw new Error(error.message || 'Failed to create client');
-    }
-  };
-
-  const handleInvoiceDownload = async (invoiceId) => {
-    try {
-      const response = await fetch(`${API_BASE}/client/invoices/${invoiceId}/download`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('authToken')}`
-        }
-      });
-      
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `factuur-${invoiceId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }
-    } catch (error) {
-      console.error('Download failed:', error);
-    }
-  };
-
-  const handleClientClick = (client) => {
-    setSelectedClient(client);
-    setShowClientDetail(true);
-  };
-
-  const handleSalesRepClick = (salesRep) => {
-    setSelectedSalesRep(salesRep);
-    setShowSalesRepDetail(true);
-  };
-
-  const handleCRMConnect = async (crmType) => {
-    try {
-      // Redirect to CRM OAuth - this is a mock implementation
-      const response = await apiCall(`/client/crm/connect?type=${crmType}`);
-      if (response.authUrl) {
-        window.location.href = response.authUrl;
-      }
-    } catch (error) {
-      console.error('CRM connection failed:', error);
-      alert('CRM verbinding mislukt. Probeer het later opnieuw.');
-    }
-  };
-
-  if (!user) {
-    return <LoginForm onLogin={login} isLoading={isLoading} />;
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar 
-        user={user}
-        activeMenuItem={activeMenuItem}
-        setActiveMenuItem={setActiveMenuItem}
-        sidebarCollapsed={sidebarCollapsed}
-        setSidebarCollapsed={setSidebarCollapsed}
-        onLogout={logout}
-      />
-
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-8 py-8">
-          {/* Client Dashboard */}
-          {activeMenuItem === 'dashboard' && user.role === 'client' && (
-            <ClientDashboard 
-              dashboardData={dashboardData}
-              formatCurrency={formatCurrency}
-              onRefresh={loadDashboardData}
-              onSalesRepClick={handleSalesRepClick}
-            />
-          )}
-          
-          {/* Client Team Management */}
-          {activeMenuItem === 'team' && user.role === 'client' && (
-            <TeamManagement 
-              dashboardData={dashboardData}
-              onSalesRepClick={handleSalesRepClick}
-            />
-          )}
-          
-          {/* Client Invoices */}
-          {activeMenuItem === 'invoices' && (
-            <InvoicesPage 
-              invoices={invoices}
-              formatCurrency={formatCurrency}
-              onDownload={handleInvoiceDownload}
-            />
-          )}
-
-          {/* Client Settings */}
-          {activeMenuItem === 'settings' && user.role === 'client' && (
-            <SettingsPage 
-              user={user}
-              dashboardData={dashboardData}
-              onCRMConnect={handleCRMConnect}
-            />
-          )}
-          
-          {/* Admin Dashboard */}
-          {activeMenuItem === 'admin-dashboard' && user.role === 'admin' && (
-            <AdminDashboard 
-              clients={clients}
-              onAddClient={handleAddClient}
-              onRefresh={loadClients}
-              onClientClick={handleClientClick}
-            />
-          )}
-          
-          {/* Other Pages */}
-          {activeMenuItem === 'reports' && (
-            <PlaceholderPage 
-              title="Rapportages" 
-              description="Geavanceerde rapportages en analytics komen hier beschikbaar."
-            />
-          )}
-
-          {activeMenuItem === 'clients' && (
-            <PlaceholderPage 
-              title="Klanten Beheer" 
-              description="Uitgebreide klant management tools komen hier beschikbaar."
-            />
-          )}
-          
-          {activeMenuItem === 'admin-settings' && (
-            <PlaceholderPage 
-              title="Admin Instellingen" 
-              description="Systeem configuratie en beheer instellingen."
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Modals */}
-      <ClientDetailModal
-        isOpen={showClientDetail}
-        onClose={() => setShowClientDetail(false)}
-        client={selectedClient}
-      />
-
-      <SalesRepDetailModal
-        isOpen={showSalesRepDetail}
-        onClose={() => setShowSalesRepDetail(false)}
-        salesRep={selectedSalesRep}
-      />
-    </div>
-  );
-};
-
-export default App;
+            <span className="text-sm text-gray-500">Team</span>
