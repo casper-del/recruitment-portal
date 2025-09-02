@@ -518,6 +518,270 @@ const SalesRepInvoices = ({ user }) => {
   );
 };
 
+// Admin Client Modal Component
+const AdminClientModal = ({ client, isOpen, onClose, onUpdate }) => {
+  const [activeTab, setActiveTab] = useState('team');
+  const [clientData, setClientData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const [newSalesRep, setNewSalesRep] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    position: 'Sales Representative',
+    hireDate: new Date().toISOString().split('T')[0],
+    commissionRate: 0.10
+  });
+
+  useEffect(() => {
+    if (isOpen && client) {
+      fetchClientDetails();
+      setError('');
+      setSuccess('');
+    }
+  }, [isOpen, client]);
+
+  const fetchClientDetails = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall(`/admin/clients/${client._id}`);
+      setClientData(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addSalesRep = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      const response = await apiCall(`/admin/clients/${client._id}/salesreps`, {
+        method: 'POST',
+        body: JSON.stringify(newSalesRep)
+      });
+      
+      setSuccess(`Sales Rep toegevoegd! Login: ${newSalesRep.email} / ${response.tempPassword}`);
+      
+      setNewSalesRep({
+        name: '',
+        email: '',
+        phone: '',
+        position: 'Sales Representative',
+        hireDate: new Date().toISOString().split('T')[0],
+        commissionRate: 0.10
+      });
+      await fetchClientDetails();
+      onUpdate();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteSalesRep = async (salesRepId) => {
+    if (!window.confirm('Weet je zeker dat je deze sales rep wilt verwijderen?')) return;
+    
+    try {
+      setIsLoading(true);
+      await apiCall(`/admin/salesreps/${salesRepId}`, { method: 'DELETE' });
+      await fetchClientDetails();
+      onUpdate();
+      setSuccess('Sales rep verwijderd');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="bg-green-600 text-white p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">{client?.name}</h2>
+              <p className="text-green-100">{client?.contactName} • {client?.email}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-green-700 rounded-lg transition-colors"
+            >
+              <XIcon />
+            </button>
+          </div>
+          
+          <div className="flex space-x-1 mt-6">
+            <button
+              onClick={() => setActiveTab('team')}
+              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'team' 
+                  ? 'bg-white text-green-600' 
+                  : 'text-green-100 hover:bg-green-700'
+              }`}
+            >
+              <UsersIcon />
+              <span className="ml-2">Team Beheren</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[60vh]">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
+          {success && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+              <p className="text-green-700 text-sm font-medium">{success}</p>
+            </div>
+          )}
+
+          {activeTab === 'team' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">Team Beheren</h3>
+                <span className="text-sm text-gray-500">
+                  {clientData?.salesReps?.length || 0} teamleden
+                </span>
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                  <UserPlusIcon />
+                  <span className="ml-2">Teamlid Toevoegen</span>
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <input
+                    type="text"
+                    placeholder="Naam"
+                    value={newSalesRep.name}
+                    onChange={(e) => setNewSalesRep({...newSalesRep, name: e.target.value})}
+                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                  
+                  <input
+                    type="email"
+                    placeholder="E-mail"
+                    value={newSalesRep.email}
+                    onChange={(e) => setNewSalesRep({...newSalesRep, email: e.target.value})}
+                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                  
+                  <input
+                    type="text"
+                    placeholder="Telefoon"
+                    value={newSalesRep.phone}
+                    onChange={(e) => setNewSalesRep({...newSalesRep, phone: e.target.value})}
+                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                  
+                  <input
+                    type="date"
+                    value={newSalesRep.hireDate}
+                    onChange={(e) => setNewSalesRep({...newSalesRep, hireDate: e.target.value})}
+                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                  
+                  <input
+                    type="text"
+                    placeholder="Functie"
+                    value={newSalesRep.position}
+                    onChange={(e) => setNewSalesRep({...newSalesRep, position: e.target.value})}
+                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                  
+                  <div className="flex items-center">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="1"
+                      placeholder="Commissie"
+                      value={newSalesRep.commissionRate}
+                      onChange={(e) => setNewSalesRep({...newSalesRep, commissionRate: parseFloat(e.target.value)})}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    />
+                    <span className="ml-2 text-gray-500">({(newSalesRep.commissionRate * 100).toFixed(1)}%)</span>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={addSalesRep}
+                  disabled={isLoading || !newSalesRep.name || !newSalesRep.email}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 flex items-center"
+                >
+                  <PlusIcon />
+                  <span className="ml-2">{isLoading ? 'Toevoegen...' : 'Teamlid Toevoegen'}</span>
+                </button>
+              </div>
+
+              {clientData?.salesReps && clientData.salesReps.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900">Huidige Teamleden</h4>
+                  {clientData.salesReps.map((rep) => (
+                    <div key={rep._id} className="bg-white border border-gray-200 rounded-xl p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                            <span className="text-green-600 font-semibold">
+                              {rep.name.charAt(0)}
+                            </span>
+                          </div>
+                          <div>
+                            <h5 className="font-semibold text-gray-900">{rep.name}</h5>
+                            <p className="text-gray-500 text-sm">{rep.email}</p>
+                            <p className="text-gray-400 text-xs">
+                              {rep.position} • {((rep.commissionRate || 0) * 100).toFixed(1)}% commissie
+                              {rep.isConnected && <span className="ml-2 text-green-600">• CRM Connected</span>}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => deleteSalesRep(rep._id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Admin Client Modal */}
+      {user.role === 'admin' && (
+        <AdminClientModal
+          client={selectedClient}
+          isOpen={showClientModal}
+          onClose={() => {
+            setShowClientModal(false);
+            setSelectedClient(null);
+          }}
+          onUpdate={handleClientUpdate}
+        />
+      )}
+    </div>
+  );
+};
+
 // Admin Dashboard Component
 const AdminDashboard = () => {
   const [clients, setClients] = useState([]);
@@ -644,11 +908,13 @@ const AdminDashboard = () => {
                   </div>
                 </div>
                 
-                <div className="bg-green-100 px-4 py-2 rounded-lg">
-                  <span className="text-green-600 font-medium text-sm">
-                    {client.salesRepCount || 0} team • {client.invoiceCount || 0} facturen
-                  </span>
-                </div>
+                <button
+                  onClick={() => handleClientClick(client)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center"
+                >
+                  <EyeIcon />
+                  <span className="ml-2">Beheren</span>
+                </button>
               </div>
             </div>
           ))}
@@ -1546,8 +1812,8 @@ const App = () => {
   };
 
   const handleClientUpdate = () => {
-    // Placeholder for future functionality
-    console.log('Client updated');
+    // Force refresh of admin dashboard
+    window.location.reload();
   };
 
   if (!user) {
