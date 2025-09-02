@@ -1850,6 +1850,20 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* EMERGENCY TEST - SHOULD BE VISIBLE */}
+      <h1 style={{
+        position: 'fixed', 
+        top: '50px', 
+        left: '50px', 
+        backgroundColor: 'red', 
+        color: 'white', 
+        padding: '20px',
+        zIndex: 99999,
+        fontSize: '24px'
+      }}>
+        🚨 EMERGENCY TEST VISIBLE? 🚨
+      </h1>
+
       <Sidebar 
         user={user}
         activeMenuItem={activeMenuItem}
