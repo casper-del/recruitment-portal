@@ -1081,6 +1081,8 @@ const App = () => {
   const [activeMenuItem, setActiveMenuItem] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [showClientModal, setShowClientModal] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
@@ -1136,6 +1138,18 @@ const App = () => {
     localStorage.removeItem('userData');
     setUser(null);
     setActiveMenuItem('dashboard');
+    setSelectedClient(null);
+    setShowClientModal(false);
+  };
+
+  const handleClientClick = (client) => {
+    setSelectedClient(client);
+    setShowClientModal(true);
+  };
+
+  const handleClientUpdate = () => {
+    // Placeholder for future functionality
+    console.log('Client updated');
   };
 
   if (!user) {
@@ -1158,10 +1172,7 @@ const App = () => {
           {user.role === 'admin' && (
             <>
               {activeMenuItem === 'admin-dashboard' && (
-                <PlaceholderPage 
-                  title="Admin Dashboard" 
-                  description="Beheer klanten, teams en facturatie"
-                />
+                <AdminDashboard onClientClick={handleClientClick} />
               )}
               
               {activeMenuItem === 'clients' && (
