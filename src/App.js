@@ -229,7 +229,7 @@ const uploadFile = async (endpoint, file, additionalData = {}) => {
   return response.json();
 };
 
-// Login Component (same as before)
+// Login Component
 const LoginForm = ({ onLogin, isLoading }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -311,7 +311,7 @@ const LoginForm = ({ onLogin, isLoading }) => {
   );
 };
 
-// Sidebar Component (same as before - no changes)
+// Sidebar Component
 const Sidebar = ({ user, activeMenuItem, setActiveMenuItem, sidebarCollapsed, setSidebarCollapsed, onLogout }) => {
   const menuItems = user?.role === 'admin' ? [
     { id: 'admin-dashboard', label: 'Admin Dashboard', icon: HomeIcon },
@@ -403,7 +403,7 @@ const Sidebar = ({ user, activeMenuItem, setActiveMenuItem, sidebarCollapsed, se
   );
 };
 
-// Dashboard components (same as before)
+// Client Dashboard Component
 const ClientDashboard = ({ dashboardData, formatCurrency, onRefresh, onSalesRepClick }) => {
   if (!dashboardData) {
     return (
@@ -613,7 +613,7 @@ const ClientDashboard = ({ dashboardData, formatCurrency, onRefresh, onSalesRepC
   );
 };
 
-// Sales Rep Detail Modal (same as before)
+// Sales Rep Detail Modal
 const SalesRepDetailModal = ({ isOpen, onClose, salesRep }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [historicalData] = useState([
@@ -859,7 +859,7 @@ const TeamManagement = ({ dashboardData, onSalesRepClick }) => {
   );
 };
 
-// CRM Settings Component with working demo mode
+// Updated CRM Settings Component with Real HubSpot Integration
 const CRMSettings = ({ dashboardData, onRefresh }) => {
   const [availableCRMs, setAvailableCRMs] = useState([]);
   const [selectedCRM, setSelectedCRM] = useState('');
@@ -872,7 +872,16 @@ const CRMSettings = ({ dashboardData, onRefresh }) => {
       setSelectedCRM(dashboardData.client.crmType || 'teamleader');
     }
     fetchAvailableCRMs();
-  }, [dashboardData]);
+    
+    // Check for OAuth success callback
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('crm_connected') === 'success') {
+      alert('🎉 CRM succesvol verbonden! Je kunt nu data synchroniseren.');
+      // Remove the parameter from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      onRefresh();
+    }
+  }, [dashboardData, onRefresh]);
 
   const fetchAvailableCRMs = async () => {
     try {
@@ -903,21 +912,35 @@ const CRMSettings = ({ dashboardData, onRefresh }) => {
   };
 
   const handleCRMConnect = async () => {
-    // For demo purposes, simulate CRM connection
-    alert(`🎯 Demo Modus: CRM Verbinding Gesimuleerd!\n\nIn productie zou dit verbinden met ${availableCRMs.find(c => c.id === selectedCRM)?.name}.\n\nVoor echte CRM integratie zijn OAuth credentials vereist.`);
-    
-    // Simulate successful connection by running sync
-    try {
-      const response = await apiCall('/client/crm/sync', {
-        method: 'POST'
-      });
-      
-      alert(`✅ ${response.message}`);
-      onRefresh();
-    } catch (error) {
-      console.error('Failed to sync CRM:', error);
+    if (selectedCRM === 'hubspot') {
+      // Real HubSpot OAuth flow
+      try {
+        setLoading(true);
+        const response = await apiCall(`/client/crm/connect?type=${selectedCRM}`);
+        // Redirect to HubSpot OAuth
+        window.location.href = response.authUrl;
+      } catch (error) {
+        alert('❌ Fout bij verbinden met HubSpot: ' + error.message);
+        setLoading(false);
+      }
+    } else if (selectedCRM === 'teamleader') {
+      // Demo for Teamleader (awaiting approval)
+      alert('🎯 Teamleader integratie aangevraagd en wacht op goedkeuring.\n\nVoor nu wordt demo functionaliteit gebruikt.');
+      try {
+        const response = await apiCall('/client/crm/sync', { method: 'POST' });
+        alert(`✅ ${response.message}`);
+        onRefresh();
+      } catch (error) {
+        alert('❌ Demo sync gefaald: ' + error.message);
+      }
+    } else {
+      // Demo for other CRMs
+      alert(`🎯 Demo: ${availableCRMs.find(c => c.id === selectedCRM)?.name} verbinding gesimuleerd!`);
     }
   };
+
+  // Check if HubSpot is connected
+  const isHubSpotConnected = selectedCRM === 'hubspot' && client?.crmCredentials?.accessToken;
 
   return (
     <div className="space-y-8">
@@ -967,21 +990,54 @@ const CRMSettings = ({ dashboardData, onRefresh }) => {
           <div className="border-t pt-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">CRM Verbinding</h3>
             
-            {/* Demo Mode Notice */}
-            <div className="bg-blue-50 rounded-xl p-4 mb-6">
-              <div className="flex items-start space-x-3">
-                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-xs font-bold">i</span>
-                </div>
-                <div>
-                  <h4 className="font-medium text-blue-900">Demo Modus</h4>
-                  <p className="text-sm text-blue-800 mt-1">
-                    Dit is een demonstratie versie. CRM verbindingen worden gesimuleerd. 
-                    Voor productie gebruik zijn OAuth credentials van je CRM provider vereist.
-                  </p>
+            {/* Status-specific notices */}
+            {selectedCRM === 'hubspot' && (
+              <div className="bg-green-50 rounded-xl p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xs font-bold">✓</span>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-green-900">HubSpot Integratie Actief</h4>
+                    <p className="text-sm text-green-800 mt-1">
+                      Echte HubSpot OAuth integratie geconfigureerd. Verbind je account om contacten automatisch te synchroniseren.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {selectedCRM === 'teamleader' && (
+              <div className="bg-orange-50 rounded-xl p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xs font-bold">⏳</span>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-orange-900">Teamleader Integratie Aangevraagd</h4>
+                    <p className="text-sm text-orange-800 mt-1">
+                      Wachten op goedkeuring van Teamleader voor OAuth toegang. Demo functionaliteit beschikbaar.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedCRM === 'pipedrive' && (
+              <div className="bg-blue-50 rounded-xl p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xs font-bold">i</span>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-blue-900">Pipedrive Demo Modus</h4>
+                    <p className="text-sm text-blue-800 mt-1">
+                      Demo functionaliteit beschikbaar. Neem contact op voor echte Pipedrive integratie.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="bg-gray-50 rounded-xl p-6">
               <div className="flex items-center justify-between">
@@ -990,7 +1046,12 @@ const CRMSettings = ({ dashboardData, onRefresh }) => {
                     Verbind met {availableCRMs.find(c => c.id === selectedCRM)?.name}
                   </h4>
                   <p className="text-sm text-gray-600">
-                    Koppel je {selectedCRM} account om sales rep data automatisch te synchroniseren.
+                    {selectedCRM === 'hubspot' ? 
+                      'Echte OAuth verbinding met je HubSpot account om contacten te synchroniseren.' :
+                      selectedCRM === 'teamleader' ?
+                      'Demo functionaliteit terwijl we wachten op Teamleader goedkeuring.' :
+                      `Demo ${selectedCRM} account om sales rep data te simuleren.`
+                    }
                   </p>
                 </div>
                 <button
@@ -999,14 +1060,19 @@ const CRMSettings = ({ dashboardData, onRefresh }) => {
                   className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
                 >
                   <LinkIcon />
-                  <span>{loading ? 'Bezig...' : 'Demo Verbinding'}</span>
+                  <span>
+                    {loading ? 'Bezig...' : 
+                     selectedCRM === 'hubspot' ? 'Verbind HubSpot' :
+                     selectedCRM === 'teamleader' ? 'Demo Teamleader' :
+                     'Demo Verbinding'}
+                  </span>
                 </button>
               </div>
 
-              {client?.crmCredentials?.accessToken && (
+              {isHubSpotConnected && (
                 <div className="mt-4 p-3 bg-green-100 rounded-lg">
                   <p className="text-sm text-green-800">
-                    ✓ CRM verbinding actief - Data wordt automatisch gesynchroniseerd
+                    ✅ HubSpot verbinding actief - Data wordt automatisch gesynchroniseerd
                   </p>
                 </div>
               )}
@@ -1018,25 +1084,34 @@ const CRMSettings = ({ dashboardData, onRefresh }) => {
             <h3 className="text-xl font-bold text-gray-900 mb-4">Data Synchronisatie</h3>
             <div className="flex items-center justify-between bg-gray-50 rounded-xl p-6">
               <div>
-                <h4 className="font-medium text-gray-900 mb-1">Handmatige Sync</h4>
+                <h4 className="font-medium text-gray-900 mb-1">
+                  {selectedCRM === 'hubspot' && isHubSpotConnected ? 'HubSpot Sync' : 'Handmatige Sync'}
+                </h4>
                 <p className="text-sm text-gray-600">
-                  Synchroniseer je sales rep data direct vanuit je CRM systeem.
+                  {selectedCRM === 'hubspot' && isHubSpotConnected ? 
+                    'Synchroniseer je contacten direct vanuit HubSpot CRM.' :
+                    'Synchroniseer je sales rep data vanuit je CRM systeem.'
+                  }
                 </p>
               </div>
               <button
                 onClick={async () => {
                   try {
+                    setLoading(true);
                     const response = await apiCall('/client/crm/sync', { method: 'POST' });
                     alert(`✅ ${response.message}`);
                     onRefresh();
                   } catch (error) {
                     alert('❌ Sync gefaald: ' + error.message);
+                  } finally {
+                    setLoading(false);
                   }
                 }}
-                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                disabled={loading}
+                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
               >
                 <RefreshCwIcon />
-                <span>Sync Nu</span>
+                <span>{loading ? 'Syncing...' : 'Sync Nu'}</span>
               </button>
             </div>
           </div>
@@ -1384,7 +1459,7 @@ const AddClientModal = ({ isOpen, onClose, onSubmit }) => {
   );
 };
 
-// NEW: Add Sales Rep Modal Component
+// Add Sales Rep Modal Component
 const AddSalesRepModal = ({ isOpen, onClose, clientId, onSubmit }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -1538,14 +1613,13 @@ const SuccessModal = ({ isOpen, onClose, clientData }) => {
   );
 };
 
-// Updated Admin Dashboard with Sales Rep functionality
+// Admin Dashboard Component with Sales Rep functionality
 const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState(null);
   const [selectedClient, setSelectedClient] = useState(null);
-  // NEW: Sales Rep modal states
   const [showAddSalesRepModal, setShowAddSalesRepModal] = useState(false);
   const [selectedClientForSalesRep, setSelectedClientForSalesRep] = useState(null);
   
@@ -1569,7 +1643,6 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
     }
   };
 
-  // NEW: Sales Rep add handler
   const handleAddSalesRep = async (clientId, salesRepData) => {
     try {
       await apiCall(`/admin/clients/${clientId}/salesreps`, {
@@ -1672,7 +1745,6 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  {/* NEW: Sales Rep Add Button */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1733,7 +1805,6 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
         onSubmit={handleEditClient}
       />
 
-      {/* NEW: Sales Rep Add Modal */}
       <AddSalesRepModal
         isOpen={showAddSalesRepModal}
         onClose={() => setShowAddSalesRepModal(false)}
@@ -1914,7 +1985,7 @@ const App = () => {
             />
           )}
 
-          {/* Settings with CRM Integration */}
+          {/* Settings with Real CRM Integration */}
           {activeMenuItem === 'settings' && user.role === 'client' && (
             <CRMSettings 
               dashboardData={dashboardData}
