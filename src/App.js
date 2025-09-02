@@ -623,6 +623,294 @@ const PlaceholderPage = ({ title, description }) => (
   </div>
 );
 
+// Add Client Modal Component
+const AddClientModal = ({ isOpen, onClose, onSubmit }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    contactName: '',
+    email: '',
+    commissionRate: '0.10',
+    commissionCap: '50000',
+    crmType: 'teamleader'
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      await onSubmit({
+        ...formData,
+        commissionRate: parseFloat(formData.commissionRate),
+        commissionCap: parseInt(formData.commissionCap)
+      });
+      setFormData({
+        name: '',
+        contactName: '',
+        email: '',
+        commissionRate: '0.10',
+        commissionCap: '50000',
+        crmType: 'teamleader'
+      });
+      onClose();
+    } catch (error) {
+      setError(error.message || 'Er ging iets mis bij het aanmaken van de klant');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-gray-900">Nieuwe Klant Toevoegen</h3>
+            <button 
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <XIcon />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Bedrijfsnaam *</label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="Acme Corporation"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Contactpersoon *</label>
+            <input
+              type="text"
+              required
+              value={formData.contactName}
+              onChange={(e) => setFormData({...formData, contactName: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="John Doe"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+            <input
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="john@acmecorp.com"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Commissie %</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="1"
+                value={formData.commissionRate}
+                onChange={(e) => setFormData({...formData, commissionRate: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                disabled={isLoading}
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Max Commissie</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.commissionCap}
+                onChange={(e) => setFormData({...formData, commissionCap: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">CRM Type</label>
+            <select
+              value={formData.crmType}
+              onChange={(e) => setFormData({...formData, crmType: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={isLoading}
+            >
+              <option value="teamleader">Teamleader</option>
+              <option value="hubspot">HubSpot</option>
+              <option value="pipedrive">Pipedrive</option>
+            </select>
+          </div>
+
+          <div className="flex space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={isLoading}
+            >
+              Annuleren
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+            >
+              {isLoading ? 'Bezig...' : 'Klant Aanmaken'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Success Modal Component
+const SuccessModal = ({ isOpen, onClose, clientData }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+        <div className="p-6 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="text-green-600">
+              <CheckCircle2Icon />
+            </div>
+          </div>
+          
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Klant Succesvol Aangemaakt!</h3>
+          
+          <div className="bg-gray-50 rounded-xl p-4 mb-4 text-left">
+            <p className="text-sm text-gray-600 mb-2">Login gegevens voor {clientData?.client?.name}:</p>
+            <p className="font-mono text-sm bg-white p-2 rounded border">
+              <strong>Email:</strong> {clientData?.client?.email}<br/>
+              <strong>Wachtwoord:</strong> {clientData?.tempPassword}
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Stuur deze gegevens veilig naar de klant. Het tijdelijke wachtwoord kan aangepast worden na eerste login.
+            </p>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Sluiten
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Admin Dashboard Component
+const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successData, setSuccessData] = useState(null);
+  
+  const handleAddClient = async (clientData) => {
+    const result = await onAddClient(clientData);
+    setSuccessData(result);
+    setShowSuccessModal(true);
+    onRefresh(); // Refresh client list
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Admin Dashboard</h2>
+          <p className="text-gray-600 mt-1">Beheer klanten en hun gegevens</p>
+        </div>
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl transition-all duration-200"
+        >
+          <PlusIcon />
+          <span>Nieuwe Klant</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {clients && clients.map(client => (
+          <div key={client._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:border-green-300 hover:shadow-md transition-all duration-200">
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <div className="text-green-600">
+                  <Building2Icon />
+                </div>
+              </div>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                client.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {client.isActive ? 'Actief' : 'Inactief'}
+              </span>
+            </div>
+            
+            <h3 className="font-bold text-gray-900 mb-1">{client.name}</h3>
+            <p className="text-sm text-gray-600 mb-4">{client.contactName} • {client.email}</p>
+            
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Commissie:</span>
+                <span className="font-medium">{(client.commissionRate * 100).toFixed(1)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">CRM:</span>
+                <span className="font-medium capitalize">{client.crmType}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Sales Reps:</span>
+                <span className="font-medium">{client.connectedCount || 0}/{client.salesRepCount || 0}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <AddClientModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSubmit={handleAddClient}
+      />
+
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        clientData={successData}
+      />
+    </div>
+  );
+};
+
 // Main App Component
 const App = () => {
   const [user, setUser] = useState(null);
@@ -630,6 +918,7 @@ const App = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
+  const [clients, setClients] = useState(null);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('nl-NL', {
@@ -686,6 +975,7 @@ const App = () => {
     setUser(null);
     setActiveMenuItem('dashboard');
     setDashboardData(null);
+    setClients(null);
   };
 
   // Load dashboard data for clients
@@ -695,12 +985,41 @@ const App = () => {
     }
   }, [user, activeMenuItem]);
 
+  // Load clients for admin
+  useEffect(() => {
+    if (user?.role === 'admin' && activeMenuItem === 'admin-dashboard') {
+      loadClients();
+    }
+  }, [user, activeMenuItem]);
+
   const loadDashboardData = async () => {
     try {
       const data = await apiCall('/client/dashboard');
       setDashboardData(data);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
+    }
+  };
+
+  const loadClients = async () => {
+    try {
+      const data = await apiCall('/admin/clients');
+      setClients(data);
+    } catch (error) {
+      console.error('Failed to load clients:', error);
+      setClients([]);
+    }
+  };
+
+  const handleAddClient = async (clientData) => {
+    try {
+      const response = await apiCall('/admin/clients', {
+        method: 'POST',
+        body: JSON.stringify(clientData)
+      });
+      return response;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to create client');
     }
   };
 
@@ -736,6 +1055,15 @@ const App = () => {
             />
           )}
           
+          {/* Admin Dashboard */}
+          {activeMenuItem === 'admin-dashboard' && user.role === 'admin' && (
+            <AdminDashboard 
+              clients={clients}
+              onAddClient={handleAddClient}
+              onRefresh={loadClients}
+            />
+          )}
+          
           {/* Other Pages - Placeholders for now */}
           {activeMenuItem === 'invoices' && (
             <PlaceholderPage 
@@ -755,13 +1083,6 @@ const App = () => {
             <PlaceholderPage 
               title="Instellingen" 
               description="Beheer je account en CRM koppelingen"
-            />
-          )}
-          
-          {activeMenuItem === 'admin-dashboard' && user.role === 'admin' && (
-            <PlaceholderPage 
-              title="Admin Dashboard" 
-              description="Beheer klanten en hun gegevens"
             />
           )}
           
