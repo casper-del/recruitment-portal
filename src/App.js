@@ -766,16 +766,32 @@ const AdminClientModal = ({ client, isOpen, onClose, onUpdate }) => {
         </div>
       </div>
 
-      {/* TEST MODAL - ALWAYS VISIBLE */}
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{zIndex: 9999}}>
-        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">TEST MODAL</h2>
-          <p className="text-gray-600 mb-4">Als je dit ziet, werken modals wel!</p>
+      {/* SUPER SIMPLE TEST */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(255, 0, 0, 0.8)',
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          padding: '20px',
+          borderRadius: '10px',
+          border: '5px solid red'
+        }}>
+          <h1 style={{color: 'red', fontSize: '24px'}}>🚨 EMERGENCY TEST MODAL 🚨</h1>
+          <p style={{color: 'black'}}>If you see this, CSS works!</p>
           <button 
-            onClick={() => window.location.reload()} 
-            className="bg-red-600 text-white px-4 py-2 rounded"
+            onClick={() => alert('Button works!')}
+            style={{backgroundColor: 'red', color: 'white', padding: '10px', border: 'none'}}
           >
-            Refresh Page
+            TEST BUTTON
           </button>
         </div>
       </div>
