@@ -1850,20 +1850,6 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* EMERGENCY TEST - SHOULD BE VISIBLE */}
-      <h1 style={{
-        position: 'fixed', 
-        top: '50px', 
-        left: '50px', 
-        backgroundColor: 'red', 
-        color: 'white', 
-        padding: '20px',
-        zIndex: 99999,
-        fontSize: '24px'
-      }}>
-        🚨 EMERGENCY TEST VISIBLE? 🚨
-      </h1>
-
       <Sidebar 
         user={user}
         activeMenuItem={activeMenuItem}
@@ -1875,6 +1861,66 @@ const App = () => {
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-7xl mx-auto px-8 py-8">
+          {/* SIMPLE RED TEST BOX */}
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '300px',
+            backgroundColor: 'red',
+            color: 'white',
+            padding: '20px',
+            zIndex: 9999,
+            border: '3px solid yellow'
+          }}>
+            🚨 TEST BOX - CAN YOU SEE THIS? 🚨
+          </div>
+
+          {/* SIMPLE MODAL TEST */}
+          {showClientModal && selectedClient && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <div style={{
+                backgroundColor: 'white',
+                padding: '30px',
+                borderRadius: '10px',
+                maxWidth: '500px',
+                width: '90%'
+              }}>
+                <h2 style={{color: 'black', fontSize: '24px', marginBottom: '20px'}}>
+                  🎉 MODAL WERKT! - {selectedClient.name}
+                </h2>
+                <p style={{color: 'gray', marginBottom: '20px'}}>
+                  Client: {selectedClient.email}
+                </p>
+                <button 
+                  onClick={() => {
+                    setShowClientModal(false);
+                    setSelectedClient(null);
+                  }}
+                  style={{
+                    backgroundColor: 'red', 
+                    color: 'white', 
+                    padding: '10px 20px', 
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Sluit Modal
+                </button>
+              </div>
+            </div>
+          )}
           {user.role === 'admin' && (
             <>
               {activeMenuItem === 'admin-dashboard' && (
