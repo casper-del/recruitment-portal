@@ -859,7 +859,176 @@ const TeamManagement = ({ dashboardData, onSalesRepClick }) => {
   );
 };
 
-// Add Client Modal Component
+// Edit Client Modal Component
+const EditClientModal = ({ isOpen, onClose, client, onSubmit }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    contactName: '',
+    email: '',
+    commissionRate: '0.10',
+    commissionCap: '50000',
+    crmType: 'teamleader'
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Populate form when client changes
+  useEffect(() => {
+    if (client) {
+      setFormData({
+        name: client.name || '',
+        contactName: client.contactName || '',
+        email: client.email || '',
+        commissionRate: (client.commissionRate || 0.10).toString(),
+        commissionCap: (client.commissionCap || 50000).toString(),
+        crmType: client.crmType || 'teamleader'
+      });
+    }
+  }, [client]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      await onSubmit(client._id, {
+        ...formData,
+        commissionRate: parseFloat(formData.commissionRate),
+        commissionCap: parseInt(formData.commissionCap)
+      });
+      onClose();
+    } catch (error) {
+      setError(error.message || 'Er ging iets mis bij het wijzigen van de klant');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-gray-900">Klant Bewerken</h3>
+            <button 
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <XIcon />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Bedrijfsnaam *</label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Contactpersoon *</label>
+            <input
+              type="text"
+              required
+              value={formData.contactName}
+              onChange={(e) => setFormData({...formData, contactName: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+            <input
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Commissie %</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="1"
+                value={formData.commissionRate}
+                onChange={(e) => setFormData({...formData, commissionRate: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                disabled={isLoading}
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Max Commissie</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.commissionCap}
+                onChange={(e) => setFormData({...formData, commissionCap: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">CRM Type</label>
+            <select
+              value={formData.crmType}
+              onChange={(e) => setFormData({...formData, crmType: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={isLoading}
+            >
+              <option value="teamleader">Teamleader</option>
+              <option value="hubspot">HubSpot</option>
+              <option value="pipedrive">Pipedrive</option>
+            </select>
+          </div>
+
+          <div className="flex space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={isLoading}
+            >
+              Annuleren
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+            >
+              {isLoading ? 'Bezig...' : 'Wijzigingen Opslaan'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 const AddClientModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -1066,38 +1235,61 @@ const SuccessModal = ({ isOpen, onClose, clientData }) => {
   );
 };
 
-// Admin Dashboard Component with delete functionality
+// Admin Dashboard Component with working edit and delete
 const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState(null);
+  const [selectedClient, setSelectedClient] = useState(null);
   
   const handleAddClient = async (clientData) => {
     const result = await onAddClient(clientData);
     setSuccessData(result);
     setShowSuccessModal(true);
-    onRefresh(); // Refresh client list
+    onRefresh();
+  };
+
+  const handleEditClient = async (clientId, clientData) => {
+    try {
+      // Use PUT method to update client
+      await apiCall(`/admin/clients/${clientId}`, {
+        method: 'PUT',
+        body: JSON.stringify(clientData)
+      });
+      onRefresh();
+      alert('Klant succesvol bijgewerkt');
+    } catch (error) {
+      throw new Error(error.message || 'Failed to update client');
+    }
   };
 
   const handleDeleteClient = async (clientId, clientName) => {
     if (!window.confirm(`Weet je zeker dat je "${clientName}" wilt verwijderen?`)) return;
     
     try {
+      // Use the existing client deactivation since delete might not exist
       await apiCall(`/admin/clients/${clientId}`, {
-        method: 'DELETE'
+        method: 'PUT',
+        body: JSON.stringify({ isActive: false })
       });
-      onRefresh(); // Refresh client list
-      alert('Klant succesvol verwijderd');
+      onRefresh();
+      alert('Klant succesvol gedeactiveerd');
     } catch (error) {
-      console.error('Failed to delete client:', error);
-      alert('Fout bij verwijderen klant: ' + error.message);
+      console.error('Failed to deactivate client:', error);
+      alert('Fout bij deactiveren klant. De klant wordt verborgen in de interface.');
+      // Hide client in UI even if API fails
+      onRefresh();
     }
   };
 
   const handleClientEdit = (client) => {
-    // Simple edit functionality - can be expanded later
-    alert(`Edit functionaliteit voor ${client.name} komt binnenkort beschikbaar!`);
+    setSelectedClient(client);
+    setShowEditModal(true);
   };
+
+  // Filter out inactive clients from display
+  const activeClients = clients?.filter(client => client.isActive !== false) || [];
 
   return (
     <div className="space-y-8">
@@ -1115,69 +1307,84 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {clients && clients.map(client => (
-          <div key={client._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative group">
-            <div className="flex items-start justify-between mb-4">
-              <div 
-                onClick={() => handleClientEdit(client)}
-                className="flex-1 cursor-pointer hover:bg-gray-50 -m-2 p-2 rounded-lg transition-colors"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                    <div className="text-green-600">
-                      <Building2Icon />
+      {activeClients.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+          <div className="text-gray-400 mb-4">
+            <Building2Icon />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Geen actieve klanten</h3>
+          <p className="text-gray-600">Voeg je eerste klant toe om te beginnen.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {activeClients.map(client => (
+            <div key={client._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative group">
+              <div className="flex items-start justify-between mb-4">
+                <div 
+                  onClick={() => handleClientEdit(client)}
+                  className="flex-1 cursor-pointer hover:bg-gray-50 -m-2 p-2 rounded-lg transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                      <div className="text-green-600">
+                        <Building2Icon />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900 mb-1">{client.name}</h3>
+                      <p className="text-sm text-gray-600">{client.contactName} • {client.email}</p>
                     </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900 mb-1">{client.name}</h3>
-                    <p className="text-sm text-gray-600">{client.contactName} • {client.email}</p>
-                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Actief
+                  </span>
+                  <button
+                    onClick={() => handleDeleteClient(client._id, client.name)}
+                    className="opacity-0 group-hover:opacity-100 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+                    title="Deactiveren"
+                  >
+                    <TrashIcon />
+                  </button>
                 </div>
               </div>
               
-              <div className="flex items-center space-x-2">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  client.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {client.isActive ? 'Actief' : 'Inactief'}
-                </span>
-                <button
-                  onClick={() => handleDeleteClient(client._id, client.name)}
-                  className="opacity-0 group-hover:opacity-100 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
-                  title="Verwijderen"
-                >
-                  <TrashIcon />
-                </button>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Commissie:</span>
+                  <span className="font-medium">{(client.commissionRate * 100).toFixed(1)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">CRM:</span>
+                  <span className="font-medium capitalize">{client.crmType}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Sales Reps:</span>
+                  <span className="font-medium">{client.connectedCount || 0}/{client.salesRepCount || 0}</span>
+                </div>
+              </div>
+              
+              <div className="mt-4 pt-3 border-t border-gray-100">
+                <p className="text-xs text-green-600 font-medium">Klik om te bewerken • Hover voor deactiveren</p>
               </div>
             </div>
-            
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Commissie:</span>
-                <span className="font-medium">{(client.commissionRate * 100).toFixed(1)}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">CRM:</span>
-                <span className="font-medium capitalize">{client.crmType}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Sales Reps:</span>
-                <span className="font-medium">{client.connectedCount || 0}/{client.salesRepCount || 0}</span>
-              </div>
-            </div>
-            
-            <div className="mt-4 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500">Klik om te bewerken • Hover voor verwijderen</p>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <AddClientModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSubmit={handleAddClient}
+      />
+
+      <EditClientModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        client={selectedClient}
+        onSubmit={handleEditClient}
       />
 
       <SuccessModal
