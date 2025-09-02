@@ -922,7 +922,150 @@ const ClientSettings = ({ user }) => {
   );
 };
 
-// Placeholder Pages
+// Sales Rep Dashboard Component
+const SalesRepDashboard = ({ user }) => {
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  const fetchDashboard = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/salesrep/dashboard');
+      setDashboardData(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <p className="text-gray-600">Dashboard laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Welkom terug, {user?.name}!</h2>
+        <p className="text-gray-600">{dashboardData?.salesRep?.position} bij {dashboardData?.salesRep?.clientId?.name}</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Deze Maand Omzet</p>
+              <p className="text-3xl font-bold text-gray-900">
+                €{(dashboardData?.currentRevenue?.revenue || 0).toLocaleString('nl-NL')}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+              <DollarSignIcon />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Deze Maand Commissie</p>
+              <p className="text-3xl font-bold text-gray-900">
+                €{(dashboardData?.currentRevenue?.commission || 0).toLocaleString('nl-NL')}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+              <TrendingUpIcon />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Mijn Facturen</p>
+              <p className="text-3xl font-bold text-gray-900">{dashboardData?.myInvoices?.length || 0}</p>
+            </div>
+            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+              <FileTextIcon />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Invoices */}
+      {dashboardData?.myInvoices && dashboardData.myInvoices.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Recente Facturen</h3>
+          
+          <div className="space-y-4">
+            {dashboardData.myInvoices.map((invoice) => (
+              <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <FileTextIcon />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">Factuur #{invoice.invoiceNumber}</p>
+                    <p className="text-sm text-gray-500">
+                      €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})} • 
+                      {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
+                    </p>
+                  </div>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  invoice.status === 'paid' 
+                    ? 'bg-green-100 text-green-600' 
+                    : 'bg-yellow-100 text-yellow-600'
+                }`}>
+                  {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Revenue History */}
+      {dashboardData?.revenueHistory && dashboardData.revenueHistory.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Omzet Geschiedenis</h3>
+          
+          <div className="space-y-3">
+            {dashboardData.revenueHistory.map((record) => (
+              <div key={`${record.year}-${record.month}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span className="font-medium text-gray-900">
+                  {new Date(record.year, record.month - 1).toLocaleDateString('nl-NL', {month: 'long', year: 'numeric'})}
+                </span>
+                <div className="text-right">
+                  <p className="font-semibold text-gray-900">€{record.revenue.toLocaleString('nl-NL')}</p>
+                  <p className="text-sm text-gray-500">€{record.commission.toLocaleString('nl-NL')} commissie</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 const PlaceholderPage = ({ title, description }) => (
   <div className="space-y-6">
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -1040,10 +1183,7 @@ const App = () => {
           {user.role === 'salesrep' && (
             <>
               {activeMenuItem === 'salesrep-dashboard' && (
-                <PlaceholderPage 
-                  title="Sales Rep Dashboard" 
-                  description="Welkom bij je sales portal"
-                />
+                <SalesRepDashboard user={user} />
               )}
               
               {activeMenuItem === 'salesrep-invoices' && (
