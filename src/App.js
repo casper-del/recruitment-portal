@@ -783,7 +783,7 @@ const AdminClientModal = ({ client, isOpen, onClose, onUpdate }) => {
 };
 
 // Admin Dashboard Component
-const AdminDashboard = () => {
+const AdminDashboard = ({ onClientClick }) => {
   const [clients, setClients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -909,8 +909,11 @@ const AdminDashboard = () => {
                 </div>
                 
                 <button
-                  onClick={() => handleClientClick(client)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center"
+                  onClick={() => {
+                    console.log('Button clicked', client);
+                    onClientClick && onClientClick(client);
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center z-10 relative"
                 >
                   <EyeIcon />
                   <span className="ml-2">Beheren</span>
@@ -1836,7 +1839,7 @@ const App = () => {
           {user.role === 'admin' && (
             <>
               {activeMenuItem === 'admin-dashboard' && (
-                <AdminDashboard />
+                <AdminDashboard onClientClick={handleClientClick} />
               )}
               
               {activeMenuItem === 'clients' && (
