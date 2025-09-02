@@ -1172,7 +1172,7 @@ const App = () => {
           {user.role === 'admin' && (
             <>
               {activeMenuItem === 'admin-dashboard' && (
-                <AdminDashboard onClientClick={handleClientClick} />
+                <AdminDashboard />
               )}
               
               {activeMenuItem === 'clients' && (
