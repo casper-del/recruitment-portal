@@ -279,6 +279,107 @@ app.get('/api/admin/clients', authenticateToken, requireAdmin, async (req, res) 
   }
 });
 
+// FIX 1: Admin client update endpoint (NEW)
+app.put('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const { name, contactName, email, commissionRate, commissionCap, crmType } = req.body;
+    
+    // Find and update the client
+    const client = await Client.findByIdAndUpdate(
+      clientId,
+      {
+        name,
+        contactName,
+        email,
+        commissionRate,
+        commissionCap,
+        crmType
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!client) {
+      return res.status(404).json({ message: 'Client not found' });
+    }
+    
+    // Also update the user account email if it changed
+    await User.findOneAndUpdate(
+      { clientId: clientId },
+      { 
+        email,
+        name: contactName 
+      }
+    );
+    
+    res.json({ 
+      message: 'Client updated successfully',
+      client 
+    });
+  } catch (error) {
+    console.error('Update client error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// FIX 2: Complete client deletion endpoint (NEW)
+app.delete('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    
+    // Start a transaction to ensure all data is deleted together
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // 1. Delete all sales reps for this client
+      await SalesRep.deleteMany({ clientId }, { session });
+      
+      // 2. Delete all revenue records for this client
+      await Revenue.deleteMany({ clientId }, { session });
+      
+      // 3. Delete all invoices for this client
+      const invoices = await Invoice.find({ clientId });
+      for (const invoice of invoices) {
+        // Delete invoice files if they exist
+        if (invoice.filePath && fs.existsSync(invoice.filePath)) {
+          fs.unlinkSync(invoice.filePath);
+        }
+      }
+      await Invoice.deleteMany({ clientId }, { session });
+      
+      // 4. Delete the client user account
+      await User.deleteOne({ clientId }, { session });
+      
+      // 5. Delete the client itself
+      const deletedClient = await Client.findByIdAndDelete(clientId, { session });
+      
+      if (!deletedClient) {
+        await session.abortTransaction();
+        return res.status(404).json({ message: 'Client not found' });
+      }
+      
+      await session.commitTransaction();
+      
+      res.json({ 
+        message: 'Client and all associated data deleted successfully',
+        deletedClient: {
+          name: deletedClient.name,
+          email: deletedClient.email
+        }
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  } catch (error) {
+    console.error('Delete client error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { clientId } = req.params;
@@ -429,6 +530,48 @@ app.get('/api/client/crm/connect', authenticateToken, async (req, res) => {
     res.json({ authUrl });
   } catch (error) {
     console.error('CRM connect error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// FIX 3: New CRM available systems endpoint
+app.get('/api/crm/available', authenticateToken, async (req, res) => {
+  try {
+    const availableCRMs = [
+      { id: 'teamleader', name: 'Teamleader', description: 'Complete business management' },
+      { id: 'hubspot', name: 'HubSpot', description: 'Customer relationship management' },
+      { id: 'pipedrive', name: 'Pipedrive', description: 'Sales-focused CRM' }
+    ];
+    
+    res.json(availableCRMs);
+  } catch (error) {
+    console.error('Get available CRMs error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// FIX 4: Update client CRM settings
+app.post('/api/client/crm/settings', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'client') {
+      return res.status(403).json({ message: 'Client access required' });
+    }
+
+    const { crmType } = req.body;
+    const clientId = req.user.clientId;
+    
+    const client = await Client.findByIdAndUpdate(
+      clientId,
+      { crmType },
+      { new: true }
+    );
+    
+    res.json({ 
+      message: 'CRM settings updated successfully',
+      client 
+    });
+  } catch (error) {
+    console.error('Update CRM settings error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
