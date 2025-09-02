@@ -63,7 +63,7 @@ const clientSchema = new mongoose.Schema({
     expiresAt: Date,
     portalId: String
   },
-  commissionRate: { type: Number, default: 0.10 }, // Fixed: Now correctly represents 10%
+  commissionRate: { type: Number, default: 0.10 },
   commissionCap: { type: Number, default: 50000 },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
@@ -76,7 +76,7 @@ const salesRepSchema = new mongoose.Schema({
   position: { type: String, default: 'Sales Representative' },
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
   hireDate: { type: Date, required: true },
-  commissionRate: { type: Number, default: 0.10 }, // Individual commission rate
+  commissionRate: { type: Number, default: 0.10 },
   crmContactId: String,
   isConnected: { type: Boolean, default: false },
   totalRevenue: { type: Number, default: 0 },
@@ -97,14 +97,14 @@ const revenueSchema = new mongoose.Schema({
 
 const invoiceSchema = new mongoose.Schema({
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
-  salesRepId: { type: mongoose.Schema.Types.ObjectId, ref: 'SalesRep' }, // Optional: for sales rep specific invoices
-  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Who uploaded this invoice
+  salesRepId: { type: mongoose.Schema.Types.ObjectId, ref: 'SalesRep' },
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   invoiceNumber: { type: String, required: true },
   amount: { type: Number, required: true },
   month: { type: Number, required: true },
   year: { type: Number, required: true },
   status: { type: String, enum: ['pending', 'paid'], default: 'pending' },
-  type: { type: String, enum: ['client', 'commission'], default: 'client' }, // client invoice or commission invoice
+  type: { type: String, enum: ['client', 'commission'], default: 'client' },
   filePath: String,
   fileName: String,
   paidAt: Date,
@@ -174,7 +174,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['application/pdf'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -265,7 +265,6 @@ app.post('/api/admin/clients', authenticateToken, requireAdmin, async (req, res)
     
     await client.save();
     
-    // Create client user account
     const tempPassword = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(tempPassword, 12);
     const clientUser = new User({
@@ -316,7 +315,6 @@ app.get('/api/admin/clients', authenticateToken, requireAdmin, async (req, res) 
   }
 });
 
-// Get single client details for admin
 app.get('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { clientId } = req.params;
@@ -364,7 +362,6 @@ app.put('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (
       return res.status(404).json({ message: 'Client not found' });
     }
     
-    // Update user account
     await User.findOneAndUpdate(
       { clientId: clientId },
       { 
@@ -391,18 +388,14 @@ app.delete('/api/admin/clients/:clientId', authenticateToken, requireAdmin, asyn
     session.startTransaction();
 
     try {
-      // Delete all sales reps for this client
       const salesReps = await SalesRep.find({ clientId });
       for (const salesRep of salesReps) {
-        // Delete sales rep user accounts
         await User.deleteOne({ salesRepId: salesRep._id }, { session });
       }
       await SalesRep.deleteMany({ clientId }, { session });
       
-      // Delete all revenue records
       await Revenue.deleteMany({ clientId }, { session });
       
-      // Delete all invoices and their files
       const invoices = await Invoice.find({ clientId });
       for (const invoice of invoices) {
         if (invoice.filePath && fs.existsSync(invoice.filePath)) {
@@ -411,10 +404,8 @@ app.delete('/api/admin/clients/:clientId', authenticateToken, requireAdmin, asyn
       }
       await Invoice.deleteMany({ clientId }, { session });
       
-      // Delete client user account
       await User.deleteOne({ clientId }, { session });
       
-      // Delete client
       const deletedClient = await Client.findByIdAndDelete(clientId, { session });
       
       if (!deletedClient) {
@@ -449,13 +440,11 @@ app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, requireAdm
     const { clientId } = req.params;
     const { name, email, phone, position, hireDate, commissionRate } = req.body;
     
-    // Check if email is already in use
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Email address already in use' });
     }
     
-    // Create sales rep
     const salesRep = new SalesRep({
       name,
       email,
@@ -468,7 +457,6 @@ app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, requireAdm
     
     await salesRep.save();
     
-    // Create user account for the sales rep
     const tempPassword = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(tempPassword, 12);
     
@@ -499,7 +487,6 @@ app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, requireAdm
   }
 });
 
-// Update sales rep
 app.put('/api/admin/salesreps/:salesRepId', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { salesRepId } = req.params;
@@ -521,7 +508,6 @@ app.put('/api/admin/salesreps/:salesRepId', authenticateToken, requireAdmin, asy
       return res.status(404).json({ message: 'Sales representative not found' });
     }
     
-    // Update user account
     await User.findOneAndUpdate(
       { salesRepId },
       { 
@@ -540,7 +526,6 @@ app.put('/api/admin/salesreps/:salesRepId', authenticateToken, requireAdmin, asy
   }
 });
 
-// Delete sales rep
 app.delete('/api/admin/salesreps/:salesRepId', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { salesRepId } = req.params;
@@ -549,13 +534,10 @@ app.delete('/api/admin/salesreps/:salesRepId', authenticateToken, requireAdmin, 
     session.startTransaction();
 
     try {
-      // Delete user account
       await User.deleteOne({ salesRepId }, { session });
       
-      // Delete revenue records
       await Revenue.deleteMany({ salesRepId }, { session });
       
-      // Delete sales rep invoices
       const invoices = await Invoice.find({ salesRepId });
       for (const invoice of invoices) {
         if (invoice.filePath && fs.existsSync(invoice.filePath)) {
@@ -564,7 +546,6 @@ app.delete('/api/admin/salesreps/:salesRepId', authenticateToken, requireAdmin, 
       }
       await Invoice.deleteMany({ salesRepId }, { session });
       
-      // Delete sales rep
       const deletedSalesRep = await SalesRep.findByIdAndDelete(salesRepId, { session });
       
       if (!deletedSalesRep) {
@@ -742,7 +723,7 @@ app.get('/api/salesrep/invoices', authenticateToken, requireSalesRep, async (req
     const invoices = await Invoice.find({ 
       $or: [
         { salesRepId: req.user.salesRepId },
-        { clientId: req.user.clientId, salesRepId: { $exists: false } } // Client invoices visible to all reps
+        { clientId: req.user.clientId, salesRepId: { $exists: false } }
       ]
     })
       .populate(['uploadedBy', 'salesRepId'])
@@ -791,7 +772,6 @@ app.get('/api/salesrep/invoices/:invoiceId/download', authenticateToken, require
   try {
     const invoice = await Invoice.findById(req.params.invoiceId);
     
-    // Sales rep can download their own invoices or client invoices
     const canDownload = invoice && (
       invoice.salesRepId?.toString() === req.user.salesRepId ||
       (invoice.clientId.toString() === req.user.clientId && !invoice.salesRepId)
@@ -812,7 +792,7 @@ app.get('/api/salesrep/invoices/:invoiceId/download', authenticateToken, require
   }
 });
 
-// CRM Integration Routes (existing code...)
+// CRM Integration Routes
 app.get('/api/client/crm/connect', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'client') {
@@ -842,7 +822,6 @@ app.get('/api/client/crm/connect', authenticateToken, async (req, res) => {
   }
 });
 
-// HubSpot OAuth Callback
 app.get('/auth/hubspot/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
@@ -893,7 +872,6 @@ app.get('/auth/hubspot/callback', async (req, res) => {
   }
 });
 
-// Get available CRMs
 app.get('/api/crm/available', authenticateToken, async (req, res) => {
   try {
     const availableCRMs = [
@@ -909,7 +887,6 @@ app.get('/api/crm/available', authenticateToken, async (req, res) => {
   }
 });
 
-// Update CRM settings
 app.post('/api/client/crm/settings', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'client') {
@@ -935,7 +912,6 @@ app.post('/api/client/crm/settings', authenticateToken, async (req, res) => {
   }
 });
 
-// CRM Sync
 app.post('/api/client/crm/sync', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'client') {
@@ -965,7 +941,6 @@ app.post('/api/client/crm/sync', authenticateToken, async (req, res) => {
   }
 });
 
-// HubSpot sync function
 async function syncHubSpotContacts(client, clientId) {
   try {
     console.log('Starting HubSpot sync for client:', clientId);
@@ -1028,7 +1003,6 @@ async function syncHubSpotContacts(client, clientId) {
         });
         await salesRep.save();
         
-        // Create user account for new sales rep
         const tempPassword = Math.random().toString(36).slice(-8);
         const hashedPassword = await bcrypt.hash(tempPassword, 12);
         
@@ -1083,7 +1057,6 @@ async function syncHubSpotContacts(client, clientId) {
   }
 }
 
-// Demo sync function
 async function demoSync(client, clientId) {
   const salesReps = await SalesRep.find({ clientId });
   let updatedReps = 0;
@@ -1127,7 +1100,6 @@ async function demoSync(client, clientId) {
   };
 }
 
-// Token refresh helper
 async function refreshHubSpotToken(client) {
   try {
     const refreshResponse = await fetch('https://api.hubapi.com/oauth/v1/token', {
@@ -1160,7 +1132,6 @@ async function refreshHubSpotToken(client) {
   }
 }
 
-// Initialize default admin and demo data
 const initializeAdmin = async () => {
   try {
     const adminExists = await User.findOne({ role: 'admin' });
@@ -1200,7 +1171,6 @@ const initializeAdmin = async () => {
       });
       await clientUser.save();
 
-      // Add demo sales reps with accounts
       const salesRepsData = [
         { name: 'Sarah Johnson', email: 'sarah@acmecorp.com', phone: '+31 20 123 4568', hireDate: new Date('2024-01-15') },
         { name: 'Mike Chen', email: 'mike@acmecorp.com', phone: '+31 20 123 4569', hireDate: new Date('2024-03-01') },
@@ -1216,7 +1186,6 @@ const initializeAdmin = async () => {
         });
         await rep.save();
 
-        // Create user account for demo sales rep
         const repPassword = await bcrypt.hash('demo123', 12);
         const salesRepUser = new User({
           email: repData.email,
@@ -1237,7 +1206,6 @@ const initializeAdmin = async () => {
   }
 };
 
-// Error handling middleware
 app.use((error, req, res, next) => {
   console.error('Error:', error);
   res.status(500).json({ 
@@ -1246,7 +1214,6 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Serve React app
 app.get('*', (req, res) => {
   if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, 'build/index.html'));
@@ -1255,7 +1222,6 @@ app.get('*', (req, res) => {
   }
 });
 
-// Start server
 const startServer = async () => {
   try {
     await connectDB();
