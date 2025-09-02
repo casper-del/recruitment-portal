@@ -2251,7 +2251,7 @@ const App = () => {
   );
 };
 
-export default App;border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+export default App;
                   />
                 </div>
                 
@@ -2261,4 +2261,4 @@ export default App;border border-gray-200 rounded-lg focus:ring-2 focus:ring-gre
                     type="text"
                     value={companyInfo.contactName}
                     onChange={(e) => setCompanyInfo({...companyInfo, contactName: e.target.value})}
-                    className="w-full px-4 py-2
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
