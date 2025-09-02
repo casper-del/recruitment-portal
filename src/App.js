@@ -766,12 +766,17 @@ const AdminClientModal = ({ client, isOpen, onClose, onUpdate }) => {
         </div>
       </div>
 
-      {/* Admin Client Modal */}
-      {user.role === 'admin' && (
+      {/* Admin Client Modal - Debug */}
+      {console.log('User role:', user?.role)}
+      {console.log('showClientModal:', showClientModal)}
+      {console.log('selectedClient:', selectedClient)}
+      
+      {showClientModal && selectedClient && (
         <AdminClientModal
           client={selectedClient}
           isOpen={showClientModal}
           onClose={() => {
+            console.log('Modal closing');
             setShowClientModal(false);
             setSelectedClient(null);
           }}
