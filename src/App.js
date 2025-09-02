@@ -859,7 +859,7 @@ const TeamManagement = ({ dashboardData, onSalesRepClick }) => {
   );
 };
 
-// FIX 1: NEW CRM Settings Component 
+// CRM Settings Component with working demo mode
 const CRMSettings = ({ dashboardData, onRefresh }) => {
   const [availableCRMs, setAvailableCRMs] = useState([]);
   const [selectedCRM, setSelectedCRM] = useState('');
@@ -903,12 +903,19 @@ const CRMSettings = ({ dashboardData, onRefresh }) => {
   };
 
   const handleCRMConnect = async () => {
+    // For demo purposes, simulate CRM connection
+    alert(`🎯 Demo Modus: CRM Verbinding Gesimuleerd!\n\nIn productie zou dit verbinden met ${availableCRMs.find(c => c.id === selectedCRM)?.name}.\n\nVoor echte CRM integratie zijn OAuth credentials vereist.`);
+    
+    // Simulate successful connection by running sync
     try {
-      const response = await apiCall(`/client/crm/connect?type=${selectedCRM}`);
-      window.open(response.authUrl, '_blank');
+      const response = await apiCall('/client/crm/sync', {
+        method: 'POST'
+      });
+      
+      alert(`✅ ${response.message}`);
+      onRefresh();
     } catch (error) {
-      console.error('Failed to connect CRM:', error);
-      alert('Fout bij verbinden met CRM');
+      console.error('Failed to sync CRM:', error);
     }
   };
 
@@ -959,6 +966,23 @@ const CRMSettings = ({ dashboardData, onRefresh }) => {
 
           <div className="border-t pt-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">CRM Verbinding</h3>
+            
+            {/* Demo Mode Notice */}
+            <div className="bg-blue-50 rounded-xl p-4 mb-6">
+              <div className="flex items-start space-x-3">
+                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xs font-bold">i</span>
+                </div>
+                <div>
+                  <h4 className="font-medium text-blue-900">Demo Modus</h4>
+                  <p className="text-sm text-blue-800 mt-1">
+                    Dit is een demonstratie versie. CRM verbindingen worden gesimuleerd. 
+                    Voor productie gebruik zijn OAuth credentials van je CRM provider vereist.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-gray-50 rounded-xl p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -975,7 +999,7 @@ const CRMSettings = ({ dashboardData, onRefresh }) => {
                   className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
                 >
                   <LinkIcon />
-                  <span>{loading ? 'Bezig...' : 'Verbinden'}</span>
+                  <span>{loading ? 'Bezig...' : 'Demo Verbinding'}</span>
                 </button>
               </div>
 
@@ -986,6 +1010,34 @@ const CRMSettings = ({ dashboardData, onRefresh }) => {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Quick Sync Button */}
+          <div className="border-t pt-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Data Synchronisatie</h3>
+            <div className="flex items-center justify-between bg-gray-50 rounded-xl p-6">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-1">Handmatige Sync</h4>
+                <p className="text-sm text-gray-600">
+                  Synchroniseer je sales rep data direct vanuit je CRM systeem.
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await apiCall('/client/crm/sync', { method: 'POST' });
+                    alert(`✅ ${response.message}`);
+                    onRefresh();
+                  } catch (error) {
+                    alert('❌ Sync gefaald: ' + error.message);
+                  }
+                }}
+                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <RefreshCwIcon />
+                <span>Sync Nu</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1332,6 +1384,121 @@ const AddClientModal = ({ isOpen, onClose, onSubmit }) => {
   );
 };
 
+// NEW: Add Sales Rep Modal Component
+const AddSalesRepModal = ({ isOpen, onClose, clientId, onSubmit }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    hireDate: new Date().toISOString().split('T')[0]
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      await onSubmit(clientId, formData);
+      setFormData({
+        name: '',
+        email: '',
+        hireDate: new Date().toISOString().split('T')[0]
+      });
+      onClose();
+    } catch (error) {
+      setError(error.message || 'Er ging iets mis bij het toevoegen van de sales rep');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-gray-900">Sales Rep Toevoegen</h3>
+            <button 
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <XIcon />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Naam *</label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="Jan de Vries"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+            <input
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="jan@bedrijf.com"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Datum in dienst *</label>
+            <input
+              type="date"
+              required
+              value={formData.hireDate}
+              onChange={(e) => setFormData({...formData, hireDate: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="flex space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={isLoading}
+            >
+              Annuleren
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+            >
+              {isLoading ? 'Bezig...' : 'Sales Rep Toevoegen'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // Success Modal Component
 const SuccessModal = ({ isOpen, onClose, clientData }) => {
   if (!isOpen) return null;
@@ -1371,13 +1538,16 @@ const SuccessModal = ({ isOpen, onClose, clientData }) => {
   );
 };
 
-// FIX 2: Updated Admin Dashboard with working delete
+// Updated Admin Dashboard with Sales Rep functionality
 const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState(null);
   const [selectedClient, setSelectedClient] = useState(null);
+  // NEW: Sales Rep modal states
+  const [showAddSalesRepModal, setShowAddSalesRepModal] = useState(false);
+  const [selectedClientForSalesRep, setSelectedClientForSalesRep] = useState(null);
   
   const handleAddClient = async (clientData) => {
     const result = await onAddClient(clientData);
@@ -1396,6 +1566,20 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
       alert('Klant succesvol bijgewerkt');
     } catch (error) {
       throw new Error(error.message || 'Failed to update client');
+    }
+  };
+
+  // NEW: Sales Rep add handler
+  const handleAddSalesRep = async (clientId, salesRepData) => {
+    try {
+      await apiCall(`/admin/clients/${clientId}/salesreps`, {
+        method: 'POST',
+        body: JSON.stringify(salesRepData)
+      });
+      onRefresh();
+      alert('Sales rep succesvol toegevoegd');
+    } catch (error) {
+      throw new Error(error.message || 'Failed to add sales rep');
     }
   };
 
@@ -1488,6 +1672,18 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
                 </div>
                 
                 <div className="flex items-center space-x-2">
+                  {/* NEW: Sales Rep Add Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedClientForSalesRep(client);
+                      setShowAddSalesRepModal(true);
+                    }}
+                    className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors"
+                    title="Sales Rep Toevoegen"
+                  >
+                    + Rep
+                  </button>
                   <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     Actief
                   </span>
@@ -1517,7 +1713,7 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
               </div>
               
               <div className="mt-4 pt-3 border-t border-gray-100">
-                <p className="text-xs text-green-600 font-medium">Klik om te bewerken • Hover voor verwijderen</p>
+                <p className="text-xs text-green-600 font-medium">Klik om te bewerken • + Rep om sales rep toe te voegen</p>
               </div>
             </div>
           ))}
@@ -1535,6 +1731,14 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
         onClose={() => setShowEditModal(false)}
         client={selectedClient}
         onSubmit={handleEditClient}
+      />
+
+      {/* NEW: Sales Rep Add Modal */}
+      <AddSalesRepModal
+        isOpen={showAddSalesRepModal}
+        onClose={() => setShowAddSalesRepModal(false)}
+        clientId={selectedClientForSalesRep?._id}
+        onSubmit={handleAddSalesRep}
       />
 
       <SuccessModal
@@ -1710,7 +1914,7 @@ const App = () => {
             />
           )}
 
-          {/* FIX 3: Settings now includes CRM Settings */}
+          {/* Settings with CRM Integration */}
           {activeMenuItem === 'settings' && user.role === 'client' && (
             <CRMSettings 
               dashboardData={dashboardData}
