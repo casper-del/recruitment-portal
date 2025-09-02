@@ -57,7 +57,8 @@ const clientSchema = new mongoose.Schema({
     refreshToken: String,
     clientId: String,
     clientSecret: String,
-    expiresAt: Date
+    expiresAt: Date,
+    portalId: String // For HubSpot
   },
   commissionRate: { type: Number, default: 0.10 },
   commissionCap: { type: Number, default: 50000 },
@@ -279,7 +280,7 @@ app.get('/api/admin/clients', authenticateToken, requireAdmin, async (req, res) 
   }
 });
 
-// FIX 1: Admin client update endpoint (NEW)
+// Admin client update endpoint
 app.put('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { clientId } = req.params;
@@ -322,7 +323,7 @@ app.put('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (
   }
 });
 
-// FIX 2: Complete client deletion endpoint (NEW)
+// Complete client deletion endpoint
 app.delete('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { clientId } = req.params;
@@ -521,6 +522,7 @@ app.get('/api/client/crm/connect', authenticateToken, async (req, res) => {
         authUrl = `https://app.teamleader.eu/oauth2/authorize?client_id=${process.env.TEAMLEADER_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.TEAMLEADER_REDIRECT_URI)}&state=${req.user.clientId}`;
         break;
       case 'hubspot':
+        // REAL HubSpot OAuth URL
         authUrl = `https://app.hubspot.com/oauth/authorize?client_id=${process.env.HUBSPOT_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.HUBSPOT_REDIRECT_URI)}&scope=contacts&state=${req.user.clientId}`;
         break;
       default:
@@ -534,7 +536,63 @@ app.get('/api/client/crm/connect', authenticateToken, async (req, res) => {
   }
 });
 
-// FIX 3: New CRM available systems endpoint
+// REAL HubSpot OAuth Callback
+app.get('/auth/hubspot/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    const clientId = state; // We passed clientId as state
+    
+    if (!code) {
+      return res.status(400).send('❌ Authorization code not provided');
+    }
+
+    console.log('HubSpot OAuth callback received:', { code: code.substring(0, 20) + '...', clientId });
+
+    // Exchange code for access token
+    const tokenResponse = await fetch('https://api.hubapi.com/oauth/v1/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: process.env.HUBSPOT_CLIENT_ID,
+        client_secret: process.env.HUBSPOT_CLIENT_SECRET,
+        redirect_uri: process.env.HUBSPOT_REDIRECT_URI,
+        code: code
+      })
+    });
+
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenResponse.ok) {
+      console.error('HubSpot token error:', tokenData);
+      return res.status(400).send(`❌ OAuth Error: ${tokenData.message || tokenData.error}`);
+    }
+
+    console.log('HubSpot token received successfully');
+
+    // Save credentials to client
+    await Client.findByIdAndUpdate(clientId, {
+      crmCredentials: {
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        expiresAt: new Date(Date.now() + (tokenData.expires_in * 1000)),
+        portalId: tokenData.hub_id || tokenData.hub_domain
+      }
+    });
+
+    // Redirect back to app with success
+    const frontendUrl = process.env.FRONTEND_URL || 'https://recruitment-portal-2ai9.onrender.com';
+    res.redirect(`${frontendUrl}?crm_connected=success`);
+    
+  } catch (error) {
+    console.error('HubSpot OAuth callback error:', error);
+    res.status(500).send(`❌ Internal server error during OAuth: ${error.message}`);
+  }
+});
+
+// Get available CRM systems
 app.get('/api/crm/available', authenticateToken, async (req, res) => {
   try {
     const availableCRMs = [
@@ -550,7 +608,7 @@ app.get('/api/crm/available', authenticateToken, async (req, res) => {
   }
 });
 
-// FIX 4: Update client CRM settings
+// Update client CRM settings
 app.post('/api/client/crm/settings', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'client') {
@@ -576,6 +634,7 @@ app.post('/api/client/crm/settings', authenticateToken, async (req, res) => {
   }
 });
 
+// REAL HubSpot API sync
 app.post('/api/client/crm/sync', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'client') {
@@ -586,56 +645,215 @@ app.post('/api/client/crm/sync', authenticateToken, async (req, res) => {
     const client = await Client.findById(clientId);
     
     if (!client.crmCredentials?.accessToken) {
-      return res.status(400).json({ message: 'CRM not connected' });
+      return res.status(400).json({ message: 'CRM not connected. Please connect your CRM first.' });
     }
 
-    // Mock sync for now - replace with actual CRM API calls
-    const salesReps = await SalesRep.find({ clientId });
-    let updatedReps = 0;
-
-    for (const rep of salesReps) {
-      if (!rep.isConnected) {
-        // Mock: randomly connect some reps
-        if (Math.random() > 0.5) {
-          rep.isConnected = true;
-          rep.crmContactId = `mock_${rep._id}`;
-          
-          // Add mock revenue data
-          const currentMonth = new Date().getMonth() + 1;
-          const currentYear = new Date().getFullYear();
-          const mockRevenue = Math.floor(Math.random() * 50000) + 10000;
-          const commission = mockRevenue * client.commissionRate;
-
-          await Revenue.findOneAndUpdate(
-            { salesRepId: rep._id, month: currentMonth, year: currentYear },
-            {
-              salesRepId: rep._id,
-              clientId,
-              month: currentMonth,
-              year: currentYear,
-              revenue: mockRevenue,
-              commission,
-              lastSyncAt: new Date()
-            },
-            { upsert: true }
-          );
-
-          await rep.save();
-          updatedReps++;
-        }
-      }
+    let syncResult;
+    
+    if (client.crmType === 'hubspot') {
+      syncResult = await syncHubSpotContacts(client, clientId);
+    } else {
+      // Fallback to demo sync for other CRMs
+      syncResult = await demoSync(client, clientId);
     }
+    
+    res.json(syncResult);
 
-    res.json({ 
-      message: `Sync completed. ${updatedReps} sales reps updated.`,
-      updatedReps,
-      lastSync: new Date()
-    });
   } catch (error) {
     console.error('CRM sync error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+
+// HubSpot sync function
+async function syncHubSpotContacts(client, clientId) {
+  try {
+    console.log('Starting HubSpot sync for client:', clientId);
+
+    // Check if token expired and refresh if needed
+    if (new Date() >= new Date(client.crmCredentials.expiresAt)) {
+      await refreshHubSpotToken(client);
+      // Reload client with fresh token
+      client = await Client.findById(clientId);
+    }
+
+    // Fetch contacts from HubSpot
+    const contactsResponse = await fetch('https://api.hubapi.com/crm/v3/objects/contacts?properties=email,firstname,lastname,createdate&limit=100', {
+      headers: {
+        'Authorization': `Bearer ${client.crmCredentials.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const contactsData = await contactsResponse.json();
+    
+    if (!contactsResponse.ok) {
+      throw new Error(`HubSpot API error: ${contactsData.message || 'Unknown error'}`);
+    }
+
+    console.log(`Found ${contactsData.results.length} contacts in HubSpot`);
+
+    // Sync contacts with sales reps
+    const salesReps = await SalesRep.find({ clientId });
+    let updatedReps = 0;
+    let newReps = 0;
+
+    for (const contact of contactsData.results) {
+      const email = contact.properties.email;
+      const firstName = contact.properties.firstname || '';
+      const lastName = contact.properties.lastname || '';
+      const fullName = `${firstName} ${lastName}`.trim() || email?.split('@')[0] || 'Unknown';
+
+      if (!email) continue; // Skip contacts without email
+
+      // Find matching sales rep by email
+      let salesRep = salesReps.find(rep => 
+        rep.email.toLowerCase() === email.toLowerCase()
+      );
+
+      if (salesRep && !salesRep.isConnected) {
+        // Update existing rep
+        salesRep.isConnected = true;
+        salesRep.crmContactId = contact.id;
+        if (salesRep.name === 'Unknown' || salesRep.name === email) {
+          salesRep.name = fullName;
+        }
+        await salesRep.save();
+        updatedReps++;
+        console.log(`Updated existing rep: ${salesRep.name} (${email})`);
+      } else if (!salesRep) {
+        // Create new sales rep from CRM contact
+        const createDate = contact.properties.createdate ? new Date(contact.properties.createdate) : new Date();
+        
+        salesRep = new SalesRep({
+          name: fullName,
+          email: email,
+          clientId,
+          hireDate: createDate,
+          isConnected: true,
+          crmContactId: contact.id
+        });
+        await salesRep.save();
+        newReps++;
+        console.log(`Created new rep: ${fullName} (${email})`);
+      }
+
+      // Add some mock revenue data for connected reps
+      if (salesRep?.isConnected) {
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear();
+        const mockRevenue = Math.floor(Math.random() * 50000) + 15000;
+        const commission = mockRevenue * client.commissionRate;
+
+        await Revenue.findOneAndUpdate(
+          { salesRepId: salesRep._id, month: currentMonth, year: currentYear },
+          {
+            salesRepId: salesRep._id,
+            clientId,
+            month: currentMonth,
+            year: currentYear,
+            revenue: mockRevenue,
+            commission,
+            lastSyncAt: new Date()
+          },
+          { upsert: true }
+        );
+      }
+    }
+
+    return { 
+      message: `✅ HubSpot sync completed! ${updatedReps} reps updated, ${newReps} new reps created from CRM.`,
+      updatedReps,
+      newReps,
+      totalContacts: contactsData.results.length,
+      lastSync: new Date(),
+      crmType: 'HubSpot'
+    };
+
+  } catch (error) {
+    console.error('HubSpot sync error:', error);
+    throw new Error(`HubSpot sync failed: ${error.message}`);
+  }
+}
+
+// Demo sync function (fallback)
+async function demoSync(client, clientId) {
+  const salesReps = await SalesRep.find({ clientId });
+  let updatedReps = 0;
+
+  for (const rep of salesReps) {
+    if (!rep.isConnected) {
+      // Mock: randomly connect some reps
+      if (Math.random() > 0.5) {
+        rep.isConnected = true;
+        rep.crmContactId = `demo_${rep._id}`;
+        
+        // Add mock revenue data
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear();
+        const mockRevenue = Math.floor(Math.random() * 50000) + 10000;
+        const commission = mockRevenue * client.commissionRate;
+
+        await Revenue.findOneAndUpdate(
+          { salesRepId: rep._id, month: currentMonth, year: currentYear },
+          {
+            salesRepId: rep._id,
+            clientId,
+            month: currentMonth,
+            year: currentYear,
+            revenue: mockRevenue,
+            commission,
+            lastSyncAt: new Date()
+          },
+          { upsert: true }
+        );
+
+        await rep.save();
+        updatedReps++;
+      }
+    }
+  }
+
+  return { 
+    message: `🎯 Demo sync completed. ${updatedReps} sales reps updated.`,
+    updatedReps,
+    lastSync: new Date(),
+    crmType: 'Demo'
+  };
+}
+
+// Token refresh helper for HubSpot
+async function refreshHubSpotToken(client) {
+  try {
+    const refreshResponse = await fetch('https://api.hubapi.com/oauth/v1/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: process.env.HUBSPOT_CLIENT_ID,
+        client_secret: process.env.HUBSPOT_CLIENT_SECRET,
+        refresh_token: client.crmCredentials.refreshToken
+      })
+    });
+
+    const refreshData = await refreshResponse.json();
+    
+    if (refreshResponse.ok) {
+      await Client.findByIdAndUpdate(client._id, {
+        'crmCredentials.accessToken': refreshData.access_token,
+        'crmCredentials.refreshToken': refreshData.refresh_token || client.crmCredentials.refreshToken,
+        'crmCredentials.expiresAt': new Date(Date.now() + (refreshData.expires_in * 1000))
+      });
+      console.log('HubSpot token refreshed successfully');
+    } else {
+      console.error('HubSpot token refresh failed:', refreshData);
+    }
+  } catch (error) {
+    console.error('HubSpot token refresh failed:', error);
+  }
+}
 
 // Initialize default admin
 const initializeAdmin = async () => {
@@ -662,7 +880,7 @@ const initializeAdmin = async () => {
         email: 'demo@acmecorp.com',
         commissionRate: 0.10,
         commissionCap: 50000,
-        crmType: 'teamleader'
+        crmType: 'hubspot' // Changed to HubSpot for testing
       });
       await client.save();
 
@@ -687,12 +905,12 @@ const initializeAdmin = async () => {
         const rep = new SalesRep({
           ...repData,
           clientId: client._id,
-          isConnected: Math.random() > 0.3 // 70% chance connected
+          isConnected: Math.random() > 0.6 // 40% chance connected initially
         });
         await rep.save();
       }
 
-      console.log('✓ Demo client created: demo@acmecorp.com / demo123');
+      console.log('✓ Demo client created: demo@acmecorp.com / demo123 (HubSpot CRM)');
     }
   } catch (error) {
     console.error('Initialization error:', error);
@@ -727,6 +945,7 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📝 API Documentation: http://localhost:${PORT}/api`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔗 HubSpot OAuth configured: ${process.env.HUBSPOT_CLIENT_ID ? 'YES' : 'NO'}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
