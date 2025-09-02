@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// All icon components
+// Icon components
 const Building2Icon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
@@ -80,37 +80,6 @@ const TrendingUpIcon = () => (
   </svg>
 );
 
-const DollarSignIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <line x1="12" x2="12" y1="2" y2="22"/>
-    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-  </svg>
-);
-
-const AlertCircleIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10"/>
-    <line x1="12" x2="12" y1="8" y2="12"/>
-    <line x1="12" x2="12.01" y1="16" y2="16"/>
-  </svg>
-);
-
-const CheckCircle2Icon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10"/>
-    <path d="m9 12 2 2 4-4"/>
-  </svg>
-);
-
-const RefreshCwIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-    <path d="M21 3v5h-5"/>
-    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-    <path d="M3 21v-5h5"/>
-  </svg>
-);
-
 const EyeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
@@ -122,14 +91,6 @@ const FileTextIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
     <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
-  </svg>
-);
-
-const DownloadIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-    <polyline points="7,10 12,15 17,10"/>
-    <line x1="12" x2="12" y1="15" y2="3"/>
   </svg>
 );
 
@@ -163,13 +124,6 @@ const UserPlusIcon = () => (
     <circle cx="8.5" cy="7" r="4"/>
     <line x1="20" x2="20" y1="8" y2="14"/>
     <line x1="23" x2="17" y1="11" y2="11"/>
-  </svg>
-);
-
-const EditIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-    <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/>
   </svg>
 );
 
@@ -241,30 +195,6 @@ const uploadFile = async (endpoint, file, additionalData = {}) => {
   }
 
   return response.json();
-};
-
-const downloadFile = async (endpoint, filename) => {
-  const token = localStorage.getItem('authToken');
-  
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error('Download failed');
-  }
-
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
 };
 
 // Login Component
@@ -610,12 +540,12 @@ const AdminDashboard = ({ onClientClick }) => {
   );
 };
 
-// Client Profile Modal Component
-const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
-  const [activeTab, setActiveTab] = useState('info');
+// Simple Client Modal Component
+const ClientModal = ({ client, isOpen, onClose }) => {
   const [clientData, setClientData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('info');
 
   const [companyInfo, setCompanyInfo] = useState({
     name: '',
@@ -635,17 +565,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
     position: 'Sales Representative',
     hireDate: new Date().toISOString().split('T')[0],
     commissionRate: 0.10
-  });
-
-  const [newInvoice, setNewInvoice] = useState({
-    invoiceNumber: '',
-    amount: '',
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
-    description: '',
-    type: 'client',
-    salesRepId: '',
-    file: null
   });
 
   useEffect(() => {
@@ -684,7 +603,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
         body: JSON.stringify(companyInfo)
       });
       await fetchClientDetails();
-      onUpdate();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -711,7 +629,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
         commissionRate: 0.10
       });
       await fetchClientDetails();
-      onUpdate();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -726,60 +643,10 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
       setIsLoading(true);
       await apiCall(`/admin/salesreps/${salesRepId}`, { method: 'DELETE' });
       await fetchClientDetails();
-      onUpdate();
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const uploadInvoice = async () => {
-    if (!newInvoice.file) {
-      setError('Selecteer een PDF bestand');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      await uploadFile(`/admin/clients/${client._id}/invoices`, newInvoice.file, {
-        invoiceNumber: newInvoice.invoiceNumber,
-        amount: newInvoice.amount,
-        month: newInvoice.month,
-        year: newInvoice.year,
-        description: newInvoice.description,
-        type: newInvoice.type,
-        salesRepId: newInvoice.salesRepId || undefined
-      });
-      
-      setNewInvoice({
-        invoiceNumber: '',
-        amount: '',
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
-        description: '',
-        type: 'client',
-        salesRepId: '',
-        file: null
-      });
-      
-      const fileInput = document.querySelector('input[type="file"]');
-      if (fileInput) fileInput.value = '';
-      
-      await fetchClientDetails();
-      onUpdate();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const downloadInvoice = async (invoiceId, fileName) => {
-    try {
-      await downloadFile(`/client/invoices/${invoiceId}/download`, fileName);
-    } catch (err) {
-      setError('Download mislukt');
     }
   };
 
@@ -804,21 +671,20 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
           
           <div className="flex space-x-1 mt-6">
             {[
-              { id: 'info', label: 'Bedrijfsinformatie', icon: Building2Icon },
-              { id: 'team', label: 'Team Beheren', icon: UsersIcon },
-              { id: 'invoices', label: 'Facturatie', icon: CreditCardIcon }
+              { id: 'info', label: 'Bedrijfsinformatie' },
+              { id: 'team', label: 'Team Beheren' },
+              { id: 'invoices', label: 'Facturatie' }
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                className={`px-4 py-2 rounded-lg transition-colors ${
                   activeTab === tab.id 
                     ? 'bg-white text-green-600' 
                     : 'text-green-100 hover:bg-green-700'
                 }`}
               >
-                <tab.icon />
-                <span className="ml-2">{tab.label}</span>
+                {tab.label}
               </button>
             ))}
           </div>
@@ -875,16 +741,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
                 </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Adres</label>
-                <input
-                  type="text"
-                  value={companyInfo.address}
-                  onChange={(e) => setCompanyInfo({...companyInfo, address: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -974,28 +830,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
                     onChange={(e) => setNewSalesRep({...newSalesRep, hireDate: e.target.value})}
                     className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
-                  
-                  <input
-                    type="text"
-                    placeholder="Functie"
-                    value={newSalesRep.position}
-                    onChange={(e) => setNewSalesRep({...newSalesRep, position: e.target.value})}
-                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
-                  
-                  <div className="flex items-center">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="1"
-                      placeholder="Commissie"
-                      value={newSalesRep.commissionRate}
-                      onChange={(e) => setNewSalesRep({...newSalesRep, commissionRate: parseFloat(e.target.value)})}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    />
-                    <span className="ml-2 text-gray-500">({(newSalesRep.commissionRate * 100).toFixed(1)}%)</span>
-                  </div>
                 </div>
                 
                 <button
@@ -1049,101 +883,13 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
           {activeTab === 'invoices' && (
             <div className="space-y-6">
               <h3 className="text-xl font-semibold text-gray-900">Facturatie</h3>
-
+              
               <div className="bg-gray-50 rounded-xl p-6">
                 <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
                   <UploadIcon />
-                  <span className="ml-2">Factuur Uploaden</span>
+                  <span className="ml-2">Factuur Upload</span>
                 </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <input
-                    type="text"
-                    placeholder="Factuurnummer"
-                    value={newInvoice.invoiceNumber}
-                    onChange={(e) => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})}
-                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
-                  
-                  <input
-                    type="number"
-                    placeholder="Bedrag (€)"
-                    value={newInvoice.amount}
-                    onChange={(e) => setNewInvoice({...newInvoice, amount: e.target.value})}
-                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
-                  
-                  <select
-                    value={newInvoice.month}
-                    onChange={(e) => setNewInvoice({...newInvoice, month: parseInt(e.target.value)})}
-                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    {Array.from({length: 12}, (_, i) => (
-                      <option key={i+1} value={i+1}>
-                        {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
-                      </option>
-                    ))}
-                  </select>
-                  
-                  <input
-                    type="number"
-                    placeholder="Jaar"
-                    value={newInvoice.year}
-                    onChange={(e) => setNewInvoice({...newInvoice, year: parseInt(e.target.value)})}
-                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
-                  
-                  <select
-                    value={newInvoice.type}
-                    onChange={(e) => setNewInvoice({...newInvoice, type: e.target.value})}
-                    className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="client">Client Factuur</option>
-                    <option value="commission">Commissie Factuur</option>
-                  </select>
-                  
-                  {newInvoice.type === 'commission' && clientData?.salesReps && (
-                    <select
-                      value={newInvoice.salesRepId}
-                      onChange={(e) => setNewInvoice({...newInvoice, salesRepId: e.target.value})}
-                      className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    >
-                      <option value="">Selecteer Sales Rep</option>
-                      {clientData.salesReps.map((rep) => (
-                        <option key={rep._id} value={rep._id}>{rep.name}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-                
-                <div className="mb-4">
-                  <input
-                    type="text"
-                    placeholder="Beschrijving (optioneel)"
-                    value={newInvoice.description}
-                    onChange={(e) => setNewInvoice({...newInvoice, description: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <div className="mb-4">
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => setNewInvoice({...newInvoice, file: e.target.files[0]})}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
-                  <p className="text-sm text-gray-500 mt-1">Alleen PDF bestanden toegestaan</p>
-                </div>
-                
-                <button
-                  onClick={uploadInvoice}
-                  disabled={isLoading || !newInvoice.file || !newInvoice.invoiceNumber || !newInvoice.amount}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 flex items-center"
-                >
-                  <UploadIcon />
-                  <span className="ml-2">Factuur Uploaden</span>
-                </button>
+                <p className="text-gray-600">Factuur upload functionaliteit komt binnenkort beschikbaar.</p>
               </div>
 
               {clientData?.invoices && clientData.invoices.length > 0 && (
@@ -1151,9 +897,7 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
                   <h4 className="font-semibold text-gray-900">Geüploade Facturen</h4>
                   
                   <div className="space-y-3">
-                    {clientData.invoices
-                      .sort((a, b) => b.year - a.year || b.month - a.month)
-                      .map((invoice) => (
+                    {clientData.invoices.map((invoice) => (
                       <div key={invoice._id} className="bg-white border border-gray-200 rounded-xl p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
@@ -1168,10 +912,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
                                 €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})} • 
                                 {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
                               </p>
-                              <p className="text-gray-400 text-xs">
-                                {invoice.type === 'commission' ? 'Commissie Factuur' : 'Client Factuur'}
-                                {invoice.salesRepId && ` • ${invoice.salesRepId.name}`}
-                              </p>
                             </div>
                           </div>
                           
@@ -1183,12 +923,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
                             }`}>
                               {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
                             </span>
-                            <button
-                              onClick={() => downloadInvoice(invoice._id, invoice.fileName)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            >
-                              <DownloadIcon />
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -1204,7 +938,7 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
   );
 };
 
-// Placeholder Pages
+// Placeholder Page Component
 const PlaceholderPage = ({ title, description }) => (
   <div className="space-y-6">
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -1243,3 +977,177 @@ const App = () => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('userData');
       }
+    }
+  }, []);
+
+  const login = async (email, password) => {
+    setIsLoading(true);
+    try {
+      const response = await apiCall('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+      });
+
+      localStorage.setItem('authToken', response.token);
+      localStorage.setItem('userData', JSON.stringify(response.user));
+      setUser(response.user);
+      
+      if (response.user.role === 'admin') {
+        setActiveMenuItem('admin-dashboard');
+      } else if (response.user.role === 'salesrep') {
+        setActiveMenuItem('salesrep-dashboard');
+      } else {
+        setActiveMenuItem('dashboard');
+      }
+    } catch (error) {
+      throw new Error(error.message || 'Login failed. Check your credentials.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userData');
+    setUser(null);
+    setActiveMenuItem('dashboard');
+    setSelectedClient(null);
+    setShowClientModal(false);
+  };
+
+  const handleClientClick = (client) => {
+    setSelectedClient(client);
+    setShowClientModal(true);
+  };
+
+  if (!user) {
+    return <LoginForm onLogin={login} isLoading={isLoading} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      <Sidebar 
+        user={user}
+        activeMenuItem={activeMenuItem}
+        setActiveMenuItem={setActiveMenuItem}
+        sidebarCollapsed={sidebarCollapsed}
+        setSidebarCollapsed={setSidebarCollapsed}
+        onLogout={logout}
+      />
+
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-7xl mx-auto px-8 py-8">
+          {/* Admin Routes */}
+          {user.role === 'admin' && (
+            <>
+              {activeMenuItem === 'admin-dashboard' && (
+                <AdminDashboard onClientClick={handleClientClick} />
+              )}
+              
+              {activeMenuItem === 'clients' && (
+                <PlaceholderPage 
+                  title="Klanten Beheer" 
+                  description="Beheer alle klanten, hun instellingen en toegangsrechten. Gebruik het dashboard om klanten te beheren."
+                />
+              )}
+              
+              {activeMenuItem === 'admin-settings' && (
+                <PlaceholderPage 
+                  title="Admin Instellingen" 
+                  description="Systeemconfiguratie, gebruikersbeheer en globale instellingen."
+                />
+              )}
+            </>
+          )}
+
+          {/* Sales Rep Routes */}
+          {user.role === 'salesrep' && (
+            <>
+              {activeMenuItem === 'salesrep-dashboard' && (
+                <PlaceholderPage 
+                  title="Mijn Dashboard" 
+                  description="Welkom bij je sales portal. Hier zie je binnenkort je performance en commissie overzicht."
+                />
+              )}
+              
+              {activeMenuItem === 'salesrep-invoices' && (
+                <PlaceholderPage 
+                  title="Mijn Facturen" 
+                  description="Upload en beheer je commissie facturen."
+                />
+              )}
+              
+              {activeMenuItem === 'salesrep-reports' && (
+                <PlaceholderPage 
+                  title="Mijn Prestaties" 
+                  description="Bekijk je omzet, commissies en performance metrics."
+                />
+              )}
+              
+              {activeMenuItem === 'salesrep-settings' && (
+                <PlaceholderPage 
+                  title="Mijn Instellingen" 
+                  description="Persoonlijke instellingen en account beheer."
+                />
+              )}
+            </>
+          )}
+
+          {/* Client Routes */}
+          {user.role === 'client' && (
+            <>
+              {activeMenuItem === 'dashboard' && (
+                <PlaceholderPage 
+                  title="Dashboard" 
+                  description="Welkom bij je klantportaal. Hier zie je binnenkort je team performance en omzet overzicht."
+                />
+              )}
+
+              {activeMenuItem === 'invoices' && (
+                <PlaceholderPage 
+                  title="Betalingen & Facturen" 
+                  description="Hier vind je al je facturen en betalingsinformatie."
+                />
+              )}
+
+              {activeMenuItem === 'team' && (
+                <PlaceholderPage 
+                  title="Team Management" 
+                  description="Beheer je recruitment team en bekijk individuele prestaties."
+                />
+              )}
+
+              {activeMenuItem === 'reports' && (
+                <PlaceholderPage 
+                  title="Rapportages" 
+                  description="Uitgebreide analytics en rapportages van je recruitment performance."
+                />
+              )}
+
+              {activeMenuItem === 'settings' && (
+                <PlaceholderPage 
+                  title="Instellingen" 
+                  description="CRM koppelingen, gebruikersinstellingen en systeemconfiguratie."
+                />
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Client Modal */}
+      {user.role === 'admin' && (
+        <ClientModal
+          client={selectedClient}
+          isOpen={showClientModal}
+          onClose={() => {
+            setShowClientModal(false);
+            setSelectedClient(null);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+export default App;
