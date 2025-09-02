@@ -766,23 +766,19 @@ const AdminClientModal = ({ client, isOpen, onClose, onUpdate }) => {
         </div>
       </div>
 
-      {/* Admin Client Modal - Debug */}
-      {console.log('User role:', user?.role)}
-      {console.log('showClientModal:', showClientModal)}
-      {console.log('selectedClient:', selectedClient)}
-      
-      {showClientModal && selectedClient && (
-        <AdminClientModal
-          client={selectedClient}
-          isOpen={showClientModal}
-          onClose={() => {
-            console.log('Modal closing');
-            setShowClientModal(false);
-            setSelectedClient(null);
-          }}
-          onUpdate={handleClientUpdate}
-        />
-      )}
+      {/* TEST MODAL - ALWAYS VISIBLE */}
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{zIndex: 9999}}>
+        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">TEST MODAL</h2>
+          <p className="text-gray-600 mb-4">Als je dit ziet, werken modals wel!</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-red-600 text-white px-4 py-2 rounded"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
