@@ -2031,7 +2031,7 @@ const App = () => {
   );
 };
 
-export default App;bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+export default App;
                     <span className="text-white text-xs font-bold">✓</span>
                   </div>
                   <div>
@@ -2048,3 +2048,4 @@ export default App;bg-green-500 rounded-full flex items-center justify-center fl
               <div className="bg-orange-50 rounded-xl p-4 mb-6">
                 <div className="flex items-start space-x-3">
                   <div className="w-6 h-6
+
