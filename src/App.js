@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// All icon components (unchanged from your original code)
+// All icon components
 const Building2Icon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
@@ -446,7 +446,10 @@ const Sidebar = ({ user, activeMenuItem, setActiveMenuItem, sidebarCollapsed, se
               <div>
                 <p className="font-medium text-gray-900">{user?.name}</p>
                 <p className="text-xs text-gray-500">
-                  {user?.role === 'salesrep' ? user?.salesRep?.clientId?.name : user?.client?.name || user?.email}
+                  {user?.role === 'salesrep' 
+                    ? (user?.salesRep?.clientId?.name || 'Sales Rep')
+                    : (user?.client?.name || user?.email)
+                  }
                 </p>
               </div>
             </div>
@@ -465,14 +468,155 @@ const Sidebar = ({ user, activeMenuItem, setActiveMenuItem, sidebarCollapsed, se
   );
 };
 
-// Admin Client Profile Modal
+// Admin Dashboard Component
+const AdminDashboard = ({ onClientClick }) => {
+  const [clients, setClients] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/admin/clients');
+      setClients(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <p className="text-gray-600">Klanten laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
+        <p className="text-gray-600">Beheer klanten, teams en facturatie</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700 text-sm">{error}</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Totaal Klanten</p>
+              <p className="text-3xl font-bold text-gray-900">{clients.length}</p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+              <UsersIcon />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Sales Reps</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {clients.reduce((sum, client) => sum + (client.salesRepCount || 0), 0)}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+              <TrendingUpIcon />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">CRM Connected</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {clients.reduce((sum, client) => sum + (client.connectedCount || 0), 0)}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+              <LinkIcon />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Facturen</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {clients.reduce((sum, client) => sum + (client.invoiceCount || 0), 0)}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+              <FileTextIcon />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Klanten Overzicht</h3>
+        
+        <div className="space-y-4">
+          {clients.map((client) => (
+            <div key={client._id} className="border border-gray-200 rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center">
+                    <span className="text-green-600 font-bold text-xl">
+                      {client.name.charAt(0)}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900">{client.name}</h4>
+                    <p className="text-gray-600">{client.contactName} • {client.email}</p>
+                    <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                      <span>{client.salesRepCount || 0} teamleden</span>
+                      <span>{client.connectedCount || 0} connected</span>
+                      <span>{((client.commissionRate || 0) * 100).toFixed(1)}% commissie</span>
+                      <span className="text-blue-600 font-medium">{(client.crmType || 'teamleader').toUpperCase()}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => onClientClick(client)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center"
+                >
+                  <EyeIcon />
+                  <span className="ml-2">Beheren</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Client Profile Modal Component
 const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
   const [activeTab, setActiveTab] = useState('info');
   const [clientData, setClientData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Company Info Form
   const [companyInfo, setCompanyInfo] = useState({
     name: '',
     contactName: '',
@@ -484,7 +628,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
     crmType: 'teamleader'
   });
 
-  // Add Sales Rep Form
   const [newSalesRep, setNewSalesRep] = useState({
     name: '',
     email: '',
@@ -494,7 +637,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
     commissionRate: 0.10
   });
 
-  // Invoice Upload Form
   const [newInvoice, setNewInvoice] = useState({
     invoiceNumber: '',
     amount: '',
@@ -558,7 +700,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
         body: JSON.stringify(newSalesRep)
       });
       
-      // Show success message with login credentials
       alert(`Sales Rep toegevoegd!\n\nLogin gegevens:\nE-mail: ${newSalesRep.email}\nWachtwoord: ${response.tempPassword}\n\nLet op: Bewaar deze gegevens veilig!`);
       
       setNewSalesRep({
@@ -622,7 +763,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
         file: null
       });
       
-      // Reset file input
       const fileInput = document.querySelector('input[type="file"]');
       if (fileInput) fileInput.value = '';
       
@@ -648,7 +788,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        {/* Header */}
         <div className="bg-green-600 text-white p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -663,7 +802,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
             </button>
           </div>
           
-          {/* Tabs */}
           <div className="flex space-x-1 mt-6">
             {[
               { id: 'info', label: 'Bedrijfsinformatie', icon: Building2Icon },
@@ -686,7 +824,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
           </div>
         </div>
 
-        {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[60vh]">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
@@ -694,7 +831,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
             </div>
           )}
 
-          {/* Company Information Tab */}
           {activeTab === 'info' && (
             <div className="space-y-6">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Bedrijfsinformatie</h3>
@@ -792,7 +928,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
             </div>
           )}
 
-          {/* Team Management Tab */}
           {activeTab === 'team' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
@@ -802,7 +937,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
                 </span>
               </div>
 
-              {/* Add New Sales Rep */}
               <div className="bg-gray-50 rounded-xl p-6">
                 <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
                   <UserPlusIcon />
@@ -874,7 +1008,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
                 </button>
               </div>
 
-              {/* Sales Reps List */}
               {clientData?.salesReps && clientData.salesReps.length > 0 && (
                 <div className="space-y-4">
                   <h4 className="font-semibold text-gray-900">Huidige Teamleden</h4>
@@ -891,7 +1024,7 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
                             <h5 className="font-semibold text-gray-900">{rep.name}</h5>
                             <p className="text-gray-500 text-sm">{rep.email}</p>
                             <p className="text-gray-400 text-xs">
-                              {rep.position} • {(rep.commissionRate * 100).toFixed(1)}% commissie
+                              {rep.position} • {((rep.commissionRate || 0) * 100).toFixed(1)}% commissie
                               {rep.isConnected && <span className="ml-2 text-green-600">• CRM Connected</span>}
                             </p>
                           </div>
@@ -913,12 +1046,10 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
             </div>
           )}
 
-          {/* Invoices Tab */}
           {activeTab === 'invoices' && (
             <div className="space-y-6">
               <h3 className="text-xl font-semibold text-gray-900">Facturatie</h3>
 
-              {/* Upload Invoice */}
               <div className="bg-gray-50 rounded-xl p-6">
                 <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
                   <UploadIcon />
@@ -1000,448 +1131,6 @@ const ClientProfileModal = ({ client, isOpen, onClose, onUpdate }) => {
                     type="file"
                     accept=".pdf"
                     onChange={(e) => setNewInvoice({...newInvoice, file: e.target.files[0]})}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
-            <p className="text-sm text-gray-500 mt-2">Alleen PDF bestanden toegestaan (max 10MB)</p>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={uploadInvoice}
-              disabled={isLoading || !newInvoice.file || !newInvoice.invoiceNumber || !newInvoice.amount}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl transition-colors disabled:opacity-50 flex items-center"
-            >
-              <UploadIcon />
-              <span className="ml-2">{isLoading ? 'Uploaden...' : 'Factuur Uploaden'}</span>
-            </button>
-            
-            <button
-              onClick={() => setShowUploadForm(false)}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-colors"
-            >
-              Annuleren
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Invoices List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h3 className="text-xl font-semibold text-gray-900 mb-6">Mijn Facturen Overzicht</h3>
-        
-        {invoices.length === 0 ? (
-          <div className="text-center py-12">
-            <FileTextIcon />
-            <h4 className="text-lg font-semibold text-gray-900 mt-4">Nog geen facturen</h4>
-            <p className="text-gray-600 mt-2">Upload je eerste factuur om aan de slag te gaan</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {invoices
-              .sort((a, b) => b.year - a.year || b.month - a.month)
-              .map((invoice) => (
-              <div key={invoice._id} className="border border-gray-200 rounded-xl p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <FileTextIcon />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900">
-                        Factuur #{invoice.invoiceNumber}
-                      </h4>
-                      <p className="text-gray-600">
-                        €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
-                      </p>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
-                        <span>
-                          {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
-                        </span>
-                        <span>{invoice.type === 'commission' ? 'Commissie' : 'Client'}</span>
-                        {invoice.description && <span>• {invoice.description}</span>}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      invoice.status === 'paid' 
-                        ? 'bg-green-100 text-green-600' 
-                        : 'bg-yellow-100 text-yellow-600'
-                    }`}>
-                      {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
-                    </span>
-                    
-                    <button
-                      onClick={() => downloadInvoice(invoice._id, invoice.fileName)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
-                    >
-                      <DownloadIcon />
-                      <span className="ml-2">Download</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Client Invoices Component
-const ClientInvoices = ({ user }) => {
-  const [invoices, setInvoices] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchInvoices();
-  }, []);
-
-  const fetchInvoices = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/client/invoices');
-      setInvoices(response);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const downloadInvoice = async (invoiceId, fileName) => {
-    try {
-      await downloadFile(`/client/invoices/${invoiceId}/download`, fileName);
-    } catch (err) {
-      setError('Download mislukt');
-    }
-  };
-
-  // Group invoices by year and month
-  const groupedInvoices = invoices.reduce((acc, invoice) => {
-    const key = `${invoice.year}-${invoice.month}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(invoice);
-    return acc;
-  }, {});
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Betalingen & Facturen</h2>
-        <p className="text-gray-600">Overzicht van al je facturen en betalingen per maand</p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-
-      {Object.keys(groupedInvoices).length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <FileTextIcon />
-          <h3 className="text-lg font-semibold text-gray-900 mt-4">Nog geen facturen</h3>
-          <p className="text-gray-600 mt-2">Je facturen verschijnen hier zodra ze zijn geüpload</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {Object.entries(groupedInvoices)
-            .sort(([a], [b]) => b.localeCompare(a))
-            .map(([monthYear, monthInvoices]) => {
-              const [year, month] = monthYear.split('-').map(Number);
-              const monthName = new Date(year, month - 1).toLocaleDateString('nl-NL', {
-                month: 'long',
-                year: 'numeric'
-              });
-              
-              const totalAmount = monthInvoices.reduce((sum, inv) => sum + inv.amount, 0);
-              
-              return (
-                <div key={monthYear} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900 capitalize">{monthName}</h3>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500">Totaal bedrag</p>
-                      <p className="text-xl font-bold text-gray-900">
-                        €{totalAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {monthInvoices.map((invoice) => (
-                      <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                            <FileTextIcon />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">Factuur #{invoice.invoiceNumber}</h4>
-                            <p className="text-gray-600">
-                              €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
-                            </p>
-                            <div className="flex items-center space-x-3 text-sm text-gray-500 mt-1">
-                              <span>{invoice.type === 'commission' ? 'Commissie Factuur' : 'Client Factuur'}</span>
-                              {invoice.salesRepId && <span>• {invoice.salesRepId.name}</span>}
-                              {invoice.description && <span>• {invoice.description}</span>}
-                              {invoice.uploadedBy && (
-                                <span>• Geüpload door {invoice.uploadedBy.name}</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            invoice.status === 'paid' 
-                              ? 'bg-green-100 text-green-600' 
-                              : 'bg-yellow-100 text-yellow-600'
-                          }`}>
-                            {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
-                          </span>
-                          
-                          <button
-                            onClick={() => downloadInvoice(invoice._id, invoice.fileName)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
-                          >
-                            <DownloadIcon />
-                            <span className="ml-2">Download</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Placeholder Pages
-const PlaceholderPage = ({ title, description }) => (
-  <div className="space-y-6">
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-      <h2 className="text-3xl font-bold text-gray-900 mb-2">{title}</h2>
-      <p className="text-gray-600">{description}</p>
-    </div>
-  </div>
-);
-
-// Main App Component
-const App = () => {
-  const [user, setUser] = useState(null);
-  const [activeMenuItem, setActiveMenuItem] = useState('dashboard');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedClient, setSelectedClient] = useState(null);
-  const [showClientModal, setShowClientModal] = useState(false);
-
-  // Check for existing session
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('userData');
-    
-    if (token && userData) {
-      try {
-        const parsed = JSON.parse(userData);
-        setUser(parsed);
-        
-        // Set appropriate default menu item based on role
-        if (parsed.role === 'admin') {
-          setActiveMenuItem('admin-dashboard');
-        } else if (parsed.role === 'salesrep') {
-          setActiveMenuItem('salesrep-dashboard');
-        } else {
-          setActiveMenuItem('dashboard');
-        }
-      } catch (error) {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userData');
-      }
-    }
-  }, []);
-
-  const login = async (email, password) => {
-    setIsLoading(true);
-    try {
-      const response = await apiCall('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-      });
-
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('userData', JSON.stringify(response.user));
-      setUser(response.user);
-      
-      // Set appropriate menu item based on role
-      if (response.user.role === 'admin') {
-        setActiveMenuItem('admin-dashboard');
-      } else if (response.user.role === 'salesrep') {
-        setActiveMenuItem('salesrep-dashboard');
-      } else {
-        setActiveMenuItem('dashboard');
-      }
-    } catch (error) {
-      throw new Error(error.message || 'Login failed. Check your credentials.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
-    setUser(null);
-    setActiveMenuItem('dashboard');
-    setSelectedClient(null);
-    setShowClientModal(false);
-  };
-
-  const handleClientClick = (client) => {
-    setSelectedClient(client);
-    setShowClientModal(true);
-  };
-
-  const handleClientUpdate = () => {
-    // Refresh client data if needed
-    if (activeMenuItem === 'admin-dashboard') {
-      // This will trigger a re-fetch in the AdminDashboard component
-      setActiveMenuItem('admin-dashboard');
-    }
-  };
-
-  if (!user) {
-    return <LoginForm onLogin={login} isLoading={isLoading} />;
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar 
-        user={user}
-        activeMenuItem={activeMenuItem}
-        setActiveMenuItem={setActiveMenuItem}
-        sidebarCollapsed={sidebarCollapsed}
-        setSidebarCollapsed={setSidebarCollapsed}
-        onLogout={logout}
-      />
-
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-8 py-8">
-          {/* Admin Routes */}
-          {user.role === 'admin' && (
-            <>
-              {activeMenuItem === 'admin-dashboard' && (
-                <AdminDashboard onClientClick={handleClientClick} />
-              )}
-              
-              {activeMenuItem === 'clients' && (
-                <PlaceholderPage 
-                  title="Klanten Beheer" 
-                  description="Beheer alle klanten, hun instellingen en toegangsrechten. Gebruik het dashboard om klanten te beheren."
-                />
-              )}
-              
-              {activeMenuItem === 'admin-settings' && (
-                <PlaceholderPage 
-                  title="Admin Instellingen" 
-                  description="Systeemconfiguratie, gebruikersbeheer en globale instellingen."
-                />
-              )}
-            </>
-          )}
-
-          {/* Sales Rep Routes */}
-          {user.role === 'salesrep' && (
-            <>
-              {activeMenuItem === 'salesrep-dashboard' && (
-                <SalesRepDashboard user={user} />
-              )}
-              
-              {activeMenuItem === 'salesrep-invoices' && (
-                <SalesRepInvoices user={user} />
-              )}
-              
-              {activeMenuItem === 'salesrep-reports' && (
-                <PlaceholderPage 
-                  title="Mijn Prestaties" 
-                  description="Bekijk je omzet, commissies en performance metrics."
-                />
-              )}
-              
-              {activeMenuItem === 'salesrep-settings' && (
-                <PlaceholderPage 
-                  title="Mijn Instellingen" 
-                  description="Persoonlijke instellingen en account beheer."
-                />
-              )}
-            </>
-          )}
-
-          {/* Client Routes */}
-          {user.role === 'client' && (
-            <>
-              {activeMenuItem === 'dashboard' && (
-                <PlaceholderPage 
-                  title="Dashboard" 
-                  description="Welkom bij je klantportaal. Hier zie je binnenkort je team performance en omzet overzicht."
-                />
-              )}
-
-              {activeMenuItem === 'invoices' && (
-                <ClientInvoices user={user} />
-              )}
-
-              {activeMenuItem === 'team' && (
-                <PlaceholderPage 
-                  title="Team Management" 
-                  description="Beheer je recruitment team en bekijk individuele prestaties."
-                />
-              )}
-
-              {activeMenuItem === 'reports' && (
-                <PlaceholderPage 
-                  title="Rapportages" 
-                  description="Uitgebreide analytics en rapportages van je recruitment performance."
-                />
-              )}
-
-              {activeMenuItem === 'settings' && (
-                <PlaceholderPage 
-                  title="Instellingen" 
-                  description="CRM koppelingen, gebruikersinstellingen en systeemconfiguratie."
-                />
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Client Profile Modal */}
-      {user.role === 'admin' && (
-        <ClientProfileModal
-          client={selectedClient}
-          isOpen={showClientModal}
-          onClose={() => {
-            setShowClientModal(false);
-            setSelectedClient(null);
-          }}
-          onUpdate={handleClientUpdate}
-        />
-      )}
-    </div>
-  );
-};
-
-export default App;target.files[0]})}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
                   <p className="text-sm text-gray-500 mt-1">Alleen PDF bestanden toegestaan</p>
@@ -1457,7 +1146,6 @@ export default App;target.files[0]})}
                 </button>
               </div>
 
-              {/* Invoices List */}
               {clientData?.invoices && clientData.invoices.length > 0 && (
                 <div className="space-y-4">
                   <h4 className="font-semibold text-gray-900">Geüploade Facturen</h4>
@@ -1516,454 +1204,42 @@ export default App;target.files[0]})}
   );
 };
 
-// Admin Dashboard Component
-const AdminDashboard = ({ onClientClick }) => {
-  const [clients, setClients] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchClients();
-  }, []);
-
-  const fetchClients = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/admin/clients');
-      setClients(response);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <p className="text-gray-600">Klanten laden...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
-        <p className="text-gray-600">Beheer klanten, teams en facturatie</p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Totaal Klanten</p>
-              <p className="text-3xl font-bold text-gray-900">{clients.length}</p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <UsersIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Sales Reps</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {clients.reduce((sum, client) => sum + client.salesRepCount, 0)}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <TrendingUpIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">CRM Connected</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {clients.reduce((sum, client) => sum + client.connectedCount, 0)}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-              <LinkIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Facturen</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {clients.reduce((sum, client) => sum + (client.invoiceCount || 0), 0)}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-              <FileTextIcon />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Clients List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h3 className="text-xl font-semibold text-gray-900 mb-6">Klanten Overzicht</h3>
-        
-        <div className="space-y-4">
-          {clients.map((client) => (
-            <div key={client._id} className="border border-gray-200 rounded-xl p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center">
-                    <span className="text-green-600 font-bold text-xl">
-                      {client.name.charAt(0)}
-                    </span>
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-900">{client.name}</h4>
-                    <p className="text-gray-600">{client.contactName} • {client.email}</p>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
-                      <span>{client.salesRepCount} teamleden</span>
-                      <span>{client.connectedCount} connected</span>
-                      <span>{(client.commissionRate * 100).toFixed(1)}% commissie</span>
-                      <span className="text-blue-600 font-medium">{client.crmType.toUpperCase()}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <button
-                  onClick={() => onClientClick(client)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center"
-                >
-                  <EyeIcon />
-                  <span className="ml-2">Beheren</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+// Placeholder Pages
+const PlaceholderPage = ({ title, description }) => (
+  <div className="space-y-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+      <h2 className="text-3xl font-bold text-gray-900 mb-2">{title}</h2>
+      <p className="text-gray-600">{description}</p>
     </div>
-  );
-};
+  </div>
+);
 
-// Sales Rep Dashboard Component
-const SalesRepDashboard = ({ user }) => {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  const fetchDashboard = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/salesrep/dashboard');
-      setDashboardData(response);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <p className="text-gray-600">Dashboard laden...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Welkom terug, {user?.name}!</h2>
-        <p className="text-gray-600">{dashboardData?.salesRep?.position} bij {dashboardData?.salesRep?.clientId?.name}</p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Deze Maand Omzet</p>
-              <p className="text-3xl font-bold text-gray-900">
-                €{(dashboardData?.currentRevenue?.revenue || 0).toLocaleString('nl-NL')}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <DollarSignIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Deze Maand Commissie</p>
-              <p className="text-3xl font-bold text-gray-900">
-                €{(dashboardData?.currentRevenue?.commission || 0).toLocaleString('nl-NL')}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <TrendingUpIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Mijn Facturen</p>
-              <p className="text-3xl font-bold text-gray-900">{dashboardData?.myInvoices?.length || 0}</p>
-            </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-              <FileTextIcon />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Invoices */}
-      {dashboardData?.myInvoices && dashboardData.myInvoices.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Recente Facturen</h3>
-          
-          <div className="space-y-4">
-            {dashboardData.myInvoices.map((invoice) => (
-              <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <FileTextIcon />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">Factuur #{invoice.invoiceNumber}</p>
-                    <p className="text-sm text-gray-500">
-                      €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})} • 
-                      {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
-                    </p>
-                  </div>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  invoice.status === 'paid' 
-                    ? 'bg-green-100 text-green-600' 
-                    : 'bg-yellow-100 text-yellow-600'
-                }`}>
-                  {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Revenue History Chart Placeholder */}
-      {dashboardData?.revenueHistory && dashboardData.revenueHistory.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Omzet Geschiedenis</h3>
-          
-          <div className="space-y-3">
-            {dashboardData.revenueHistory.map((record) => (
-              <div key={`${record.year}-${record.month}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="font-medium text-gray-900">
-                  {new Date(record.year, record.month - 1).toLocaleDateString('nl-NL', {month: 'long', year: 'numeric'})}
-                </span>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">€{record.revenue.toLocaleString('nl-NL')}</p>
-                  <p className="text-sm text-gray-500">€{record.commission.toLocaleString('nl-NL')} commissie</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Sales Rep Invoices Component
-const SalesRepInvoices = ({ user }) => {
-  const [invoices, setInvoices] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showUploadForm, setShowUploadForm] = useState(false);
-  
-  const [newInvoice, setNewInvoice] = useState({
-    invoiceNumber: '',
-    amount: '',
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
-    description: '',
-    type: 'commission',
-    file: null
-  });
+// Main App Component
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [activeMenuItem, setActiveMenuItem] = useState('dashboard');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [showClientModal, setShowClientModal] = useState(false);
 
   useEffect(() => {
-    fetchInvoices();
-  }, []);
-
-  const fetchInvoices = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/salesrep/invoices');
-      setInvoices(response);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const uploadInvoice = async () => {
-    if (!newInvoice.file) {
-      setError('Selecteer een PDF bestand');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      await uploadFile('/salesrep/invoices', newInvoice.file, {
-        invoiceNumber: newInvoice.invoiceNumber,
-        amount: newInvoice.amount,
-        month: newInvoice.month,
-        year: newInvoice.year,
-        description: newInvoice.description,
-        type: newInvoice.type
-      });
-      
-      setNewInvoice({
-        invoiceNumber: '',
-        amount: '',
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
-        description: '',
-        type: 'commission',
-        file: null
-      });
-      
-      setShowUploadForm(false);
-      
-      // Reset file input
-      const fileInput = document.querySelector('input[type="file"]');
-      if (fileInput) fileInput.value = '';
-      
-      await fetchInvoices();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const downloadInvoice = async (invoiceId, fileName) => {
-    try {
-      await downloadFile(`/salesrep/invoices/${invoiceId}/download`, fileName);
-    } catch (err) {
-      setError('Download mislukt');
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Mijn Facturen</h2>
-            <p className="text-gray-600">Upload en beheer je commissie facturen</p>
-          </div>
-          <button
-            onClick={() => setShowUploadForm(!showUploadForm)}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl transition-colors flex items-center"
-          >
-            <PlusIcon />
-            <span className="ml-2">Factuur Uploaden</span>
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-
-      {/* Upload Form */}
-      {showUploadForm && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Nieuwe Factuur Uploaden</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <input
-              type="text"
-              placeholder="Factuurnummer"
-              value={newInvoice.invoiceNumber}
-              onChange={(e) => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})}
-              className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
-            
-            <input
-              type="number"
-              placeholder="Bedrag (€)"
-              value={newInvoice.amount}
-              onChange={(e) => setNewInvoice({...newInvoice, amount: e.target.value})}
-              className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
-            
-            <select
-              value={newInvoice.month}
-              onChange={(e) => setNewInvoice({...newInvoice, month: parseInt(e.target.value)})}
-              className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            >
-              {Array.from({length: 12}, (_, i) => (
-                <option key={i+1} value={i+1}>
-                  {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
-                </option>
-              ))}
-            </select>
-            
-            <input
-              type="number"
-              placeholder="Jaar"
-              value={newInvoice.year}
-              onChange={(e) => setNewInvoice({...newInvoice, year: parseInt(e.target.value)})}
-              className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
-          </div>
-          
-          <input
-            type="text"
-            placeholder="Beschrijving (optioneel)"
-            value={newInvoice.description}
-            onChange={(e) => setNewInvoice({...newInvoice, description: e.target.value})}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent mb-4"
-          />
-          
-          <div className="mb-6">
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={(e) => setNewInvoice({...newInvoice, file: e.
+    const token = localStorage.getItem('authToken');
+    const userData = localStorage.getItem('userData');
+    
+    if (token && userData) {
+      try {
+        const parsed = JSON.parse(userData);
+        setUser(parsed);
+        
+        if (parsed.role === 'admin') {
+          setActiveMenuItem('admin-dashboard');
+        } else if (parsed.role === 'salesrep') {
+          setActiveMenuItem('salesrep-dashboard');
+        } else {
+          setActiveMenuItem('dashboard');
+        }
+      } catch (error) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+      }
