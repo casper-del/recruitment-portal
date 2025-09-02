@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
+console.log('🔥 APP.JS LOADED - VERSION 2024-EMERGENCY-TEST 🔥');
+
 // Icon components
 const Building2Icon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
