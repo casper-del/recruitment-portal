@@ -260,6 +260,146 @@ const downloadFile = async (endpoint, filename) => {
   document.body.removeChild(a);
 };
 
+// Admin Dashboard Component
+const AdminDashboard = () => {
+  const [clients, setClients] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/admin/clients');
+      setClients(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <p className="text-gray-600">Klanten laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
+        <p className="text-gray-600">Beheer klanten, teams en facturatie</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700 text-sm">{error}</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Totaal Klanten</p>
+              <p className="text-3xl font-bold text-gray-900">{clients.length}</p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+              <UsersIcon />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Sales Reps</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {clients.reduce((sum, client) => sum + (client.salesRepCount || 0), 0)}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+              <TrendingUpIcon />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">CRM Connected</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {clients.reduce((sum, client) => sum + (client.connectedCount || 0), 0)}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+              <LinkIcon />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Facturen</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {clients.reduce((sum, client) => sum + (client.invoiceCount || 0), 0)}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+              <FileTextIcon />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Klanten Overzicht</h3>
+        
+        <div className="space-y-4">
+          {clients.map((client) => (
+            <div key={client._id} className="border border-gray-200 rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center">
+                    <span className="text-green-600 font-bold text-xl">
+                      {client.name.charAt(0)}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900">{client.name}</h4>
+                    <p className="text-gray-600">{client.contactName} • {client.email}</p>
+                    <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                      <span>{client.salesRepCount || 0} teamleden</span>
+                      <span>{client.connectedCount || 0} connected</span>
+                      <span>{((client.commissionRate || 0) * 100).toFixed(1)}% commissie</span>
+                      <span className="text-blue-600 font-medium">{(client.crmType || 'teamleader').toUpperCase()}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-green-100 px-4 py-2 rounded-lg">
+                  <span className="text-green-600 font-medium text-sm">
+                    {client.salesRepCount || 0} team • {client.invoiceCount || 0} facturen
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Login Component
 const LoginForm = ({ onLogin, isLoading }) => {
   const [email, setEmail] = useState('');
