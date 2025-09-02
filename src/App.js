@@ -260,6 +260,264 @@ const downloadFile = async (endpoint, filename) => {
   document.body.removeChild(a);
 };
 
+// Sales Rep Invoices Component
+const SalesRepInvoices = ({ user }) => {
+  const [invoices, setInvoices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  
+  const [newInvoice, setNewInvoice] = useState({
+    invoiceNumber: '',
+    amount: '',
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+    description: '',
+    type: 'commission',
+    file: null
+  });
+
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const fetchInvoices = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/salesrep/invoices');
+      setInvoices(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const uploadInvoice = async () => {
+    if (!newInvoice.file) {
+      setError('Selecteer een PDF bestand');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await uploadFile('/salesrep/invoices', newInvoice.file, {
+        invoiceNumber: newInvoice.invoiceNumber,
+        amount: newInvoice.amount,
+        month: newInvoice.month,
+        year: newInvoice.year,
+        description: newInvoice.description,
+        type: newInvoice.type
+      });
+      
+      setNewInvoice({
+        invoiceNumber: '',
+        amount: '',
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+        description: '',
+        type: 'commission',
+        file: null
+      });
+      
+      setShowUploadForm(false);
+      
+      const fileInput = document.querySelector('input[type="file"]');
+      if (fileInput) fileInput.value = '';
+      
+      await fetchInvoices();
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const downloadInvoice = async (invoiceId, fileName) => {
+    try {
+      await downloadFile(`/salesrep/invoices/${invoiceId}/download`, fileName);
+    } catch (err) {
+      setError('Download mislukt');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Mijn Facturen</h2>
+            <p className="text-gray-600">Upload en beheer je commissie facturen</p>
+          </div>
+          <button
+            onClick={() => setShowUploadForm(!showUploadForm)}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl transition-colors flex items-center"
+          >
+            <PlusIcon />
+            <span className="ml-2">Factuur Uploaden</span>
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700 text-sm">{error}</p>
+        </div>
+      )}
+
+      {showUploadForm && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Nieuwe Factuur Uploaden</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <input
+              type="text"
+              placeholder="Factuurnummer"
+              value={newInvoice.invoiceNumber}
+              onChange={(e) => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})}
+              className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+            
+            <input
+              type="number"
+              placeholder="Bedrag (€)"
+              value={newInvoice.amount}
+              onChange={(e) => setNewInvoice({...newInvoice, amount: e.target.value})}
+              className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+            
+            <select
+              value={newInvoice.month}
+              onChange={(e) => setNewInvoice({...newInvoice, month: parseInt(e.target.value)})}
+              className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            >
+              {Array.from({length: 12}, (_, i) => (
+                <option key={i+1} value={i+1}>
+                  {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
+                </option>
+              ))}
+            </select>
+            
+            <input
+              type="number"
+              placeholder="Jaar"
+              value={newInvoice.year}
+              onChange={(e) => setNewInvoice({...newInvoice, year: parseInt(e.target.value)})}
+              className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+          </div>
+          
+          <input
+            type="text"
+            placeholder="Beschrijving (optioneel)"
+            value={newInvoice.description}
+            onChange={(e) => setNewInvoice({...newInvoice, description: e.target.value})}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent mb-4"
+          />
+          
+          <div className="mb-6">
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => setNewInvoice({...newInvoice, file: e.target.files[0]})}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+            <p className="text-sm text-gray-500 mt-2">Alleen PDF bestanden toegestaan (max 10MB)</p>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={uploadInvoice}
+              disabled={isLoading || !newInvoice.file || !newInvoice.invoiceNumber || !newInvoice.amount}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl transition-colors disabled:opacity-50 flex items-center"
+            >
+              <UploadIcon />
+              <span className="ml-2">{isLoading ? 'Uploaden...' : 'Factuur Uploaden'}</span>
+            </button>
+            
+            <button
+              onClick={() => setShowUploadForm(false)}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl transition-colors"
+            >
+              Annuleren
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Mijn Facturen Overzicht</h3>
+        
+        {invoices.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileTextIcon />
+            </div>
+            <h4 className="text-lg font-semibold text-gray-900 mb-2">Nog geen facturen</h4>
+            <p className="text-gray-600 mb-4">Upload je eerste factuur om aan de slag te gaan</p>
+            <button
+              onClick={() => setShowUploadForm(true)}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              Eerste factuur uploaden
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {invoices
+              .sort((a, b) => b.year - a.year || b.month - a.month)
+              .map((invoice) => (
+              <div key={invoice._id} className="border border-gray-200 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center">
+                      <FileTextIcon />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900">
+                        Factuur #{invoice.invoiceNumber}
+                      </h4>
+                      <p className="text-gray-600">
+                        €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
+                      </p>
+                      <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                        <span>
+                          {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
+                        </span>
+                        <span>{invoice.type === 'commission' ? 'Commissie' : 'Client'}</span>
+                        {invoice.description && <span>• {invoice.description}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      invoice.status === 'paid' 
+                        ? 'bg-green-100 text-green-600' 
+                        : 'bg-yellow-100 text-yellow-600'
+                    }`}>
+                      {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
+                    </span>
+                    
+                    <button
+                      onClick={() => downloadInvoice(invoice._id, invoice.fileName)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
+                    >
+                      <DownloadIcon />
+                      <span className="ml-2">Download</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Admin Dashboard Component
 const AdminDashboard = () => {
   const [clients, setClients] = useState([]);
@@ -1338,10 +1596,7 @@ const App = () => {
               )}
               
               {activeMenuItem === 'salesrep-invoices' && (
-                <PlaceholderPage 
-                  title="Mijn Facturen" 
-                  description="Upload en beheer je commissie facturen"
-                />
+                <SalesRepInvoices user={user} />
               )}
               
               {activeMenuItem === 'salesrep-reports' && (
