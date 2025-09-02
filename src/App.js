@@ -801,6 +801,357 @@ const AdminClientModal = ({ client, isOpen, onClose, onUpdate }) => {
   );
 };
 
+// Team Management Modal Component (Working with inline CSS)
+const TeamManagementModal = ({ client, onClose, onUpdate }) => {
+  const [clientData, setClientData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const [newSalesRep, setNewSalesRep] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    position: 'Sales Representative',
+    hireDate: new Date().toISOString().split('T')[0],
+    commissionRate: 0.10
+  });
+
+  useEffect(() => {
+    fetchClientDetails();
+  }, [client]);
+
+  const fetchClientDetails = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall(`/admin/clients/${client._id}`);
+      setClientData(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addSalesRep = async () => {
+    if (!newSalesRep.name || !newSalesRep.email) {
+      setError('Naam en email zijn verplicht');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+      const response = await apiCall(`/admin/clients/${client._id}/salesreps`, {
+        method: 'POST',
+        body: JSON.stringify(newSalesRep)
+      });
+      
+      setSuccess(`✅ Sales Rep toegevoegd!\n\nLogin gegevens:\nEmail: ${newSalesRep.email}\nWachtwoord: ${response.tempPassword}\n\n⚠️ Bewaar deze gegevens!`);
+      
+      setNewSalesRep({
+        name: '',
+        email: '',
+        phone: '',
+        position: 'Sales Representative',
+        hireDate: new Date().toISOString().split('T')[0],
+        commissionRate: 0.10
+      });
+      await fetchClientDetails();
+      onUpdate();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteSalesRep = async (salesRepId, salesRepName) => {
+    if (!window.confirm(`Weet je zeker dat je ${salesRepName} wilt verwijderen?`)) return;
+    
+    try {
+      setIsLoading(true);
+      await apiCall(`/admin/salesreps/${salesRepId}`, { method: 'DELETE' });
+      await fetchClientDetails();
+      onUpdate();
+      setSuccess(`${salesRepName} is verwijderd`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const modalStyle = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    zIndex: 9999,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px'
+  };
+
+  const contentStyle = {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    maxWidth: '800px',
+    width: '100%',
+    maxHeight: '90vh',
+    overflow: 'hidden',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+  };
+
+  const headerStyle = {
+    backgroundColor: '#059669',
+    color: 'white',
+    padding: '24px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  };
+
+  const bodyStyle = {
+    padding: '24px',
+    maxHeight: '60vh',
+    overflowY: 'auto'
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: '12px',
+    border: '2px solid #e5e7eb',
+    borderRadius: '8px',
+    marginBottom: '16px',
+    fontSize: '14px'
+  };
+
+  const buttonStyle = {
+    backgroundColor: '#059669',
+    color: 'white',
+    padding: '12px 24px',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '600'
+  };
+
+  const dangerButtonStyle = {
+    backgroundColor: '#dc2626',
+    color: 'white',
+    padding: '8px 12px',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '12px'
+  };
+
+  return (
+    <div style={modalStyle}>
+      <div style={contentStyle}>
+        <div style={headerStyle}>
+          <div>
+            <h2 style={{fontSize: '24px', fontWeight: 'bold', margin: 0}}>
+              {client.name} - Team Beheer
+            </h2>
+            <p style={{margin: '4px 0 0 0', opacity: 0.8}}>
+              {client.contactName} • {client.email}
+            </p>
+          </div>
+          <button 
+            onClick={onClose}
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              border: 'none',
+              color: 'white',
+              padding: '8px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '18px'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div style={bodyStyle}>
+          {error && (
+            <div style={{
+              backgroundColor: '#fee2e2',
+              border: '1px solid #fca5a5',
+              color: '#dc2626',
+              padding: '12px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '14px'
+            }}>
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div style={{
+              backgroundColor: '#ecfdf5',
+              border: '1px solid #86efac',
+              color: '#059669',
+              padding: '12px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '14px',
+              whiteSpace: 'pre-line',
+              fontFamily: 'monospace'
+            }}>
+              {success}
+            </div>
+          )}
+
+          <div style={{
+            backgroundColor: '#f9fafb',
+            padding: '20px',
+            borderRadius: '12px',
+            marginBottom: '24px'
+          }}>
+            <h3 style={{fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#374151'}}>
+              👤 Nieuw Teamlid Toevoegen
+            </h3>
+            
+            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px'}}>
+              <input
+                style={inputStyle}
+                type="text"
+                placeholder="Naam *"
+                value={newSalesRep.name}
+                onChange={(e) => setNewSalesRep({...newSalesRep, name: e.target.value})}
+              />
+              
+              <input
+                style={inputStyle}
+                type="email"
+                placeholder="E-mail *"
+                value={newSalesRep.email}
+                onChange={(e) => setNewSalesRep({...newSalesRep, email: e.target.value})}
+              />
+              
+              <input
+                style={inputStyle}
+                type="text"
+                placeholder="Telefoon"
+                value={newSalesRep.phone}
+                onChange={(e) => setNewSalesRep({...newSalesRep, phone: e.target.value})}
+              />
+              
+              <input
+                style={inputStyle}
+                type="text"
+                placeholder="Functie"
+                value={newSalesRep.position}
+                onChange={(e) => setNewSalesRep({...newSalesRep, position: e.target.value})}
+              />
+              
+              <input
+                style={inputStyle}
+                type="date"
+                value={newSalesRep.hireDate}
+                onChange={(e) => setNewSalesRep({...newSalesRep, hireDate: e.target.value})}
+              />
+              
+              <div style={{display: 'flex', alignItems: 'center'}}>
+                <input
+                  style={{...inputStyle, marginBottom: 0}}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="1"
+                  placeholder="Commissie (0.10)"
+                  value={newSalesRep.commissionRate}
+                  onChange={(e) => setNewSalesRep({...newSalesRep, commissionRate: parseFloat(e.target.value)})}
+                />
+                <span style={{marginLeft: '8px', color: '#6b7280', fontSize: '14px'}}>
+                  ({(newSalesRep.commissionRate * 100).toFixed(1)}%)
+                </span>
+              </div>
+            </div>
+            
+            <button
+              style={{
+                ...buttonStyle,
+                opacity: isLoading || !newSalesRep.name || !newSalesRep.email ? 0.5 : 1
+              }}
+              onClick={addSalesRep}
+              disabled={isLoading || !newSalesRep.name || !newSalesRep.email}
+            >
+              {isLoading ? '⏳ Toevoegen...' : '➕ Teamlid Toevoegen'}
+            </button>
+          </div>
+
+          {clientData?.salesReps && clientData.salesReps.length > 0 && (
+            <div>
+              <h3 style={{fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#374151'}}>
+                👥 Huidige Teamleden ({clientData.salesReps.length})
+              </h3>
+              
+              <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                {clientData.salesReps.map((rep) => (
+                  <div key={rep._id} style={{
+                    backgroundColor: 'white',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        backgroundColor: '#ecfdf5',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#059669',
+                        fontSize: '20px',
+                        fontWeight: 'bold'
+                      }}>
+                        {rep.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h4 style={{margin: 0, fontSize: '16px', fontWeight: '600', color: '#111827'}}>
+                          {rep.name}
+                        </h4>
+                        <p style={{margin: '2px 0', fontSize: '14px', color: '#6b7280'}}>
+                          {rep.email}
+                        </p>
+                        <p style={{margin: 0, fontSize: '12px', color: '#9ca3af'}}>
+                          {rep.position} • {((rep.commissionRate || 0) * 100).toFixed(1)}% commissie
+                          {rep.isConnected && <span style={{color: '#059669'}}> • CRM Connected</span>}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      style={dangerButtonStyle}
+                      onClick={() => deleteSalesRep(rep._id, rep.name)}
+                    >
+                      🗑️ Verwijder
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Admin Dashboard Component
 const AdminDashboard = ({ onClientClick }) => {
   const [clients, setClients] = useState([]);
@@ -1861,65 +2212,16 @@ const App = () => {
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-7xl mx-auto px-8 py-8">
-          {/* SIMPLE RED TEST BOX */}
-          <div style={{
-            position: 'fixed',
-            top: '20px',
-            left: '300px',
-            backgroundColor: 'red',
-            color: 'white',
-            padding: '20px',
-            zIndex: 9999,
-            border: '3px solid yellow'
-          }}>
-            🚨 TEST BOX - CAN YOU SEE THIS? 🚨
-          </div>
-
-          {/* SIMPLE MODAL TEST */}
+          {/* TEAM MANAGEMENT MODAL */}
           {showClientModal && selectedClient && (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              zIndex: 9999,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <div style={{
-                backgroundColor: 'white',
-                padding: '30px',
-                borderRadius: '10px',
-                maxWidth: '500px',
-                width: '90%'
-              }}>
-                <h2 style={{color: 'black', fontSize: '24px', marginBottom: '20px'}}>
-                  🎉 MODAL WERKT! - {selectedClient.name}
-                </h2>
-                <p style={{color: 'gray', marginBottom: '20px'}}>
-                  Client: {selectedClient.email}
-                </p>
-                <button 
-                  onClick={() => {
-                    setShowClientModal(false);
-                    setSelectedClient(null);
-                  }}
-                  style={{
-                    backgroundColor: 'red', 
-                    color: 'white', 
-                    padding: '10px 20px', 
-                    border: 'none',
-                    borderRadius: '5px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Sluit Modal
-                </button>
-              </div>
-            </div>
+            <TeamManagementModal 
+              client={selectedClient}
+              onClose={() => {
+                setShowClientModal(false);
+                setSelectedClient(null);
+              }}
+              onUpdate={handleClientUpdate}
+            />
           )}
           {user.role === 'admin' && (
             <>
