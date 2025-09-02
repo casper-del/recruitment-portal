@@ -21,6 +21,11 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static('uploads'));
 
+// Serve static files from React build
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'build')));
+}
+
 // Database connection
 const connectDB = async () => {
   try {
@@ -152,8 +157,8 @@ const upload = multer({
   }
 });
 
-// Routes
-app.get('/', (req, res) => {
+// API Routes
+app.get('/api', (req, res) => {
   res.json({ 
     message: 'Recruiters Network API',
     version: '1.0.0',
@@ -560,9 +565,13 @@ app.use((error, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
+// Serve React app for all non-API routes
+app.get('*', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.sendFile(path.join(__dirname, 'build/index.html'));
+  } else {
+    res.status(404).json({ message: 'Route not found' });
+  }
 });
 
 // Start server
@@ -573,8 +582,8 @@ const startServer = async () => {
     
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📝 API Documentation: http://localhost:${PORT}`);
-      console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`📝 API Documentation: http://localhost:${PORT}/api`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
