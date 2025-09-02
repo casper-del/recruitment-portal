@@ -41,9 +41,10 @@ const connectDB = async () => {
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['admin', 'client'], required: true },
+  role: { type: String, enum: ['admin', 'client', 'salesrep'], required: true },
   name: { type: String, required: true },
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
+  salesRepId: { type: mongoose.Schema.Types.ObjectId, ref: 'SalesRep' },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -51,6 +52,8 @@ const clientSchema = new mongoose.Schema({
   name: { type: String, required: true },
   contactName: { type: String, required: true },
   email: { type: String, required: true },
+  phone: { type: String },
+  address: { type: String },
   crmType: { type: String, enum: ['teamleader', 'hubspot', 'pipedrive'], default: 'teamleader' },
   crmCredentials: {
     accessToken: String,
@@ -58,9 +61,9 @@ const clientSchema = new mongoose.Schema({
     clientId: String,
     clientSecret: String,
     expiresAt: Date,
-    portalId: String // For HubSpot
+    portalId: String
   },
-  commissionRate: { type: Number, default: 0.10 },
+  commissionRate: { type: Number, default: 0.10 }, // Fixed: Now correctly represents 10%
   commissionCap: { type: Number, default: 50000 },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
@@ -69,8 +72,11 @@ const clientSchema = new mongoose.Schema({
 const salesRepSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true },
+  phone: { type: String },
+  position: { type: String, default: 'Sales Representative' },
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
   hireDate: { type: Date, required: true },
+  commissionRate: { type: Number, default: 0.10 }, // Individual commission rate
   crmContactId: String,
   isConnected: { type: Boolean, default: false },
   totalRevenue: { type: Number, default: 0 },
@@ -91,13 +97,18 @@ const revenueSchema = new mongoose.Schema({
 
 const invoiceSchema = new mongoose.Schema({
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
+  salesRepId: { type: mongoose.Schema.Types.ObjectId, ref: 'SalesRep' }, // Optional: for sales rep specific invoices
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Who uploaded this invoice
   invoiceNumber: { type: String, required: true },
   amount: { type: Number, required: true },
   month: { type: Number, required: true },
   year: { type: Number, required: true },
   status: { type: String, enum: ['pending', 'paid'], default: 'pending' },
+  type: { type: String, enum: ['client', 'commission'], default: 'client' }, // client invoice or commission invoice
   filePath: String,
+  fileName: String,
   paidAt: Date,
+  description: String,
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -132,6 +143,20 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+const requireClient = (req, res, next) => {
+  if (req.user.role !== 'client') {
+    return res.status(403).json({ message: 'Client access required' });
+  }
+  next();
+};
+
+const requireSalesRep = (req, res, next) => {
+  if (req.user.role !== 'salesrep') {
+    return res.status(403).json({ message: 'Sales representative access required' });
+  }
+  next();
+};
+
 // File upload setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -142,18 +167,20 @@ const storage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
   }
 });
+
 const upload = multer({ 
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const allowedTypes = ['application/pdf'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only PDF and Word documents allowed.'));
+      cb(new Error('Invalid file type. Only PDF documents allowed.'));
     }
   }
 });
@@ -162,8 +189,9 @@ const upload = multer({
 app.get('/api', (req, res) => {
   res.json({ 
     message: 'Recruiters Network API',
-    version: '1.0.0',
-    status: 'running'
+    version: '2.0.0',
+    status: 'running',
+    features: ['Admin Portal', 'Client Portal', 'Sales Rep Portal', 'Invoice Management']
   });
 });
 
@@ -172,7 +200,10 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    const user = await User.findOne({ email }).populate('clientId');
+    const user = await User.findOne({ email })
+      .populate('clientId')
+      .populate('salesRepId');
+    
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -187,7 +218,8 @@ app.post('/api/auth/login', async (req, res) => {
         userId: user._id, 
         email: user.email, 
         role: user.role,
-        clientId: user.clientId?._id
+        clientId: user.clientId?._id,
+        salesRepId: user.salesRepId?._id
       },
       process.env.JWT_SECRET || 'recruitment_jwt_secret_2024',
       { expiresIn: '7d' }
@@ -200,7 +232,8 @@ app.post('/api/auth/login', async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
-        client: user.clientId
+        client: user.clientId,
+        salesRep: user.salesRepId
       }
     });
   } catch (error) {
@@ -209,12 +242,11 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Admin Routes
+// Admin Routes - Client Management
 app.post('/api/admin/clients', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { name, contactName, email, commissionRate, commissionCap, crmType } = req.body;
+    const { name, contactName, email, phone, address, commissionRate, commissionCap, crmType } = req.body;
     
-    // Check if client already exists
     const existingClient = await Client.findOne({ email });
     if (existingClient) {
       return res.status(400).json({ message: 'Client with this email already exists' });
@@ -224,6 +256,8 @@ app.post('/api/admin/clients', authenticateToken, requireAdmin, async (req, res)
       name,
       contactName,
       email,
+      phone,
+      address,
       commissionRate: commissionRate || 0.10,
       commissionCap: commissionCap || 50000,
       crmType: crmType || 'teamleader'
@@ -260,15 +294,17 @@ app.get('/api/admin/clients', authenticateToken, requireAdmin, async (req, res) 
   try {
     const clients = await Client.find({ isActive: true }).sort({ createdAt: -1 });
     
-    // Get sales rep counts for each client
     const clientsWithCounts = await Promise.all(
       clients.map(async (client) => {
         const salesRepCount = await SalesRep.countDocuments({ clientId: client._id, isActive: true });
         const connectedCount = await SalesRep.countDocuments({ clientId: client._id, isActive: true, isConnected: true });
+        const invoiceCount = await Invoice.countDocuments({ clientId: client._id });
+        
         return {
           ...client.toObject(),
           salesRepCount,
-          connectedCount
+          connectedCount,
+          invoiceCount
         };
       })
     );
@@ -280,19 +316,43 @@ app.get('/api/admin/clients', authenticateToken, requireAdmin, async (req, res) 
   }
 });
 
-// Admin client update endpoint
+// Get single client details for admin
+app.get('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    
+    const client = await Client.findById(clientId);
+    if (!client) {
+      return res.status(404).json({ message: 'Client not found' });
+    }
+
+    const salesReps = await SalesRep.find({ clientId, isActive: true }).sort({ createdAt: -1 });
+    const invoices = await Invoice.find({ clientId }).sort({ year: -1, month: -1 });
+    
+    res.json({
+      client,
+      salesReps,
+      invoices
+    });
+  } catch (error) {
+    console.error('Get client details error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 app.put('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { clientId } = req.params;
-    const { name, contactName, email, commissionRate, commissionCap, crmType } = req.body;
+    const { name, contactName, email, phone, address, commissionRate, commissionCap, crmType } = req.body;
     
-    // Find and update the client
     const client = await Client.findByIdAndUpdate(
       clientId,
       {
         name,
         contactName,
         email,
+        phone,
+        address,
         commissionRate,
         commissionCap,
         crmType
@@ -304,7 +364,7 @@ app.put('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (
       return res.status(404).json({ message: 'Client not found' });
     }
     
-    // Also update the user account email if it changed
+    // Update user account
     await User.findOneAndUpdate(
       { clientId: clientId },
       { 
@@ -323,36 +383,38 @@ app.put('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (
   }
 });
 
-// Complete client deletion endpoint
 app.delete('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { clientId } = req.params;
     
-    // Start a transaction to ensure all data is deleted together
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      // 1. Delete all sales reps for this client
+      // Delete all sales reps for this client
+      const salesReps = await SalesRep.find({ clientId });
+      for (const salesRep of salesReps) {
+        // Delete sales rep user accounts
+        await User.deleteOne({ salesRepId: salesRep._id }, { session });
+      }
       await SalesRep.deleteMany({ clientId }, { session });
       
-      // 2. Delete all revenue records for this client
+      // Delete all revenue records
       await Revenue.deleteMany({ clientId }, { session });
       
-      // 3. Delete all invoices for this client
+      // Delete all invoices and their files
       const invoices = await Invoice.find({ clientId });
       for (const invoice of invoices) {
-        // Delete invoice files if they exist
         if (invoice.filePath && fs.existsSync(invoice.filePath)) {
           fs.unlinkSync(invoice.filePath);
         }
       }
       await Invoice.deleteMany({ clientId }, { session });
       
-      // 4. Delete the client user account
+      // Delete client user account
       await User.deleteOne({ clientId }, { session });
       
-      // 5. Delete the client itself
+      // Delete client
       const deletedClient = await Client.findByIdAndDelete(clientId, { session });
       
       if (!deletedClient) {
@@ -381,43 +443,185 @@ app.delete('/api/admin/clients/:clientId', authenticateToken, requireAdmin, asyn
   }
 });
 
+// Admin Sales Rep Management
 app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { clientId } = req.params;
-    const { name, email, hireDate } = req.body;
+    const { name, email, phone, position, hireDate, commissionRate } = req.body;
     
+    // Check if email is already in use
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email address already in use' });
+    }
+    
+    // Create sales rep
     const salesRep = new SalesRep({
       name,
       email,
+      phone,
+      position: position || 'Sales Representative',
       clientId,
-      hireDate: new Date(hireDate)
+      hireDate: new Date(hireDate),
+      commissionRate: commissionRate || 0.10
     });
     
     await salesRep.save();
-    res.status(201).json({ message: 'Sales rep added successfully', salesRep });
+    
+    // Create user account for the sales rep
+    const tempPassword = Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(tempPassword, 12);
+    
+    const salesRepUser = new User({
+      email,
+      password: hashedPassword,
+      role: 'salesrep',
+      name,
+      clientId,
+      salesRepId: salesRep._id
+    });
+    
+    await salesRepUser.save();
+    
+    res.status(201).json({ 
+      message: 'Sales representative added successfully',
+      salesRep,
+      tempPassword,
+      loginCredentials: {
+        email,
+        password: tempPassword,
+        loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}`
+      }
+    });
   } catch (error) {
     console.error('Add sales rep error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
+// Update sales rep
+app.put('/api/admin/salesreps/:salesRepId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { salesRepId } = req.params;
+    const { name, email, phone, position, commissionRate } = req.body;
+    
+    const salesRep = await SalesRep.findByIdAndUpdate(
+      salesRepId,
+      {
+        name,
+        email,
+        phone,
+        position,
+        commissionRate
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!salesRep) {
+      return res.status(404).json({ message: 'Sales representative not found' });
+    }
+    
+    // Update user account
+    await User.findOneAndUpdate(
+      { salesRepId },
+      { 
+        email,
+        name
+      }
+    );
+    
+    res.json({ 
+      message: 'Sales representative updated successfully',
+      salesRep 
+    });
+  } catch (error) {
+    console.error('Update sales rep error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete sales rep
+app.delete('/api/admin/salesreps/:salesRepId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { salesRepId } = req.params;
+    
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Delete user account
+      await User.deleteOne({ salesRepId }, { session });
+      
+      // Delete revenue records
+      await Revenue.deleteMany({ salesRepId }, { session });
+      
+      // Delete sales rep invoices
+      const invoices = await Invoice.find({ salesRepId });
+      for (const invoice of invoices) {
+        if (invoice.filePath && fs.existsSync(invoice.filePath)) {
+          fs.unlinkSync(invoice.filePath);
+        }
+      }
+      await Invoice.deleteMany({ salesRepId }, { session });
+      
+      // Delete sales rep
+      const deletedSalesRep = await SalesRep.findByIdAndDelete(salesRepId, { session });
+      
+      if (!deletedSalesRep) {
+        await session.abortTransaction();
+        return res.status(404).json({ message: 'Sales representative not found' });
+      }
+      
+      await session.commitTransaction();
+      
+      res.json({ 
+        message: 'Sales representative deleted successfully',
+        deletedSalesRep: {
+          name: deletedSalesRep.name,
+          email: deletedSalesRep.email
+        }
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  } catch (error) {
+    console.error('Delete sales rep error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Admin Invoice Management
 app.post('/api/admin/clients/:clientId/invoices', authenticateToken, requireAdmin, upload.single('invoice'), async (req, res) => {
   try {
     const { clientId } = req.params;
-    const { invoiceNumber, amount, month, year, status } = req.body;
+    const { invoiceNumber, amount, month, year, status, description, type, salesRepId } = req.body;
     
     const invoice = new Invoice({
       clientId,
+      salesRepId: salesRepId || undefined,
+      uploadedBy: req.user.userId,
       invoiceNumber,
       amount: parseFloat(amount),
       month: parseInt(month),
       year: parseInt(year),
       status: status || 'pending',
-      filePath: req.file?.path
+      type: type || 'client',
+      description,
+      filePath: req.file?.path,
+      fileName: req.file?.originalname
     });
     
     await invoice.save();
-    res.status(201).json({ message: 'Invoice uploaded successfully', invoice });
+    
+    await invoice.populate(['uploadedBy', 'salesRepId']);
+    
+    res.status(201).json({ 
+      message: 'Invoice uploaded successfully', 
+      invoice 
+    });
   } catch (error) {
     console.error('Upload invoice error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -425,12 +629,8 @@ app.post('/api/admin/clients/:clientId/invoices', authenticateToken, requireAdmi
 });
 
 // Client Routes
-app.get('/api/client/dashboard', authenticateToken, async (req, res) => {
+app.get('/api/client/dashboard', authenticateToken, requireClient, async (req, res) => {
   try {
-    if (req.user.role !== 'client') {
-      return res.status(403).json({ message: 'Client access required' });
-    }
-
     const clientId = req.user.clientId;
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
@@ -470,13 +670,10 @@ app.get('/api/client/dashboard', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/api/client/invoices', authenticateToken, async (req, res) => {
+app.get('/api/client/invoices', authenticateToken, requireClient, async (req, res) => {
   try {
-    if (req.user.role !== 'client') {
-      return res.status(403).json({ message: 'Client access required' });
-    }
-
     const invoices = await Invoice.find({ clientId: req.user.clientId })
+      .populate(['uploadedBy', 'salesRepId'])
       .sort({ year: -1, month: -1 });
     
     res.json(invoices);
@@ -486,7 +683,7 @@ app.get('/api/client/invoices', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/api/client/invoices/:invoiceId/download', authenticateToken, async (req, res) => {
+app.get('/api/client/invoices/:invoiceId/download', authenticateToken, requireClient, async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.invoiceId);
     
@@ -498,14 +695,124 @@ app.get('/api/client/invoices/:invoiceId/download', authenticateToken, async (re
       return res.status(404).json({ message: 'File not found' });
     }
 
-    res.download(invoice.filePath, `invoice-${invoice.invoiceNumber}.pdf`);
+    res.download(invoice.filePath, invoice.fileName || `invoice-${invoice.invoiceNumber}.pdf`);
   } catch (error) {
     console.error('Download invoice error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-// CRM Integration Routes
+// Sales Rep Routes
+app.get('/api/salesrep/dashboard', authenticateToken, requireSalesRep, async (req, res) => {
+  try {
+    const salesRepId = req.user.salesRepId;
+    const clientId = req.user.clientId;
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+
+    const salesRep = await SalesRep.findById(salesRepId).populate('clientId');
+    const currentRevenue = await Revenue.findOne({
+      salesRepId,
+      month: currentMonth,
+      year: currentYear
+    });
+
+    const myInvoices = await Invoice.find({ salesRepId })
+      .sort({ year: -1, month: -1 })
+      .limit(5);
+
+    const revenueHistory = await Revenue.find({ salesRepId })
+      .sort({ year: -1, month: -1 })
+      .limit(12);
+
+    res.json({
+      salesRep,
+      currentRevenue: currentRevenue || { revenue: 0, commission: 0 },
+      myInvoices,
+      revenueHistory
+    });
+  } catch (error) {
+    console.error('Sales rep dashboard error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+app.get('/api/salesrep/invoices', authenticateToken, requireSalesRep, async (req, res) => {
+  try {
+    const invoices = await Invoice.find({ 
+      $or: [
+        { salesRepId: req.user.salesRepId },
+        { clientId: req.user.clientId, salesRepId: { $exists: false } } // Client invoices visible to all reps
+      ]
+    })
+      .populate(['uploadedBy', 'salesRepId'])
+      .sort({ year: -1, month: -1 });
+    
+    res.json(invoices);
+  } catch (error) {
+    console.error('Get sales rep invoices error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+app.post('/api/salesrep/invoices', authenticateToken, requireSalesRep, upload.single('invoice'), async (req, res) => {
+  try {
+    const { invoiceNumber, amount, month, year, description, type } = req.body;
+    
+    const invoice = new Invoice({
+      clientId: req.user.clientId,
+      salesRepId: req.user.salesRepId,
+      uploadedBy: req.user.userId,
+      invoiceNumber,
+      amount: parseFloat(amount),
+      month: parseInt(month),
+      year: parseInt(year),
+      status: 'pending',
+      type: type || 'commission',
+      description,
+      filePath: req.file?.path,
+      fileName: req.file?.originalname
+    });
+    
+    await invoice.save();
+    await invoice.populate(['uploadedBy', 'salesRepId']);
+    
+    res.status(201).json({ 
+      message: 'Invoice uploaded successfully', 
+      invoice 
+    });
+  } catch (error) {
+    console.error('Sales rep upload invoice error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+app.get('/api/salesrep/invoices/:invoiceId/download', authenticateToken, requireSalesRep, async (req, res) => {
+  try {
+    const invoice = await Invoice.findById(req.params.invoiceId);
+    
+    // Sales rep can download their own invoices or client invoices
+    const canDownload = invoice && (
+      invoice.salesRepId?.toString() === req.user.salesRepId ||
+      (invoice.clientId.toString() === req.user.clientId && !invoice.salesRepId)
+    );
+    
+    if (!canDownload) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    if (!invoice.filePath || !fs.existsSync(invoice.filePath)) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+
+    res.download(invoice.filePath, invoice.fileName || `invoice-${invoice.invoiceNumber}.pdf`);
+  } catch (error) {
+    console.error('Sales rep download invoice error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// CRM Integration Routes (existing code...)
 app.get('/api/client/crm/connect', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'client') {
@@ -522,14 +829,12 @@ app.get('/api/client/crm/connect', authenticateToken, async (req, res) => {
         authUrl = `https://app.teamleader.eu/oauth2/authorize?client_id=${process.env.TEAMLEADER_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.TEAMLEADER_REDIRECT_URI)}&state=${req.user.clientId}`;
         break;
       case 'hubspot':
-        // FIXED: Using correct HubSpot scope syntax
         authUrl = `https://app.hubspot.com/oauth/authorize?client_id=${process.env.HUBSPOT_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.HUBSPOT_REDIRECT_URI)}&scope=crm.objects.contacts.read&state=${req.user.clientId}`;
         break;
       default:
         return res.status(400).json({ message: 'Unsupported CRM type' });
     }
     
-    console.log('Generated HubSpot OAuth URL:', authUrl); // Debug logging
     res.json({ authUrl });
   } catch (error) {
     console.error('CRM connect error:', error);
@@ -537,11 +842,11 @@ app.get('/api/client/crm/connect', authenticateToken, async (req, res) => {
   }
 });
 
-// REAL HubSpot OAuth Callback
+// HubSpot OAuth Callback
 app.get('/auth/hubspot/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
-    const clientId = state; // We passed clientId as state
+    const clientId = state;
     
     if (!code) {
       return res.status(400).send('❌ Authorization code not provided');
@@ -549,7 +854,6 @@ app.get('/auth/hubspot/callback', async (req, res) => {
 
     console.log('HubSpot OAuth callback received:', { code: code.substring(0, 20) + '...', clientId });
 
-    // Exchange code for access token
     const tokenResponse = await fetch('https://api.hubapi.com/oauth/v1/token', {
       method: 'POST',
       headers: {
@@ -571,9 +875,6 @@ app.get('/auth/hubspot/callback', async (req, res) => {
       return res.status(400).send(`❌ OAuth Error: ${tokenData.message || tokenData.error}`);
     }
 
-    console.log('HubSpot token received successfully');
-
-    // Save credentials to client
     await Client.findByIdAndUpdate(clientId, {
       crmCredentials: {
         accessToken: tokenData.access_token,
@@ -583,7 +884,6 @@ app.get('/auth/hubspot/callback', async (req, res) => {
       }
     });
 
-    // Redirect back to app with success
     const frontendUrl = process.env.FRONTEND_URL || 'https://recruitment-portal-2ai9.onrender.com';
     res.redirect(`${frontendUrl}?crm_connected=success`);
     
@@ -593,7 +893,7 @@ app.get('/auth/hubspot/callback', async (req, res) => {
   }
 });
 
-// Get available CRM systems
+// Get available CRMs
 app.get('/api/crm/available', authenticateToken, async (req, res) => {
   try {
     const availableCRMs = [
@@ -609,7 +909,7 @@ app.get('/api/crm/available', authenticateToken, async (req, res) => {
   }
 });
 
-// Update client CRM settings
+// Update CRM settings
 app.post('/api/client/crm/settings', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'client') {
@@ -635,7 +935,7 @@ app.post('/api/client/crm/settings', authenticateToken, async (req, res) => {
   }
 });
 
-// REAL HubSpot API sync
+// CRM Sync
 app.post('/api/client/crm/sync', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'client') {
@@ -654,7 +954,6 @@ app.post('/api/client/crm/sync', authenticateToken, async (req, res) => {
     if (client.crmType === 'hubspot') {
       syncResult = await syncHubSpotContacts(client, clientId);
     } else {
-      // Fallback to demo sync for other CRMs
       syncResult = await demoSync(client, clientId);
     }
     
@@ -671,14 +970,11 @@ async function syncHubSpotContacts(client, clientId) {
   try {
     console.log('Starting HubSpot sync for client:', clientId);
 
-    // Check if token expired and refresh if needed
     if (new Date() >= new Date(client.crmCredentials.expiresAt)) {
       await refreshHubSpotToken(client);
-      // Reload client with fresh token
       client = await Client.findById(clientId);
     }
 
-    // Fetch contacts from HubSpot
     const contactsResponse = await fetch('https://api.hubapi.com/crm/v3/objects/contacts?properties=email,firstname,lastname,createdate&limit=100', {
       headers: {
         'Authorization': `Bearer ${client.crmCredentials.accessToken}`,
@@ -694,7 +990,6 @@ async function syncHubSpotContacts(client, clientId) {
 
     console.log(`Found ${contactsData.results.length} contacts in HubSpot`);
 
-    // Sync contacts with sales reps
     const salesReps = await SalesRep.find({ clientId });
     let updatedReps = 0;
     let newReps = 0;
@@ -705,15 +1000,13 @@ async function syncHubSpotContacts(client, clientId) {
       const lastName = contact.properties.lastname || '';
       const fullName = `${firstName} ${lastName}`.trim() || email?.split('@')[0] || 'Unknown';
 
-      if (!email) continue; // Skip contacts without email
+      if (!email) continue;
 
-      // Find matching sales rep by email
       let salesRep = salesReps.find(rep => 
         rep.email.toLowerCase() === email.toLowerCase()
       );
 
       if (salesRep && !salesRep.isConnected) {
-        // Update existing rep
         salesRep.isConnected = true;
         salesRep.crmContactId = contact.id;
         if (salesRep.name === 'Unknown' || salesRep.name === email) {
@@ -723,7 +1016,6 @@ async function syncHubSpotContacts(client, clientId) {
         updatedReps++;
         console.log(`Updated existing rep: ${salesRep.name} (${email})`);
       } else if (!salesRep) {
-        // Create new sales rep from CRM contact
         const createDate = contact.properties.createdate ? new Date(contact.properties.createdate) : new Date();
         
         salesRep = new SalesRep({
@@ -735,11 +1027,25 @@ async function syncHubSpotContacts(client, clientId) {
           crmContactId: contact.id
         });
         await salesRep.save();
+        
+        // Create user account for new sales rep
+        const tempPassword = Math.random().toString(36).slice(-8);
+        const hashedPassword = await bcrypt.hash(tempPassword, 12);
+        
+        const salesRepUser = new User({
+          email,
+          password: hashedPassword,
+          role: 'salesrep',
+          name: fullName,
+          clientId,
+          salesRepId: salesRep._id
+        });
+        
+        await salesRepUser.save();
         newReps++;
-        console.log(`Created new rep: ${fullName} (${email})`);
+        console.log(`Created new rep: ${fullName} (${email}) - Password: ${tempPassword}`);
       }
 
-      // Add some mock revenue data for connected reps
       if (salesRep?.isConnected) {
         const currentMonth = new Date().getMonth() + 1;
         const currentYear = new Date().getFullYear();
@@ -777,19 +1083,17 @@ async function syncHubSpotContacts(client, clientId) {
   }
 }
 
-// Demo sync function (fallback)
+// Demo sync function
 async function demoSync(client, clientId) {
   const salesReps = await SalesRep.find({ clientId });
   let updatedReps = 0;
 
   for (const rep of salesReps) {
     if (!rep.isConnected) {
-      // Mock: randomly connect some reps
       if (Math.random() > 0.5) {
         rep.isConnected = true;
         rep.crmContactId = `demo_${rep._id}`;
         
-        // Add mock revenue data
         const currentMonth = new Date().getMonth() + 1;
         const currentYear = new Date().getFullYear();
         const mockRevenue = Math.floor(Math.random() * 50000) + 10000;
@@ -823,7 +1127,7 @@ async function demoSync(client, clientId) {
   };
 }
 
-// Token refresh helper for HubSpot
+// Token refresh helper
 async function refreshHubSpotToken(client) {
   try {
     const refreshResponse = await fetch('https://api.hubapi.com/oauth/v1/token', {
@@ -856,7 +1160,7 @@ async function refreshHubSpotToken(client) {
   }
 }
 
-// Initialize default admin
+// Initialize default admin and demo data
 const initializeAdmin = async () => {
   try {
     const adminExists = await User.findOne({ role: 'admin' });
@@ -872,16 +1176,17 @@ const initializeAdmin = async () => {
       console.log('✓ Default admin created: admin@recruitersnetwork.nl / admin123');
     }
 
-    // Create demo client for testing
     const demoClient = await Client.findOne({ email: 'demo@acmecorp.com' });
     if (!demoClient) {
       const client = new Client({
         name: 'Acme Corporation',
         contactName: 'John Doe',
         email: 'demo@acmecorp.com',
+        phone: '+31 20 123 4567',
+        address: 'Damrak 70, 1012 LM Amsterdam',
         commissionRate: 0.10,
         commissionCap: 50000,
-        crmType: 'hubspot' // Changed to HubSpot for testing
+        crmType: 'hubspot'
       });
       await client.save();
 
@@ -895,23 +1200,37 @@ const initializeAdmin = async () => {
       });
       await clientUser.save();
 
-      // Add demo sales reps
-      const salesReps = [
-        { name: 'Sarah Johnson', email: 'sarah@acmecorp.com', hireDate: new Date('2024-01-15') },
-        { name: 'Mike Chen', email: 'mike@acmecorp.com', hireDate: new Date('2024-03-01') },
-        { name: 'Emma Wilson', email: 'emma@acmecorp.com', hireDate: new Date('2024-08-15') }
+      // Add demo sales reps with accounts
+      const salesRepsData = [
+        { name: 'Sarah Johnson', email: 'sarah@acmecorp.com', phone: '+31 20 123 4568', hireDate: new Date('2024-01-15') },
+        { name: 'Mike Chen', email: 'mike@acmecorp.com', phone: '+31 20 123 4569', hireDate: new Date('2024-03-01') },
+        { name: 'Emma Wilson', email: 'emma@acmecorp.com', phone: '+31 20 123 4570', hireDate: new Date('2024-08-15') }
       ];
 
-      for (const repData of salesReps) {
+      for (const repData of salesRepsData) {
         const rep = new SalesRep({
           ...repData,
           clientId: client._id,
-          isConnected: Math.random() > 0.6 // 40% chance connected initially
+          position: 'Sales Representative',
+          isConnected: Math.random() > 0.6
         });
         await rep.save();
+
+        // Create user account for demo sales rep
+        const repPassword = await bcrypt.hash('demo123', 12);
+        const salesRepUser = new User({
+          email: repData.email,
+          password: repPassword,
+          role: 'salesrep',
+          name: repData.name,
+          clientId: client._id,
+          salesRepId: rep._id
+        });
+        await salesRepUser.save();
       }
 
-      console.log('✓ Demo client created: demo@acmecorp.com / demo123 (HubSpot CRM)');
+      console.log('✓ Demo client created: demo@acmecorp.com / demo123');
+      console.log('✓ Demo sales reps created with password: demo123');
     }
   } catch (error) {
     console.error('Initialization error:', error);
@@ -927,7 +1246,7 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Serve React app for all non-API routes
+// Serve React app
 app.get('*', (req, res) => {
   if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, 'build/index.html'));
@@ -946,7 +1265,7 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📝 API Documentation: http://localhost:${PORT}/api`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 HubSpot OAuth configured: ${process.env.HUBSPOT_CLIENT_ID ? 'YES' : 'NO'}`);
+      console.log(`🔗 Multi-Portal System: Admin | Client | Sales Rep`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
