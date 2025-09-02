@@ -911,7 +911,11 @@ const AdminDashboard = ({ onClientClick }) => {
                 <button
                   onClick={() => {
                     console.log('Button clicked', client);
-                    onClientClick && onClientClick(client);
+                    console.log('onClientClick:', onClientClick);
+                    if (onClientClick) {
+                      onClientClick(client);
+                      console.log('onClientClick called');
+                    }
                   }}
                   className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center z-10 relative"
                 >
@@ -1810,8 +1814,10 @@ const App = () => {
   };
 
   const handleClientClick = (client) => {
+    console.log('handleClientClick called with:', client);
     setSelectedClient(client);
     setShowClientModal(true);
+    console.log('Modal should show:', true);
   };
 
   const handleClientUpdate = () => {
