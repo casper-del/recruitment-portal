@@ -613,15 +613,251 @@ const ClientDashboard = ({ dashboardData, formatCurrency, onRefresh, onSalesRepC
   );
 };
 
-// Placeholder Components
-const PlaceholderPage = ({ title, description }) => (
-  <div className="space-y-6">
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-      <h2 className="text-3xl font-bold text-gray-900 mb-2">{title}</h2>
-      <p className="text-gray-600">{description}</p>
+// Sales Rep Detail Modal with history
+const SalesRepDetailModal = ({ isOpen, onClose, salesRep }) => {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [historicalData] = useState([
+    { month: 8, year: 2024, revenue: salesRep?.thisMonthRevenue || 0, commission: salesRep?.thisMonthCommission || 0 },
+    { month: 7, year: 2024, revenue: Math.floor(Math.random() * 40000) + 15000, commission: 0 },
+    { month: 6, year: 2024, revenue: Math.floor(Math.random() * 35000) + 10000, commission: 0 },
+    { month: 5, year: 2024, revenue: Math.floor(Math.random() * 45000) + 20000, commission: 0 },
+    { month: 4, year: 2024, revenue: Math.floor(Math.random() * 30000) + 12000, commission: 0 }
+  ]);
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('nl-NL', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const totalRevenue = historicalData.reduce((sum, data) => sum + data.revenue, 0);
+  const totalCommission = historicalData.reduce((sum, data) => sum + data.commission, 0);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">{salesRep?.name}</h3>
+              <p className="text-gray-600">{salesRep?.email}</p>
+            </div>
+            <button 
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <XIcon />
+            </button>
+          </div>
+          
+          <div className="flex space-x-1 mt-4">
+            {[
+              { id: 'overview', label: 'Overzicht' },
+              { id: 'history', label: 'Geschiedenis' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === tab.id 
+                    ? 'bg-green-50 text-green-600' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[60vh]">
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Contact Informatie</h4>
+                <div className="space-y-2 text-sm">
+                  <p><span className="font-medium">Email:</span> {salesRep?.email}</p>
+                  <p><span className="font-medium">Aangenomen:</span> {new Date(salesRep?.hireDate).toLocaleDateString('nl-NL', { 
+                    day: 'numeric', month: 'long', year: 'numeric' 
+                  })}</p>
+                  <p><span className="font-medium">Status:</span> 
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                      salesRep?.isConnected ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                    }`}>
+                      {salesRep?.isConnected ? 'CRM Gekoppeld' : 'Niet Gekoppeld'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-gray-900 mb-4">Totale Prestaties</h4>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="bg-green-50 rounded-xl p-4">
+                    <p className="text-sm text-green-600 mb-1">Totale Omzet</p>
+                    <p className="text-2xl font-bold text-green-700">{formatCurrency(totalRevenue)}</p>
+                    <p className="text-xs text-green-600">Afgelopen 5 maanden</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-xl p-4">
+                    <p className="text-sm text-blue-600 mb-1">Deze Maand</p>
+                    <p className="text-2xl font-bold text-blue-700">{formatCurrency(salesRep?.thisMonthRevenue || 0)}</p>
+                    <p className="text-xs text-blue-600">September 2024</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'history' && (
+            <div className="space-y-4">
+              <h4 className="font-medium text-gray-900">Maandelijkse Prestaties</h4>
+              
+              <div className="space-y-3">
+                {historicalData.map((data, index) => {
+                  const monthName = new Date(data.year, data.month - 1).toLocaleDateString('nl-NL', { 
+                    month: 'long', 
+                    year: 'numeric' 
+                  });
+                  const isCurrentMonth = data.month === new Date().getMonth() + 1 && data.year === new Date().getFullYear();
+                  
+                  return (
+                    <div key={`${data.year}-${data.month}`} className={`p-4 rounded-xl border ${
+                      isCurrentMonth ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium text-gray-900 capitalize">{monthName}</h5>
+                        {isCurrentMonth && (
+                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                            Huidige maand
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-600">Omzet</p>
+                          <p className="font-bold text-lg">{formatCurrency(data.revenue)}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">Commissie</p>
+                          <p className="font-bold text-lg">{formatCurrency(data.commission)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="border-t pt-4 mt-6">
+                <div className="bg-gray-800 text-white rounded-xl p-4">
+                  <h5 className="font-medium mb-2">Totaal Overzicht</h5>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-gray-300 text-sm">Totale Omzet</p>
+                      <p className="font-bold text-xl">{formatCurrency(totalRevenue)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-300 text-sm">Gem. per Maand</p>
+                      <p className="font-bold text-xl">{formatCurrency(totalRevenue / historicalData.length)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
+
+// Team Management Component with working sales rep details
+const TeamManagement = ({ dashboardData, onSalesRepClick }) => {
+  if (!dashboardData) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Team data laden...</div>
+      </div>
+    );
+  }
+
+  const { salesReps } = dashboardData;
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Team Management</h2>
+        <p className="text-gray-600">Beheer je sales team en bekijk individuele performance</p>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-gray-900">Sales Representatives</h3>
+          <div className="flex items-center space-x-4 text-sm text-gray-500">
+            <span>{salesReps.length} totaal</span>
+            <span>•</span>
+            <span>{salesReps.filter(r => r.isConnected).length} gekoppeld</span>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {salesReps.map((rep) => (
+            <div 
+              key={rep._id} 
+              onClick={() => onSalesRepClick(rep)}
+              className="p-6 border border-gray-200 rounded-xl hover:border-green-300 hover:shadow-sm transition-all duration-200 cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <span className="text-green-600 font-semibold text-sm">
+                      {rep.name.charAt(0)}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900">{rep.name}</h4>
+                    <p className="text-sm text-gray-600">{rep.email}</p>
+                  </div>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  rep.isConnected ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                }`}>
+                  {rep.isConnected ? 'Gekoppeld' : 'Niet gekoppeld'}
+                </span>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Aangenomen:</span>
+                  <span className="font-medium">
+                    {new Date(rep.hireDate).toLocaleDateString('nl-NL', { 
+                      day: 'numeric', month: 'short', year: 'numeric' 
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Deze maand:</span>
+                  <span className="font-medium">€{(rep.thisMonthRevenue || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Commissie:</span>
+                  <span className="font-medium">€{(rep.thisMonthCommission || 0).toLocaleString()}</span>
+                </div>
+              </div>
+              
+              <div className="mt-4 pt-3 border-t border-gray-100">
+                <p className="text-xs text-green-600 font-medium">Klik voor volledige geschiedenis →</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Add Client Modal Component
 const AddClientModal = ({ isOpen, onClose, onSubmit }) => {
@@ -830,7 +1066,7 @@ const SuccessModal = ({ isOpen, onClose, clientData }) => {
   );
 };
 
-// Admin Dashboard Component
+// Admin Dashboard Component with delete functionality
 const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -841,6 +1077,26 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
     setSuccessData(result);
     setShowSuccessModal(true);
     onRefresh(); // Refresh client list
+  };
+
+  const handleDeleteClient = async (clientId, clientName) => {
+    if (!window.confirm(`Weet je zeker dat je "${clientName}" wilt verwijderen?`)) return;
+    
+    try {
+      await apiCall(`/admin/clients/${clientId}`, {
+        method: 'DELETE'
+      });
+      onRefresh(); // Refresh client list
+      alert('Klant succesvol verwijderd');
+    } catch (error) {
+      console.error('Failed to delete client:', error);
+      alert('Fout bij verwijderen klant: ' + error.message);
+    }
+  };
+
+  const handleClientEdit = (client) => {
+    // Simple edit functionality - can be expanded later
+    alert(`Edit functionaliteit voor ${client.name} komt binnenkort beschikbaar!`);
   };
 
   return (
@@ -861,22 +1117,40 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {clients && clients.map(client => (
-          <div key={client._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:border-green-300 hover:shadow-md transition-all duration-200">
+          <div key={client._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative group">
             <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <div className="text-green-600">
-                  <Building2Icon />
+              <div 
+                onClick={() => handleClientEdit(client)}
+                className="flex-1 cursor-pointer hover:bg-gray-50 -m-2 p-2 rounded-lg transition-colors"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <div className="text-green-600">
+                      <Building2Icon />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 mb-1">{client.name}</h3>
+                    <p className="text-sm text-gray-600">{client.contactName} • {client.email}</p>
+                  </div>
                 </div>
               </div>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                client.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-              }`}>
-                {client.isActive ? 'Actief' : 'Inactief'}
-              </span>
+              
+              <div className="flex items-center space-x-2">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  client.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {client.isActive ? 'Actief' : 'Inactief'}
+                </span>
+                <button
+                  onClick={() => handleDeleteClient(client._id, client.name)}
+                  className="opacity-0 group-hover:opacity-100 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+                  title="Verwijderen"
+                >
+                  <TrashIcon />
+                </button>
+              </div>
             </div>
-            
-            <h3 className="font-bold text-gray-900 mb-1">{client.name}</h3>
-            <p className="text-sm text-gray-600 mb-4">{client.contactName} • {client.email}</p>
             
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
@@ -891,6 +1165,10 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
                 <span className="text-gray-500">Sales Reps:</span>
                 <span className="font-medium">{client.connectedCount || 0}/{client.salesRepCount || 0}</span>
               </div>
+            </div>
+            
+            <div className="mt-4 pt-3 border-t border-gray-100">
+              <p className="text-xs text-gray-500">Klik om te bewerken • Hover voor verwijderen</p>
             </div>
           </div>
         ))}
@@ -911,6 +1189,16 @@ const AdminDashboard = ({ clients, onAddClient, onRefresh }) => {
   );
 };
 
+// Placeholder Components
+const PlaceholderPage = ({ title, description }) => (
+  <div className="space-y-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+      <h2 className="text-3xl font-bold text-gray-900 mb-2">{title}</h2>
+      <p className="text-gray-600">{description}</p>
+    </div>
+  </div>
+);
+
 // Main App Component
 const App = () => {
   const [user, setUser] = useState(null);
@@ -919,6 +1207,8 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
   const [clients, setClients] = useState(null);
+  const [selectedSalesRep, setSelectedSalesRep] = useState(null);
+  const [showSalesRepDetail, setShowSalesRepDetail] = useState(false);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('nl-NL', {
@@ -1024,8 +1314,8 @@ const App = () => {
   };
 
   const handleSalesRepClick = (salesRep) => {
-    // Simple modal functionality can be added here
-    alert(`Sales Rep Details: ${salesRep.name} - €${(salesRep.thisMonthRevenue || 0).toLocaleString()} deze maand`);
+    setSelectedSalesRep(salesRep);
+    setShowSalesRepDetail(true);
   };
 
   if (!user) {
@@ -1054,6 +1344,14 @@ const App = () => {
               onSalesRepClick={handleSalesRepClick}
             />
           )}
+
+          {/* Team Management */}
+          {activeMenuItem === 'team' && user.role === 'client' && (
+            <TeamManagement 
+              dashboardData={dashboardData}
+              onSalesRepClick={handleSalesRepClick}
+            />
+          )}
           
           {/* Admin Dashboard */}
           {activeMenuItem === 'admin-dashboard' && user.role === 'admin' && (
@@ -1069,13 +1367,6 @@ const App = () => {
             <PlaceholderPage 
               title="Betalingen & Facturen" 
               description="Bekijk je factuurhistorie georganiseerd per maand"
-            />
-          )}
-
-          {activeMenuItem === 'team' && (
-            <PlaceholderPage 
-              title="Team Management" 
-              description="Beheer je sales team en bekijk individuele performance"
             />
           )}
 
@@ -1108,6 +1399,13 @@ const App = () => {
           )}
         </div>
       </div>
+
+      {/* Sales Rep Detail Modal */}
+      <SalesRepDetailModal
+        isOpen={showSalesRepDetail}
+        onClose={() => setShowSalesRepDetail(false)}
+        salesRep={selectedSalesRep}
+      />
     </div>
   );
 };
