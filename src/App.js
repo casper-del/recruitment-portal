@@ -337,6 +337,658 @@ const LoginForm = ({ onLogin, isLoading }) => {
   );
 };
 
+// Admin Client Management Component
+const AdminClientManagement = ({ selectedClient, onClose }) => {
+  const [clientDetails, setClientDetails] = useState(null);
+  const [salesReps, setSalesReps] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showAddSalesRep, setShowAddSalesRep] = useState(false);
+  const [editingClient, setEditingClient] = useState(false);
+  const [newSalesRep, setNewSalesRep] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    position: 'Sales Representative',
+    hireDate: new Date().toISOString().split('T')[0],
+    commissionRate: 0.10
+  });
+  const [editClientData, setEditClientData] = useState({
+    name: '',
+    contactName: '',
+    email: '',
+    phone: '',
+    address: '',
+    commissionRate: 0.10,
+    commissionCap: 50000,
+    crmType: 'teamleader'
+  });
+
+  useEffect(() => {
+    if (selectedClient) {
+      fetchClientDetails();
+    }
+  }, [selectedClient]);
+
+  const fetchClientDetails = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/admin/clients/' + selectedClient._id);
+      setClientDetails(response.client);
+      setSalesReps(response.salesReps || []);
+      setEditClientData({
+        name: response.client.name || '',
+        contactName: response.client.contactName || '',
+        email: response.client.email || '',
+        phone: response.client.phone || '',
+        address: response.client.address || '',
+        commissionRate: response.client.commissionRate || 0.10,
+        commissionCap: response.client.commissionCap || 50000,
+        crmType: response.client.crmType || 'teamleader'
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateClient = async () => {
+    try {
+      setIsLoading(true);
+      await apiCall('/admin/clients/' + selectedClient._id, {
+        method: 'PUT',
+        body: JSON.stringify(editClientData)
+      });
+      setSuccess('Client succesvol bijgewerkt!');
+      setEditingClient(false);
+      await fetchClientDetails();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addSalesRep = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/admin/clients/' + selectedClient._id + '/salesreps', {
+        method: 'POST',
+        body: JSON.stringify(newSalesRep)
+      });
+      setSuccess('Sales rep toegevoegd! Login: ' + newSalesRep.email + ' / ' + response.tempPassword);
+      setNewSalesRep({
+        name: '',
+        email: '',
+        phone: '',
+        position: 'Sales Representative',
+        hireDate: new Date().toISOString().split('T')[0],
+        commissionRate: 0.10
+      });
+      setShowAddSalesRep(false);
+      await fetchClientDetails();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteSalesRep = async (salesRepId, salesRepName) => {
+    if (confirm('Weet je zeker dat je ' + salesRepName + ' wilt verwijderen?')) {
+      try {
+        setIsLoading(true);
+        await apiCall('/admin/salesreps/' + salesRepId, {
+          method: 'DELETE'
+        });
+        setSuccess('Sales rep succesvol verwijderd');
+        await fetchClientDetails();
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  if (!selectedClient) return null;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px',
+      zIndex: 9999
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        padding: '32px',
+        maxWidth: '800px',
+        width: '100%',
+        maxHeight: '90vh',
+        overflow: 'auto',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px'
+        }}>
+          <h3 style={{
+            fontSize: '24px',
+            fontWeight: '700',
+            color: '#111827',
+            margin: 0
+          }}>
+            {selectedClient.name + ' - Beheer'}
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              backgroundColor: '#f3f4f6',
+              border: 'none',
+              borderRadius: '8px',
+              width: '40px',
+              height: '40px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <XIcon />
+          </button>
+        </div>
+
+        {error && (
+          <div style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '16px'
+          }}>
+            <p style={{color: '#dc2626', fontSize: '14px', margin: 0}}>{error}</p>
+          </div>
+        )}
+
+        {success && (
+          <div style={{
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '16px'
+          }}>
+            <p style={{color: '#16a34a', fontSize: '14px', margin: 0}}>{success}</p>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div style={{textAlign: 'center', padding: '40px'}}>
+            <p>Laden...</p>
+          </div>
+        ) : (
+          <div>
+            {/* Client Details Section */}
+            <div style={{marginBottom: '32px'}}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '16px'
+              }}>
+                <h4 style={{fontSize: '18px', fontWeight: '600', margin: 0}}>Client Gegevens</h4>
+                <button
+                  onClick={() => setEditingClient(!editingClient)}
+                  style={{
+                    backgroundColor: editingClient ? '#6b7280' : '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  {editingClient ? 'Annuleren' : 'Bewerken'}
+                </button>
+              </div>
+
+              {editingClient ? (
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
+                  <div>
+                    <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                      Bedrijfsnaam
+                    </label>
+                    <input
+                      type="text"
+                      value={editClientData.name}
+                      onChange={(e) => setEditClientData({...editClientData, name: e.target.value})}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                      Contactpersoon
+                    </label>
+                    <input
+                      type="text"
+                      value={editClientData.contactName}
+                      onChange={(e) => setEditClientData({...editClientData, contactName: e.target.value})}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                      E-mail
+                    </label>
+                    <input
+                      type="email"
+                      value={editClientData.email}
+                      onChange={(e) => setEditClientData({...editClientData, email: e.target.value})}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                      Telefoon
+                    </label>
+                    <input
+                      type="tel"
+                      value={editClientData.phone}
+                      onChange={(e) => setEditClientData({...editClientData, phone: e.target.value})}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div style={{gridColumn: '1 / -1'}}>
+                    <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                      Adres
+                    </label>
+                    <input
+                      type="text"
+                      value={editClientData.address}
+                      onChange={(e) => setEditClientData({...editClientData, address: e.target.value})}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                      Commissie Rate
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="1"
+                      value={editClientData.commissionRate}
+                      onChange={(e) => setEditClientData({...editClientData, commissionRate: parseFloat(e.target.value)})}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                      Commissie Cap
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editClientData.commissionCap}
+                      onChange={(e) => setEditClientData({...editClientData, commissionCap: parseInt(e.target.value)})}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div style={{gridColumn: '1 / -1', marginTop: '16px'}}>
+                    <button
+                      onClick={updateClient}
+                      disabled={isLoading}
+                      style={{
+                        backgroundColor: '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '12px 24px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        marginRight: '8px'
+                      }}
+                    >
+                      Opslaan
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '16px',
+                  backgroundColor: '#f9fafb',
+                  padding: '16px',
+                  borderRadius: '8px'
+                }}>
+                  <div>
+                    <span style={{fontSize: '14px', color: '#6b7280'}}>Bedrijf: </span>
+                    <span style={{fontSize: '14px', fontWeight: '500'}}>{clientDetails?.name}</span>
+                  </div>
+                  <div>
+                    <span style={{fontSize: '14px', color: '#6b7280'}}>Contact: </span>
+                    <span style={{fontSize: '14px', fontWeight: '500'}}>{clientDetails?.contactName}</span>
+                  </div>
+                  <div>
+                    <span style={{fontSize: '14px', color: '#6b7280'}}>E-mail: </span>
+                    <span style={{fontSize: '14px', fontWeight: '500'}}>{clientDetails?.email}</span>
+                  </div>
+                  <div>
+                    <span style={{fontSize: '14px', color: '#6b7280'}}>Commissie: </span>
+                    <span style={{fontSize: '14px', fontWeight: '500'}}>
+                      {((clientDetails?.commissionRate || 0) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sales Reps Section */}
+            <div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '16px'
+              }}>
+                <h4 style={{fontSize: '18px', fontWeight: '600', margin: 0}}>
+                  Sales Reps ({salesReps.length})
+                </h4>
+                <button
+                  onClick={() => setShowAddSalesRep(!showAddSalesRep)}
+                  style={{
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <PlusIcon />
+                  <span style={{marginLeft: '8px'}}>Sales Rep Toevoegen</span>
+                </button>
+              </div>
+
+              {showAddSalesRep && (
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  marginBottom: '16px'
+                }}>
+                  <h5 style={{fontSize: '16px', fontWeight: '600', marginBottom: '16px'}}>
+                    Nieuwe Sales Rep
+                  </h5>
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                    <div>
+                      <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                        Naam *
+                      </label>
+                      <input
+                        type="text"
+                        value={newSalesRep.name}
+                        onChange={(e) => setNewSalesRep({...newSalesRep, name: e.target.value})}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                        placeholder="John Doe"
+                      />
+                    </div>
+                    <div>
+                      <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                        E-mail *
+                      </label>
+                      <input
+                        type="email"
+                        value={newSalesRep.email}
+                        onChange={(e) => setNewSalesRep({...newSalesRep, email: e.target.value})}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                        placeholder="john@acmecorp.com"
+                      />
+                    </div>
+                    <div>
+                      <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                        Telefoon
+                      </label>
+                      <input
+                        type="tel"
+                        value={newSalesRep.phone}
+                        onChange={(e) => setNewSalesRep({...newSalesRep, phone: e.target.value})}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                        placeholder="+31 6 12345678"
+                      />
+                    </div>
+                    <div>
+                      <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                        Positie
+                      </label>
+                      <input
+                        type="text"
+                        value={newSalesRep.position}
+                        onChange={(e) => setNewSalesRep({...newSalesRep, position: e.target.value})}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                        placeholder="Sales Representative"
+                      />
+                    </div>
+                    <div>
+                      <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                        Start Datum
+                      </label>
+                      <input
+                        type="date"
+                        value={newSalesRep.hireDate}
+                        onChange={(e) => setNewSalesRep({...newSalesRep, hireDate: e.target.value})}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>
+                        Commissie Rate
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="1"
+                        value={newSalesRep.commissionRate}
+                        onChange={(e) => setNewSalesRep({...newSalesRep, commissionRate: parseFloat(e.target.value)})}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                        placeholder="0.10"
+                      />
+                    </div>
+                  </div>
+                  <div style={{marginTop: '16px'}}>
+                    <button
+                      onClick={addSalesRep}
+                      disabled={isLoading || !newSalesRep.name || !newSalesRep.email}
+                      style={{
+                        backgroundColor: '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px 16px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        marginRight: '8px',
+                        opacity: (!newSalesRep.name || !newSalesRep.email) ? 0.5 : 1
+                      }}
+                    >
+                      Toevoegen
+                    </button>
+                    <button
+                      onClick={() => setShowAddSalesRep(false)}
+                      style={{
+                        backgroundColor: '#6b7280',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px 16px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Annuleren
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Sales Reps List */}
+              {salesReps.length === 0 ? (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '32px',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '12px'
+                }}>
+                  <p style={{color: '#6b7280', margin: 0}}>Nog geen sales reps toegevoegd</p>
+                </div>
+              ) : (
+                <div style={{display: 'grid', gap: '12px'}}>
+                  {salesReps.map((rep) => (
+                    <div key={rep._id} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '16px',
+                      backgroundColor: '#f9fafb',
+                      borderRadius: '12px'
+                    }}>
+                      <div>
+                        <p style={{margin: '0 0 4px 0', fontWeight: '600', fontSize: '16px'}}>
+                          {rep.name}
+                        </p>
+                        <p style={{margin: '0 0 4px 0', fontSize: '14px', color: '#6b7280'}}>
+                          {rep.email} • {rep.position}
+                        </p>
+                        <p style={{margin: 0, fontSize: '12px', color: '#9ca3af'}}>
+                          Start: {rep.hireDate ? new Date(rep.hireDate).toLocaleDateString('nl-NL') : 'Onbekend'} • 
+                          Commissie: {((rep.commissionRate || 0.1) * 100).toFixed(1)}%
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => deleteSalesRep(rep._id, rep.name)}
+                        style={{
+                          backgroundColor: '#ef4444',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '6px 12px',
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                      >
+                        Verwijderen
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Sidebar Component
 const Sidebar = ({ user, currentPage, setCurrentPage, sidebarCollapsed, setSidebarCollapsed, onLogout }) => {
   const menuItems = user && user.role === 'admin' ? [
