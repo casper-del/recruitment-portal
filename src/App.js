@@ -588,3 +588,491 @@ const AdminDashboard = ({ onClientClick }) => {
     )
   );
 };
+// Sales Rep Dashboard Component
+const SalesRepDashboard = ({ user }) => {
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  const fetchDashboard = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/salesrep/dashboard');
+      setDashboardData(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return React.createElement('div', { className: 'space-y-6' },
+      React.createElement('div', {
+        className: 'bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center'
+      },
+        React.createElement('p', { className: 'text-gray-600' }, 'Dashboard laden...')
+      )
+    );
+  }
+
+  return React.createElement('div', { className: 'space-y-6' },
+    React.createElement('div', {
+      className: 'bg-white rounded-2xl shadow-sm border border-gray-100 p-8'
+    },
+      React.createElement('h2', {
+        className: 'text-3xl font-bold text-gray-900 mb-2'
+      }, 'Welkom terug, ' + (user && user.name) + '!'),
+      React.createElement('p', { className: 'text-gray-600' },
+        (dashboardData && dashboardData.salesRep && dashboardData.salesRep.position) + ' bij ' +
+        (dashboardData && dashboardData.salesRep && dashboardData.salesRep.clientId && dashboardData.salesRep.clientId.name)
+      )
+    ),
+    error && React.createElement('div', {
+      className: 'bg-red-50 border border-red-200 rounded-xl p-4'
+    },
+      React.createElement('p', { className: 'text-red-700 text-sm' }, error)
+    ),
+    React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-6' },
+      React.createElement('div', {
+        className: 'bg-white rounded-xl shadow-sm border border-gray-100 p-6'
+      },
+        React.createElement('div', { className: 'flex items-center justify-between' },
+          React.createElement('div', null,
+            React.createElement('p', { className: 'text-sm text-gray-600' }, 'Deze Maand Omzet'),
+            React.createElement('p', { className: 'text-3xl font-bold text-gray-900' },
+              '€' + ((dashboardData && dashboardData.currentRevenue && dashboardData.currentRevenue.revenue) || 0).toLocaleString('nl-NL')
+            )
+          ),
+          React.createElement('div', {
+            className: 'w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center'
+          }, React.createElement(DollarSignIcon))
+        )
+      ),
+      React.createElement('div', {
+        className: 'bg-white rounded-xl shadow-sm border border-gray-100 p-6'
+      },
+        React.createElement('div', { className: 'flex items-center justify-between' },
+          React.createElement('div', null,
+            React.createElement('p', { className: 'text-sm text-gray-600' }, 'Deze Maand Commissie'),
+            React.createElement('p', { className: 'text-3xl font-bold text-gray-900' },
+              '€' + ((dashboardData && dashboardData.currentRevenue && dashboardData.currentRevenue.commission) || 0).toLocaleString('nl-NL')
+            )
+          ),
+          React.createElement('div', {
+            className: 'w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center'
+          }, React.createElement(TrendingUpIcon))
+        )
+      ),
+      React.createElement('div', {
+        className: 'bg-white rounded-xl shadow-sm border border-gray-100 p-6'
+      },
+        React.createElement('div', { className: 'flex items-center justify-between' },
+          React.createElement('div', null,
+            React.createElement('p', { className: 'text-sm text-gray-600' }, 'Mijn Facturen'),
+            React.createElement('p', { className: 'text-3xl font-bold text-gray-900' },
+              (dashboardData && dashboardData.myInvoices && dashboardData.myInvoices.length) || 0
+            )
+          ),
+          React.createElement('div', {
+            className: 'w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center'
+          }, React.createElement(FileTextIcon))
+        )
+      )
+    )
+  );
+};
+
+// Sales Rep Invoices Component
+const SalesRepInvoices = ({ user }) => {
+  const [invoices, setInvoices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [newInvoice, setNewInvoice] = useState({
+    invoiceNumber: '',
+    amount: '',
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+    description: '',
+    file: null
+  });
+
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const fetchInvoices = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/salesrep/invoices');
+      setInvoices(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const uploadInvoice = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      await uploadFile('/salesrep/invoices', newInvoice.file, {
+        invoiceNumber: newInvoice.invoiceNumber,
+        amount: newInvoice.amount,
+        month: newInvoice.month,
+        year: newInvoice.year,
+        description: newInvoice.description,
+        type: 'commission'
+      });
+      
+      setSuccess('Factuur succesvol geüpload!');
+      setNewInvoice({
+        invoiceNumber: '',
+        amount: '',
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+        description: '',
+        file: null
+      });
+      setShowUploadForm(false);
+      await fetchInvoices();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return React.createElement('div', { className: 'space-y-6' },
+    React.createElement('div', {
+      className: 'bg-white rounded-2xl shadow-sm border border-gray-100 p-8'
+    },
+      React.createElement('div', { className: 'flex items-center justify-between' },
+        React.createElement('div', null,
+          React.createElement('h2', {
+            className: 'text-3xl font-bold text-gray-900 mb-2'
+          }, 'Mijn Facturen'),
+          React.createElement('p', { className: 'text-gray-600' }, 'Upload en beheer je commissie facturen')
+        ),
+        React.createElement('button', {
+          onClick: () => setShowUploadForm(!showUploadForm),
+          className: 'bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center'
+        },
+          React.createElement(PlusIcon),
+          React.createElement('span', { className: 'ml-2' }, 'Nieuwe Factuur')
+        )
+      )
+    ),
+    error && React.createElement('div', {
+      className: 'bg-red-50 border border-red-200 rounded-xl p-4'
+    },
+      React.createElement('p', { className: 'text-red-700 text-sm' }, error)
+    ),
+    success && React.createElement('div', {
+      className: 'bg-green-50 border border-green-200 rounded-xl p-4'
+    },
+      React.createElement('p', { className: 'text-green-700 text-sm' }, success)
+    )
+  );
+};
+
+// Client Dashboard Component
+const ClientDashboard = ({ user }) => {
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  const fetchDashboard = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/client/dashboard');
+      setDashboardData(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return React.createElement('div', { className: 'space-y-6' },
+      React.createElement('div', {
+        className: 'bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center'
+      },
+        React.createElement('p', { className: 'text-gray-600' }, 'Dashboard laden...')
+      )
+    );
+  }
+
+  return React.createElement('div', { className: 'space-y-6' },
+    React.createElement('div', {
+      className: 'bg-white rounded-2xl shadow-sm border border-gray-100 p-8'
+    },
+      React.createElement('h2', {
+        className: 'text-3xl font-bold text-gray-900 mb-2'
+      }, 'Dashboard'),
+      React.createElement('p', { className: 'text-gray-600' }, 'Welkom bij je klantportaal, ' + (user && user.name) + '!')
+    ),
+    error && React.createElement('div', {
+      className: 'bg-red-50 border border-red-200 rounded-xl p-4'
+    },
+      React.createElement('p', { className: 'text-red-700 text-sm' }, error)
+    )
+  );
+};
+
+// Placeholder Page Component
+const PlaceholderPage = ({ title, description }) => (
+  React.createElement('div', { className: 'space-y-6' },
+    React.createElement('div', {
+      className: 'bg-white rounded-2xl shadow-sm border border-gray-100 p-8'
+    },
+      React.createElement('h2', {
+        className: 'text-3xl font-bold text-gray-900 mb-2'
+      }, title),
+      React.createElement('p', { className: 'text-gray-600' }, description)
+    )
+  )
+);
+
+// Main App Component
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [showClientModal, setShowClientModal] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    const userData = localStorage.getItem('userData');
+    
+    if (token && userData) {
+      try {
+        const parsed = JSON.parse(userData);
+        setUser(parsed);
+        
+        if (parsed.role === 'admin') {
+          setCurrentPage('admin-dashboard');
+        } else if (parsed.role === 'salesrep') {
+          setCurrentPage('salesrep-dashboard');
+        } else {
+          setCurrentPage('dashboard');
+        }
+      } catch (error) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+      }
+    }
+  }, []);
+
+  const login = async (email, password) => {
+    setIsLoading(true);
+    try {
+      const response = await apiCall('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+      });
+
+      localStorage.setItem('authToken', response.token);
+      localStorage.setItem('userData', JSON.stringify(response.user));
+      setUser(response.user);
+      
+      if (response.user.role === 'admin') {
+        setCurrentPage('admin-dashboard');
+      } else if (response.user.role === 'salesrep') {
+        setCurrentPage('salesrep-dashboard');
+      } else {
+        setCurrentPage('dashboard');
+      }
+    } catch (error) {
+      throw new Error(error.message || 'Login failed. Check your credentials.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userData');
+    setUser(null);
+    setCurrentPage('dashboard');
+    setSelectedClient(null);
+    setShowClientModal(false);
+  };
+
+  const handleClientClick = (client) => {
+    console.log('handleClientClick called with:', client);
+    setSelectedClient(client);
+    setShowClientModal(true);
+  };
+
+  if (!user) {
+    return React.createElement(LoginForm, { onLogin: login, isLoading: isLoading });
+  }
+
+  return React.createElement('div', { className: 'min-h-screen bg-gray-50 flex' },
+    React.createElement(Sidebar, {
+      user: user,
+      currentPage: currentPage,
+      setCurrentPage: setCurrentPage,
+      sidebarCollapsed: sidebarCollapsed,
+      setSidebarCollapsed: setSidebarCollapsed,
+      onLogout: logout
+    }),
+    React.createElement('div', { className: 'flex-1 overflow-auto' },
+      React.createElement('div', { className: 'max-w-7xl mx-auto px-8 py-8' },
+        user.role === 'admin' && (
+          currentPage === 'admin-dashboard' ? React.createElement(AdminDashboard, { onClientClick: handleClientClick }) :
+          currentPage === 'clients' ? React.createElement(PlaceholderPage, { 
+            title: 'Klanten Beheer', 
+            description: 'Beheer alle klanten, hun instellingen en toegangsrechten.' 
+          }) :
+          currentPage === 'admin-settings' ? React.createElement(PlaceholderPage, { 
+            title: 'Admin Instellingen', 
+            description: 'Systeemconfiguratie, gebruikersbeheer en globale instellingen.' 
+          }) : null
+        ),
+        user.role === 'salesrep' && (
+          currentPage === 'salesrep-dashboard' ? React.createElement(SalesRepDashboard, { user: user }) :
+          currentPage === 'salesrep-invoices' ? React.createElement(SalesRepInvoices, { user: user }) :
+          currentPage === 'salesrep-reports' ? React.createElement(PlaceholderPage, { 
+            title: 'Mijn Prestaties', 
+            description: 'Bekijk je omzet, commissies en performance metrics.' 
+          }) :
+          currentPage === 'salesrep-settings' ? React.createElement(PlaceholderPage, { 
+            title: 'Mijn Instellingen', 
+            description: 'Persoonlijke instellingen en account beheer.' 
+          }) : null
+        ),
+        user.role === 'client' && (
+          currentPage === 'dashboard' ? React.createElement(ClientDashboard, { user: user }) :
+          currentPage === 'invoices' ? React.createElement(PlaceholderPage, { 
+            title: 'Betalingen & Facturen', 
+            description: 'Overzicht van al je facturen en betalingen per maand' 
+          }) :
+          currentPage === 'team' ? React.createElement(PlaceholderPage, { 
+            title: 'Team Management', 
+            description: 'Beheer je recruitment team en bekijk individuele prestaties.' 
+          }) :
+          currentPage === 'reports' ? React.createElement(PlaceholderPage, { 
+            title: 'Rapportages', 
+            description: 'Uitgebreide analytics en rapportages van je recruitment performance.' 
+          }) :
+          currentPage === 'settings' ? React.createElement(PlaceholderPage, { 
+            title: 'Instellingen', 
+            description: 'CRM koppelingen en systeemconfiguratie' 
+          }) : null
+        )
+      )
+    ),
+    showClientModal && selectedClient && React.createElement('div', {
+      style: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        zIndex: 9999
+      }
+    },
+      React.createElement('div', {
+        style: {
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          padding: '32px',
+          maxWidth: '500px',
+          width: '100%',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+        }
+      },
+        React.createElement('div', {
+          style: {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px'
+          }
+        },
+          React.createElement('h3', {
+            style: {
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#111827',
+              margin: 0
+            }
+          }, selectedClient.name),
+          React.createElement('button', {
+            onClick: () => {
+              setShowClientModal(false);
+              setSelectedClient(null);
+            },
+            style: {
+              backgroundColor: '#f3f4f6',
+              border: 'none',
+              borderRadius: '8px',
+              width: '40px',
+              height: '40px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }
+          }, React.createElement(XIcon))
+        ),
+        React.createElement('div', { style: { marginBottom: '24px' } },
+          React.createElement('p', {
+            style: { 
+              fontSize: '18px', 
+              color: '#059669', 
+              fontWeight: '600',
+              margin: '0 0 16px 0'
+            }
+          }, 'MODAL WERKT!'),
+          React.createElement('p', {
+            style: { fontSize: '14px', color: '#6b7280', margin: 0 }
+          }, 
+            'Client: ' + selectedClient.email + '\nContact: ' + selectedClient.contactName + '\nTeam: ' + (selectedClient.salesRepCount || 0) + ' sales reps\nFacturen: ' + (selectedClient.invoiceCount || 0)
+          )
+        ),
+        React.createElement('button', {
+          onClick: () => {
+            setShowClientModal(false);
+            setSelectedClient(null);
+          },
+          style: {
+            backgroundColor: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '12px 24px',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: '600',
+            width: '100%'
+          }
+        }, 'Sluit Modal')
+      )
+    )
+  );
+};
+
+export default App;
