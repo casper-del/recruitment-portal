@@ -54,6 +54,12 @@ const clientSchema = new mongoose.Schema({
   email: { type: String, required: true },
   phone: { type: String },
   address: { type: String },
+  // Company registration details
+  kvkNumber: String,
+  vatNumber: String,
+  bankAccount: String,
+  // Network commission (what Recruiters Network gets)
+  networkCommissionRate: { type: Number, default: 0.10 }, // % of sales rep commission
   crmType: { type: String, enum: ['teamleader', 'hubspot', 'pipedrive'], default: 'teamleader' },
   crmCredentials: {
     accessToken: String,
@@ -291,14 +297,15 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Admin Routes - Client Management with Invoice Details
+// Admin Routes - Client Management
 app.post('/api/admin/clients', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { 
       name, contactName, email, phone, address, commissionRate, commissionCap, crmType,
+      kvkNumber, vatNumber, bankAccount, networkCommissionRate, billingDay,
       invoiceCompanyName, invoiceContactName, invoiceAddress, invoiceCity, invoicePostalCode,
       invoiceCountry, invoicePhone, invoiceEmail, invoiceKvkNumber, invoiceVatNumber,
-      invoiceBankAccount, billingDay
+      invoiceBankAccount
     } = req.body;
     
     const existingClient = await Client.findOne({ email });
@@ -312,6 +319,10 @@ app.post('/api/admin/clients', authenticateToken, requireAdmin, async (req, res)
       email,
       phone,
       address,
+      kvkNumber,
+      vatNumber,
+      bankAccount,
+      networkCommissionRate: networkCommissionRate || 0.10,
       commissionRate: commissionRate || 0.10,
       commissionCap: commissionCap || 50000,
       crmType: crmType || 'teamleader',
@@ -360,9 +371,10 @@ app.put('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (
     const { clientId } = req.params;
     const { 
       name, contactName, email, phone, address, commissionRate, commissionCap, crmType,
+      kvkNumber, vatNumber, bankAccount, networkCommissionRate, billingDay,
       invoiceCompanyName, invoiceContactName, invoiceAddress, invoiceCity, invoicePostalCode,
       invoiceCountry, invoicePhone, invoiceEmail, invoiceKvkNumber, invoiceVatNumber,
-      invoiceBankAccount, billingDay
+      invoiceBankAccount
     } = req.body;
     
     const client = await Client.findByIdAndUpdate(
@@ -373,6 +385,10 @@ app.put('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (
         email,
         phone,
         address,
+        kvkNumber,
+        vatNumber,
+        bankAccount,
+        networkCommissionRate: networkCommissionRate || 0.10,
         commissionRate,
         commissionCap,
         crmType,
@@ -656,41 +672,6 @@ app.delete('/api/admin/salesreps/:salesRepId', authenticateToken, requireAdmin, 
   }
 });
 
-// Admin Invoice Management
-app.post('/api/admin/clients/:clientId/invoices', authenticateToken, requireAdmin, upload.single('invoice'), async (req, res) => {
-  try {
-    const { clientId } = req.params;
-    const { invoiceNumber, amount, month, year, status, description, type, salesRepId } = req.body;
-    
-    const invoice = new Invoice({
-      clientId,
-      salesRepId: salesRepId || undefined,
-      uploadedBy: req.user.userId,
-      invoiceNumber,
-      amount: parseFloat(amount),
-      month: parseInt(month),
-      year: parseInt(year),
-      status: status || 'pending',
-      type: type || 'client',
-      description,
-      filePath: req.file?.path,
-      fileName: req.file?.originalname
-    });
-    
-    await invoice.save();
-    
-    await invoice.populate(['uploadedBy', 'salesRepId']);
-    
-    res.status(201).json({ 
-      message: 'Invoice uploaded successfully', 
-      invoice 
-    });
-  } catch (error) {
-    console.error('Upload invoice error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
 // Client Routes
 app.get('/api/client/dashboard', authenticateToken, requireClient, async (req, res) => {
   try {
@@ -875,38 +856,6 @@ app.get('/api/salesrep/invoices', authenticateToken, requireSalesRep, async (req
   }
 });
 
-app.post('/api/salesrep/invoices', authenticateToken, requireSalesRep, upload.single('invoice'), async (req, res) => {
-  try {
-    const { invoiceNumber, amount, month, year, description, type } = req.body;
-    
-    const invoice = new Invoice({
-      clientId: req.user.clientId,
-      salesRepId: req.user.salesRepId,
-      uploadedBy: req.user.userId,
-      invoiceNumber,
-      amount: parseFloat(amount),
-      month: parseInt(month),
-      year: parseInt(year),
-      status: 'pending',
-      type: type || 'commission',
-      description,
-      filePath: req.file?.path,
-      fileName: req.file?.originalname
-    });
-    
-    await invoice.save();
-    await invoice.populate(['uploadedBy', 'salesRepId']);
-    
-    res.status(201).json({ 
-      message: 'Invoice uploaded successfully', 
-      invoice 
-    });
-  } catch (error) {
-    console.error('Sales rep upload invoice error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
 // Sales Rep Delete Invoice
 app.delete('/api/salesrep/invoices/:invoiceId', authenticateToken, requireSalesRep, async (req, res) => {
   try {
@@ -915,14 +864,13 @@ app.delete('/api/salesrep/invoices/:invoiceId', authenticateToken, requireSalesR
     const invoice = await Invoice.findOne({
       _id: invoiceId,
       salesRepId: req.user.salesRepId,
-      status: { $nin: ['paid', 'approved'] } // Can't delete paid or approved invoices
+      status: { $nin: ['paid', 'approved'] }
     });
     
     if (!invoice) {
       return res.status(404).json({ message: 'Invoice not found or cannot be deleted (already processed)' });
     }
 
-    // Delete file if it exists
     if (invoice.filePath && fs.existsSync(invoice.filePath)) {
       fs.unlinkSync(invoice.filePath);
     }
@@ -971,7 +919,6 @@ app.get('/api/salesrep/company-details', authenticateToken, requireSalesRep, asy
       return res.status(404).json({ message: 'Sales representative not found' });
     }
 
-    // If no company details set, pre-fill with client invoice data
     if (!salesRep.companyDetails || !salesRep.companyDetails.companyName) {
       const client = salesRep.clientId;
       const prefillData = {
@@ -1005,7 +952,6 @@ app.get('/api/salesrep/company-details', authenticateToken, requireSalesRep, asy
   }
 });
 
-// Sales Rep Company Details - POST/UPDATE
 app.post('/api/salesrep/company-details', authenticateToken, requireSalesRep, async (req, res) => {
   try {
     const {
@@ -1147,76 +1093,6 @@ app.post('/api/salesrep/generate-invoice', authenticateToken, requireSalesRep, a
   }
 });
 
-// CRM Integration Routes (simplified)
-app.get('/api/client/crm/connect', authenticateToken, async (req, res) => {
-  try {
-    if (req.user.role !== 'client') {
-      return res.status(403).json({ message: 'Client access required' });
-    }
-
-    const client = await Client.findById(req.user.clientId);
-    const { type } = req.query;
-    
-    let authUrl;
-    
-    switch (type || client.crmType) {
-      case 'teamleader':
-        authUrl = `https://app.teamleader.eu/oauth2/authorize?client_id=${process.env.TEAMLEADER_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.TEAMLEADER_REDIRECT_URI)}&state=${req.user.clientId}`;
-        break;
-      case 'hubspot':
-        authUrl = `https://app.hubspot.com/oauth/authorize?client_id=${process.env.HUBSPOT_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.HUBSPOT_REDIRECT_URI)}&scope=crm.objects.contacts.read&state=${req.user.clientId}`;
-        break;
-      default:
-        return res.status(400).json({ message: 'Unsupported CRM type' });
-    }
-    
-    res.json({ authUrl });
-  } catch (error) {
-    console.error('CRM connect error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-app.get('/api/crm/available', authenticateToken, async (req, res) => {
-  try {
-    const availableCRMs = [
-      { id: 'teamleader', name: 'Teamleader', description: 'Complete business management' },
-      { id: 'hubspot', name: 'HubSpot', description: 'Customer relationship management' },
-      { id: 'pipedrive', name: 'Pipedrive', description: 'Sales-focused CRM' }
-    ];
-    
-    res.json(availableCRMs);
-  } catch (error) {
-    console.error('Get available CRMs error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-app.post('/api/client/crm/settings', authenticateToken, async (req, res) => {
-  try {
-    if (req.user.role !== 'client') {
-      return res.status(403).json({ message: 'Client access required' });
-    }
-
-    const { crmType } = req.body;
-    const clientId = req.user.clientId;
-    
-    const client = await Client.findByIdAndUpdate(
-      clientId,
-      { crmType },
-      { new: true }
-    );
-    
-    res.json({ 
-      message: 'CRM settings updated successfully',
-      client 
-    });
-  } catch (error) {
-    console.error('Update CRM settings error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
 // Initialize default admin and demo data
 const initializeAdmin = async () => {
   try {
@@ -1249,7 +1125,6 @@ const initializeAdmin = async () => {
         commissionCap: 50000,
         crmType: 'hubspot',
         billingDay: 15,
-        // Pre-filled invoice details
         invoiceCompanyName: 'Acme Corporation B.V.',
         invoiceContactName: 'John Doe',
         invoiceAddress: 'Damrak 70',
@@ -1261,23 +1136,6 @@ const initializeAdmin = async () => {
         invoiceKvkNumber: '12345678',
         invoiceVatNumber: 'NL123456789B01',
         invoiceBankAccount: 'NL91 ABNA 0417 1643 00'
-      });: 'Damrak 70, 1012 LM Amsterdam',
-        commissionRate: 0.10,
-        commissionCap: 50000,
-        crmType: 'hubspot',
-        // Pre-filled invoice details
-        invoiceCompanyName: 'Acme Corporation B.V.',
-        invoiceContactName: 'John Doe',
-        invoiceAddress: 'Damrak 70',
-        invoiceCity: 'Amsterdam',
-        invoicePostalCode: '1012 LM',
-        invoiceCountry: 'Nederland',
-        invoicePhone: '+31 20 123 4567',
-        invoiceEmail: 'facturen@acmecorp.com',
-        invoiceKvkNumber: '12345678',
-        invoiceVatNumber: 'NL123456789B01',
-        invoiceBankAccount: 'NL91 ABNA 0417 1643 00',
-        billingDay: 15
       });
       await client.save();
 
