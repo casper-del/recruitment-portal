@@ -382,7 +382,495 @@ app.delete('/api/salesrep/invoices/:invoiceId', authenticateToken, async (req, r
   }
 });
 
-// 🔥 INITIALIZE FRESH DATA EVERY TIME
+// 🔥 ADMIN ENDPOINTS - RESTORED
+app.get('/api/admin/clients', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const clients = await Client.find({ isActive: true })
+      .sort({ createdAt: -1 });
+    
+    // Add sales rep count to each client
+    const clientsWithCounts = await Promise.all(
+      clients.map(async (client) => {
+        const salesRepCount = await SalesRep.countDocuments({ 
+          clientId: client._id, 
+          isActive: true 
+        });
+        
+        return {
+          ...client.toObject(),
+          salesRepCount
+        };
+      })
+    );
+    
+    res.json(clientsWithCounts);
+  } catch (error) {
+    console.error('Get clients error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.post('/api/admin/clients', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const { 
+      name, 
+      contactName, 
+      email, 
+      phone, 
+      address, 
+      kvkNumber, 
+      vatNumber, 
+      bankAccount, 
+      networkCommissionRate, 
+      billingDay,
+      commissionRate,
+      commissionCap
+    } = req.body;
+    
+    const existingClient = await Client.findOne({ email });
+    if (existingClient) {
+      return res.status(400).json({ message: 'Client with this email already exists' });
+    }
+    
+    const client = new Client({
+      name,
+      contactName,
+      email,
+      phone,
+      address,
+      kvkNumber,
+      vatNumber,
+      bankAccount,
+      networkCommissionRate: networkCommissionRate || 0.10,
+      billingDay: billingDay || 15,
+      commissionRate: commissionRate || 0.10,
+      commissionCap: commissionCap || 50000
+    });
+    
+    await client.save();
+    
+    // Generate a secure temporary password
+    const tempPassword = Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(tempPassword, 12);
+    
+    const clientUser = new User({
+      email,
+      password: hashedPassword,
+      role: 'client',
+      name: contactName,
+      clientId: client._id
+    });
+    
+    await clientUser.save();
+    
+    res.status(201).json({ 
+      message: 'Client created successfully',
+      client,
+      tempPassword
+    });
+  } catch (error) {
+    console.error('Create client error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.get('/api/admin/clients/:clientId', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const client = await Client.findById(req.params.clientId);
+    if (!client) {
+      return res.status(404).json({ message: 'Client not found' });
+    }
+
+    const salesReps = await SalesRep.find({ 
+      clientId: req.params.clientId, 
+      isActive: true 
+    });
+    
+    const invoices = await Invoice.find({ 
+      clientId: req.params.clientId 
+    })
+    .populate('salesRepId')
+    .sort({ year: -1, month: -1 });
+    
+    res.json({ client, salesReps, invoices });
+  } catch (error) {
+    console.error('Get client details error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.put('/api/admin/clients/:clientId', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const { clientId } = req.params;
+    const updateData = req.body;
+    
+    const client = await Client.findByIdAndUpdate(
+      clientId,
+      updateData,
+      { new: true }
+    );
+    
+    if (!client) {
+      return res.status(404).json({ message: 'Client not found' });
+    }
+    
+    // Update the associated user email and name if changed
+    if (updateData.email || updateData.contactName) {
+      await User.findOneAndUpdate(
+        { clientId: clientId },
+        { 
+          email: updateData.email || client.email,
+          name: updateData.contactName || client.contactName
+        }
+      );
+    }
+    
+    res.json({ message: 'Client updated successfully', client });
+  } catch (error) {
+    console.error('Update client error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Sales rep management endpoints
+app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const { name, email, phone, position, hireDate, commissionRate } = req.body;
+    
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User with this email already exists' });
+    }
+    
+    const salesRep = new SalesRep({
+      name,
+      email,
+      phone,
+      position: position || 'Sales Representative',
+      clientId: req.params.clientId,
+      hireDate: new Date(hireDate),
+      commissionRate: commissionRate || 0.10
+    });
+    
+    await salesRep.save();
+    
+    const tempPassword = Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(tempPassword, 12);
+    
+    const salesRepUser = new User({
+      email,
+      password: hashedPassword,
+      role: 'salesrep',
+      name,
+      clientId: req.params.clientId,
+      salesRepId: salesRep._id
+    });
+    
+    await salesRepUser.save();
+    
+    res.status(201).json({ 
+      message: 'Sales representative added successfully',
+      salesRep,
+      tempPassword
+    });
+  } catch (error) {
+    console.error('Add sales rep error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.delete('/api/admin/salesreps/:salesRepId', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    // Delete associated user first
+    await User.deleteOne({ salesRepId: req.params.salesRepId });
+    
+    // Delete sales rep
+    const deletedSalesRep = await SalesRep.findByIdAndDelete(req.params.salesRepId);
+    
+    if (!deletedSalesRep) {
+      return res.status(404).json({ message: 'Sales representative not found' });
+    }
+    
+    res.json({ message: 'Sales representative deleted successfully' });
+  } catch (error) {
+    console.error('Delete sales rep error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// 🔥 CLIENT ENDPOINTS - RESTORED
+app.get('/api/client/dashboard', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'client') {
+      return res.status(403).json({ message: 'Client access required' });
+    }
+    
+    const client = await Client.findById(req.user.clientId);
+    const salesReps = await SalesRep.find({ 
+      clientId: req.user.clientId, 
+      isActive: true 
+    });
+    
+    // Add mock performance data for each sales rep
+    const repsWithData = salesReps.map(rep => ({
+      ...rep.toObject(),
+      thisMonthRevenue: Math.floor(Math.random() * 50000) + 10000,
+      thisMonthCommission: Math.floor(Math.random() * 5000) + 1000,
+      isConnected: Math.random() > 0.3 // 70% chance of being connected
+    }));
+
+    const totals = {
+      thisMonthRevenue: repsWithData.reduce((sum, rep) => sum + rep.thisMonthRevenue, 0),
+      thisMonthCommission: repsWithData.reduce((sum, rep) => sum + rep.thisMonthCommission, 0)
+    };
+
+    res.json({
+      client,
+      salesReps: repsWithData,
+      totals
+    });
+  } catch (error) {
+    console.error('Client dashboard error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.get('/api/client/invoices', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'client') {
+      return res.status(403).json({ message: 'Client access required' });
+    }
+    
+    const invoices = await Invoice.find({ clientId: req.user.clientId })
+      .populate(['uploadedBy', 'salesRepId'])
+      .sort({ year: -1, month: -1 });
+    
+    res.json(invoices);
+  } catch (error) {
+    console.error('Get client invoices error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Invoice approval endpoints
+app.put('/api/client/invoices/:invoiceId/approve', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'client') {
+      return res.status(403).json({ message: 'Client access required' });
+    }
+    
+    const invoice = await Invoice.findOneAndUpdate(
+      { 
+        _id: req.params.invoiceId, 
+        clientId: req.user.clientId 
+      },
+      { 
+        status: 'approved', 
+        approvedAt: new Date() 
+      },
+      { new: true }
+    );
+    
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+    
+    res.json({ message: 'Invoice approved successfully', invoice });
+  } catch (error) {
+    console.error('Approve invoice error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.put('/api/client/invoices/:invoiceId/revision', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'client') {
+      return res.status(403).json({ message: 'Client access required' });
+    }
+    
+    const { reason } = req.body;
+    
+    const invoice = await Invoice.findOneAndUpdate(
+      { 
+        _id: req.params.invoiceId, 
+        clientId: req.user.clientId 
+      },
+      { 
+        status: 'revision_requested', 
+        revisionReason: reason 
+      },
+      { new: true }
+    );
+    
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+    
+    res.json({ message: 'Revision requested successfully', invoice });
+  } catch (error) {
+    console.error('Request revision error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// 🔥 NETWORK COMMISSION ENDPOINTS - RESTORED
+app.get('/api/admin/network-commissions', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const networkInvoices = await Invoice.find({ 
+      type: 'network' 
+    })
+    .populate('clientId')
+    .sort({ year: -1, month: -1 });
+    
+    const formattedInvoices = networkInvoices.map(invoice => ({
+      _id: invoice._id,
+      clientName: invoice.clientId?.name || 'Unknown',
+      invoiceNumber: invoice.invoiceNumber,
+      month: invoice.month,
+      year: invoice.year,
+      monthName: new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'}),
+      status: invoice.status,
+      totalSalesRepCommission: invoice.invoiceData?.totalSalesRepCommission || 0,
+      networkRate: invoice.invoiceData?.networkRate || 0,
+      networkAmount: invoice.invoiceData?.networkAmount || 0,
+      createdAt: invoice.createdAt
+    }));
+    
+    res.json(formattedInvoices);
+  } catch (error) {
+    console.error('Get network commissions error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.post('/api/admin/generate-network-invoice', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const { clientId, month, year } = req.body;
+    
+    if (!clientId || !month || !year) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+    
+    // Get client details
+    const client = await Client.findById(clientId);
+    if (!client) {
+      return res.status(404).json({ message: 'Client not found' });
+    }
+    
+    // Check if network invoice already exists for this month/year
+    const existingNetworkInvoice = await Invoice.findOne({
+      clientId,
+      type: 'network',
+      month: parseInt(month),
+      year: parseInt(year)
+    });
+    
+    if (existingNetworkInvoice) {
+      return res.status(400).json({ 
+        message: `Network factuur bestaat al voor ${new Date(0, month - 1).toLocaleDateString('nl-NL', {month: 'long'})} ${year}` 
+      });
+    }
+    
+    // Find all approved sales rep invoices for this client in specified month/year
+    const salesRepInvoices = await Invoice.find({
+      clientId,
+      type: 'commission',
+      status: 'approved',
+      month: parseInt(month),
+      year: parseInt(year)
+    });
+    
+    if (salesRepInvoices.length === 0) {
+      return res.status(400).json({ 
+        message: 'Geen goedgekeurde sales rep facturen gevonden voor deze periode' 
+      });
+    }
+    
+    // Calculate total sales rep commission (excl BTW)
+    const totalSalesRepCommission = salesRepInvoices.reduce((total, invoice) => {
+      return total + (invoice.invoiceData?.commissionExcl || 0);
+    }, 0);
+    
+    // Calculate network commission
+    const networkRate = client.networkCommissionRate || 0.10;
+    const networkCommissionExcl = totalSalesRepCommission * networkRate;
+    const networkVat = networkCommissionExcl * 0.21; // 21% BTW
+    const networkTotal = networkCommissionExcl + networkVat;
+    
+    // Generate invoice number
+    const invoiceNumber = `RN-${year}-${String(month).padStart(2, '0')}-${client.name.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+    
+    // Create network invoice
+    const networkInvoice = new Invoice({
+      clientId,
+      uploadedBy: req.user.userId,
+      invoiceNumber,
+      amount: networkTotal,
+      month: parseInt(month),
+      year: parseInt(year),
+      status: 'pending',
+      type: 'network',
+      description: `Recruiters Network commissie - ${new Date(0, month - 1).toLocaleDateString('nl-NL', {month: 'long'})} ${year}`,
+      invoiceData: {
+        totalSalesRepCommission,
+        networkRate,
+        networkAmount: networkCommissionExcl,
+        vatRate: 21,
+        vatAmount: networkVat,
+        totalAmount: networkTotal,
+        salesRepInvoices: salesRepInvoices.map(inv => inv._id)
+      }
+    });
+    
+    await networkInvoice.save();
+    
+    res.status(201).json({
+      message: 'Network factuur succesvol gegenereerd',
+      invoice: networkInvoice,
+      totalSalesRepCommission,
+      networkRate,
+      networkAmount: networkCommissionExcl,
+      networkTotal
+    });
+    
+  } catch (error) {
+    console.error('Generate network invoice error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 const initializeAdmin = async () => {
   try {
     console.log('🔥 INITIALIZING FRESH DATA...');
