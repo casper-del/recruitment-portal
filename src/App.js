@@ -1,4 +1,9 @@
-return (
+import React, { useState, useEffect } from 'react';
+
+console.log('🔥 COMPLETE APP.JS - ALL FEATURES + PDF + ADMIN OVERVIEW 🔥');
+
+// Fixed Icon components
+const icons = {
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <div className="flex items-center justify-between">
@@ -2346,3 +2351,4 @@ const ClientDashboard = ({ user }) => {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-
+
