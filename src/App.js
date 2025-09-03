@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-console.log('🔥 APP.JS LOADED - VERSION 2024-FIXED 🔥');
+console.log('APP.JS LOADED - VERSION FIXED');
 
-// Icon components
 const Building2Icon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
@@ -89,37 +88,6 @@ const DollarSignIcon = () => (
   </svg>
 );
 
-const AlertCircleIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10"/>
-    <line x1="12" x2="12" y1="8" y2="12"/>
-    <line x1="12" x2="12.01" y1="16" y2="16"/>
-  </svg>
-);
-
-const CheckCircle2Icon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10"/>
-    <path d="m9 12 2 2 4-4"/>
-  </svg>
-);
-
-const RefreshCwIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-    <path d="M21 3v5h-5"/>
-    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-    <path d="M3 21v-5h5"/>
-  </svg>
-);
-
-const EyeIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-    <circle cx="12" cy="12" r="3"/>
-  </svg>
-);
-
 const FileTextIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
@@ -149,11 +117,35 @@ const XIcon = () => (
   </svg>
 );
 
+const AlertCircleIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" x2="12" y1="8" y2="12"/>
+    <line x1="12" x2="12.01" y1="16" y2="16"/>
+  </svg>
+);
+
+const CheckCircle2Icon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="m9 12 2 2 4-4"/>
+  </svg>
+);
+
+const RefreshCwIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+    <path d="M21 3v5h-5"/>
+    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+    <path d="M3 21v-5h5"/>
+  </svg>
+);
+
 // API Configuration
 const API_BASE = process.env.REACT_APP_API_URL || (
   window.location.hostname === 'localhost' 
     ? 'http://localhost:3001/api'
-    : `${window.location.protocol}//${window.location.hostname}/api`
+    : window.location.protocol + '//' + window.location.hostname + '/api'
 );
 
 // API utility functions
@@ -161,18 +153,21 @@ const apiCall = async (endpoint, options = {}) => {
   const token = localStorage.getItem('authToken');
   
   const defaultHeaders = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` })
+    'Content-Type': 'application/json'
   };
+  
+  if (token) {
+    defaultHeaders.Authorization = 'Bearer ' + token;
+  }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: { ...defaultHeaders, ...options.headers },
+  const response = await fetch(API_BASE + endpoint, {
+    headers: Object.assign({}, defaultHeaders, options.headers || {}),
     ...options
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `API Error: ${response.statusText}`);
+    throw new Error(errorData.message || 'API Error: ' + response.statusText);
   }
 
   return response.json();
@@ -188,10 +183,10 @@ const uploadFile = async (endpoint, file, additionalData = {}) => {
     formData.append(key, additionalData[key]);
   });
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const response = await fetch(API_BASE + endpoint, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`
+      Authorization: 'Bearer ' + token
     },
     body: formData
   });
@@ -207,9 +202,9 @@ const uploadFile = async (endpoint, file, additionalData = {}) => {
 const downloadFile = async (endpoint, filename) => {
   const token = localStorage.getItem('authToken');
   
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const response = await fetch(API_BASE + endpoint, {
     headers: {
-      Authorization: `Bearer ${token}`
+      Authorization: 'Bearer ' + token
     }
   });
 
@@ -227,8 +222,209 @@ const downloadFile = async (endpoint, filename) => {
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
 };
+// Login Component
+const LoginForm = ({ onLogin, isLoading }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
-// Admin Dashboard Component (moved before App to avoid reference errors)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    
+    try {
+      await onLogin(email, password);
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    }
+  };
+
+  return React.createElement('div', {
+    className: 'min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center p-4'
+  }, 
+    React.createElement('div', { className: 'w-full max-w-md' },
+      React.createElement('div', { className: 'text-center mb-8' },
+        React.createElement('div', {
+          className: 'inline-flex items-center justify-center w-16 h-16 bg-green-600 rounded-2xl mb-4'
+        },
+          React.createElement('div', { className: 'text-white' }, React.createElement(Building2Icon))
+        ),
+        React.createElement('h1', {
+          className: 'text-3xl font-bold text-gray-900 mb-2'
+        }, 'Recruiters Network'),
+        React.createElement('p', { className: 'text-gray-600' }, 'Log in op je portaal')
+      ),
+      React.createElement('div', {
+        className: 'bg-white rounded-3xl shadow-xl border border-gray-100 p-8'
+      },
+        React.createElement('form', { onSubmit: handleSubmit, className: 'space-y-6' },
+          error && React.createElement('div', {
+            className: 'bg-red-50 border border-red-200 rounded-xl p-4'
+          },
+            React.createElement('p', { className: 'text-red-700 text-sm' }, error)
+          ),
+          React.createElement('div', null,
+            React.createElement('label', {
+              className: 'block text-sm font-medium text-gray-700 mb-2'
+            }, 'E-mailadres'),
+            React.createElement('input', {
+              type: 'email',
+              placeholder: 'jouw@email.nl',
+              value: email,
+              onChange: (e) => setEmail(e.target.value),
+              className: 'w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200',
+              required: true,
+              disabled: isLoading
+            })
+          ),
+          React.createElement('div', null,
+            React.createElement('label', {
+              className: 'block text-sm font-medium text-gray-700 mb-2'
+            }, 'Wachtwoord'),
+            React.createElement('input', {
+              type: 'password',
+              placeholder: '••••••••',
+              value: password,
+              onChange: (e) => setPassword(e.target.value),
+              className: 'w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200',
+              required: true,
+              disabled: isLoading
+            })
+          ),
+          React.createElement('button', {
+            type: 'submit',
+            disabled: isLoading,
+            className: 'w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:transform-none'
+          }, isLoading ? 'Inloggen...' : 'Inloggen')
+        ),
+        React.createElement('div', { className: 'mt-6 text-center' },
+          React.createElement('p', { className: 'text-sm text-gray-500 mb-2' }, 'Demo accounts:'),
+          React.createElement('div', { className: 'space-y-1 text-xs text-gray-400' },
+            React.createElement('p', null, 'Admin: admin@recruitersnetwork.nl / admin123'),
+            React.createElement('p', null, 'Client: demo@acmecorp.com / demo123'),
+            React.createElement('p', null, 'Sales Rep: sarah@acmecorp.com / demo123')
+          )
+        )
+      ),
+      React.createElement('div', { className: 'text-center mt-8 text-sm text-gray-500' },
+        React.createElement('p', null, '© 2024 Recruiters Network. Alle rechten voorbehouden.')
+      )
+    )
+  );
+};
+
+// Sidebar Component
+const Sidebar = ({ user, currentPage, setCurrentPage, sidebarCollapsed, setSidebarCollapsed, onLogout }) => {
+  const menuItems = user && user.role === 'admin' ? [
+    { id: 'admin-dashboard', label: 'Admin Dashboard', icon: HomeIcon },
+    { id: 'clients', label: 'Klanten Beheer', icon: UsersIcon },
+    { id: 'admin-settings', label: 'Instellingen', icon: SettingsIcon }
+  ] : user && user.role === 'salesrep' ? [
+    { id: 'salesrep-dashboard', label: 'Mijn Dashboard', icon: HomeIcon },
+    { id: 'salesrep-invoices', label: 'Mijn Facturen', icon: CreditCardIcon },
+    { id: 'salesrep-reports', label: 'Mijn Prestaties', icon: BarChart3Icon },
+    { id: 'salesrep-settings', label: 'Instellingen', icon: SettingsIcon }
+  ] : [
+    { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
+    { id: 'invoices', label: 'Betalingen & Facturen', icon: CreditCardIcon },
+    { id: 'team', label: 'Team Management', icon: UsersIcon },
+    { id: 'reports', label: 'Rapportages', icon: BarChart3Icon },
+    { id: 'settings', label: 'Instellingen', icon: SettingsIcon }
+  ];
+
+  const getRoleLabel = () => {
+    if (!user) return 'Portal';
+    switch(user.role) {
+      case 'admin': return 'Admin Panel';
+      case 'salesrep': return 'Sales Portal';
+      default: return 'Klantportaal';
+    }
+  };
+
+  return React.createElement('div', {
+    className: 'bg-white shadow-xl transition-all duration-300 border-r border-gray-200 ' + (sidebarCollapsed ? 'w-20' : 'w-72')
+  },
+    React.createElement('div', { className: 'p-6 border-b border-gray-100' },
+      React.createElement('div', { className: 'flex items-center justify-between' },
+        !sidebarCollapsed && React.createElement('div', { className: 'flex items-center space-x-3' },
+          React.createElement('div', {
+            className: 'w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center'
+          },
+            React.createElement('div', { className: 'text-white' }, React.createElement(Building2Icon))
+          ),
+          React.createElement('div', null,
+            React.createElement('h1', {
+              className: 'text-xl font-bold text-gray-900'
+            }, 'Recruiters Network'),
+            React.createElement('p', { className: 'text-xs text-gray-500' }, getRoleLabel())
+          )
+        ),
+        React.createElement('button', {
+          onClick: () => setSidebarCollapsed(!sidebarCollapsed),
+          className: 'p-2 rounded-lg hover:bg-gray-100 transition-colors'
+        }, sidebarCollapsed ? React.createElement(ChevronRightIcon) : React.createElement(ChevronLeftIcon))
+      )
+    ),
+    React.createElement('nav', { className: 'px-4 py-6 space-y-2' },
+      menuItems.map((item) => {
+        const IconComponent = item.icon;
+        const isActive = currentPage === item.id;
+        return React.createElement('button', {
+          key: item.id,
+          onClick: () => setCurrentPage(item.id),
+          className: 'w-full flex items-center px-4 py-3 rounded-xl text-left transition-all duration-200 ' + (
+            isActive 
+              ? 'bg-green-50 text-green-600 shadow-sm border border-green-100' 
+              : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+          )
+        },
+          React.createElement('div', {
+            className: 'flex-shrink-0 ' + (isActive ? 'text-green-600' : 'text-gray-400')
+          }, React.createElement(IconComponent)),
+          !sidebarCollapsed && React.createElement('span', {
+            className: 'ml-3 font-medium'
+          }, item.label)
+        );
+      })
+    ),
+    React.createElement('div', {
+      className: 'absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100'
+    },
+      React.createElement('div', {
+        className: 'flex items-center mb-4 ' + (sidebarCollapsed ? 'justify-center' : 'justify-between')
+      },
+        !sidebarCollapsed && React.createElement('div', { className: 'flex items-center space-x-3' },
+          React.createElement('div', {
+            className: 'w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center'
+          },
+            React.createElement('span', {
+              className: 'text-green-600 font-semibold text-sm'
+            }, (user && user.name && user.name.charAt(0)) || 'U')
+          ),
+          React.createElement('div', null,
+            React.createElement('p', { className: 'font-medium text-gray-900' }, user && user.name),
+            React.createElement('p', { className: 'text-xs text-gray-500' },
+              user && user.role === 'salesrep' 
+                ? ((user.salesRep && user.salesRep.clientId && user.salesRep.clientId.name) || 'Sales Rep')
+                : ((user.client && user.client.name) || (user && user.email))
+            )
+          )
+        )
+      ),
+      React.createElement('button', {
+        onClick: onLogout,
+        className: 'w-full flex items-center px-4 py-3 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors ' + (sidebarCollapsed ? 'justify-center' : '')
+      },
+        React.createElement(LogOutIcon),
+        !sidebarCollapsed && React.createElement('span', {
+          className: 'ml-3 font-medium'
+        }, 'Uitloggen')
+      )
+    )
+  );
+};
+
+// Admin Dashboard Component
 const AdminDashboard = ({ onClientClick }) => {
   const [clients, setClients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -251,1494 +447,144 @@ const AdminDashboard = ({ onClientClick }) => {
   };
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <p className="text-gray-600">Dashboard laden...</p>
-        </div>
-      </div>
+    return React.createElement('div', { className: 'space-y-6' },
+      React.createElement('div', {
+        className: 'bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center'
+      },
+        React.createElement('p', { className: 'text-gray-600' }, 'Dashboard laden...')
+      )
     );
   }
 
-  // Calculate stats
   const totalClients = clients.length;
   const totalSalesReps = clients.reduce((sum, client) => sum + (client.salesRepCount || 0), 0);
   const connectedClients = clients.filter(client => (client.connectedCount || 0) > 0).length;
   const totalInvoices = clients.reduce((sum, client) => sum + (client.invoiceCount || 0), 0);
 
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
-        <p className="text-gray-600">Beheer klanten, teams en facturatie</p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Totaal Klanten</p>
-              <p className="text-3xl font-bold text-gray-900">{totalClients}</p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <UsersIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Sales Reps</p>
-              <p className="text-3xl font-bold text-gray-900">{totalSalesReps}</p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <UsersIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">CRM Connected</p>
-              <p className="text-3xl font-bold text-gray-900">{connectedClients}</p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-              <SettingsIcon />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Facturen</p>
-              <p className="text-3xl font-bold text-gray-900">{totalInvoices}</p>
-            </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-              <FileTextIcon />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Clients List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h3 className="text-xl font-semibold text-gray-900 mb-6">Klanten Overzicht</h3>
-        
-        {clients.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">Nog geen klanten toegevoegd</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {clients.map((client) => (
-              <div key={client._id} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-blue-600 font-semibold text-lg">
-                      {client.name.charAt(0)}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900">{client.name}</h4>
-                    <p className="text-sm text-gray-500">{client.email}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Contact:</span>
-                    <span className="text-gray-900">{client.contactName}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">CRM:</span>
-                    <span className="text-gray-900 capitalize">{client.crmType}</span>
-                  </div>
-                </div>
-
-                <div className="bg-green-100 px-4 py-2 rounded-lg">
-                  <span className="text-green-600 font-medium text-sm">
-                    {client.salesRepCount || 0} team • {client.invoiceCount || 0} facturen
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => {
-                    console.log('Button clicked', client);
-                    onClientClick && onClientClick(client);
-                  }}
-                  className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors"
-                >
-                  Beheren
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+  return React.createElement('div', { className: 'space-y-6' },
+    React.createElement('div', {
+      className: 'bg-white rounded-2xl shadow-sm border border-gray-100 p-8'
+    },
+      React.createElement('h2', {
+        className: 'text-3xl font-bold text-gray-900 mb-2'
+      }, 'Admin Dashboard'),
+      React.createElement('p', { className: 'text-gray-600' }, 'Beheer klanten, teams en facturatie')
+    ),
+    error && React.createElement('div', {
+      className: 'bg-red-50 border border-red-200 rounded-xl p-4'
+    },
+      React.createElement('p', { className: 'text-red-700 text-sm' }, error)
+    ),
+    React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-4 gap-6' },
+      React.createElement('div', {
+        className: 'bg-white rounded-xl shadow-sm border border-gray-100 p-6'
+      },
+        React.createElement('div', { className: 'flex items-center justify-between' },
+          React.createElement('div', null,
+            React.createElement('p', { className: 'text-sm text-gray-600' }, 'Totaal Klanten'),
+            React.createElement('p', { className: 'text-3xl font-bold text-gray-900' }, totalClients)
+          ),
+          React.createElement('div', {
+            className: 'w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center'
+          }, React.createElement(UsersIcon))
+        )
+      ),
+      React.createElement('div', {
+        className: 'bg-white rounded-xl shadow-sm border border-gray-100 p-6'
+      },
+        React.createElement('div', { className: 'flex items-center justify-between' },
+          React.createElement('div', null,
+            React.createElement('p', { className: 'text-sm text-gray-600' }, 'Sales Reps'),
+            React.createElement('p', { className: 'text-3xl font-bold text-gray-900' }, totalSalesReps)
+          ),
+          React.createElement('div', {
+            className: 'w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center'
+          }, React.createElement(UsersIcon))
+        )
+      ),
+      React.createElement('div', {
+        className: 'bg-white rounded-xl shadow-sm border border-gray-100 p-6'
+      },
+        React.createElement('div', { className: 'flex items-center justify-between' },
+          React.createElement('div', null,
+            React.createElement('p', { className: 'text-sm text-gray-600' }, 'CRM Connected'),
+            React.createElement('p', { className: 'text-3xl font-bold text-gray-900' }, connectedClients)
+          ),
+          React.createElement('div', {
+            className: 'w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center'
+          }, React.createElement(SettingsIcon))
+        )
+      ),
+      React.createElement('div', {
+        className: 'bg-white rounded-xl shadow-sm border border-gray-100 p-6'
+      },
+        React.createElement('div', { className: 'flex items-center justify-between' },
+          React.createElement('div', null,
+            React.createElement('p', { className: 'text-sm text-gray-600' }, 'Facturen'),
+            React.createElement('p', { className: 'text-3xl font-bold text-gray-900' }, totalInvoices)
+          ),
+          React.createElement('div', {
+            className: 'w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center'
+          }, React.createElement(FileTextIcon))
+        )
+      )
+    ),
+    React.createElement('div', {
+      className: 'bg-white rounded-2xl shadow-sm border border-gray-100 p-8'
+    },
+      React.createElement('h3', {
+        className: 'text-xl font-semibold text-gray-900 mb-6'
+      }, 'Klanten Overzicht'),
+      clients.length === 0 ? React.createElement('div', {
+        className: 'text-center py-8'
+      },
+        React.createElement('p', { className: 'text-gray-500' }, 'Nog geen klanten toegevoegd')
+      ) : React.createElement('div', {
+        className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+      },
+        clients.map((client) => React.createElement('div', {
+          key: client._id,
+          className: 'border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow'
+        },
+          React.createElement('div', { className: 'flex items-center space-x-3 mb-4' },
+            React.createElement('div', {
+              className: 'w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center'
+            },
+              React.createElement('span', {
+                className: 'text-blue-600 font-semibold text-lg'
+              }, client.name.charAt(0))
+            ),
+            React.createElement('div', { className: 'flex-1' },
+              React.createElement('h4', {
+                className: 'font-semibold text-gray-900'
+              }, client.name),
+              React.createElement('p', { className: 'text-sm text-gray-500' }, client.email)
+            )
+          ),
+          React.createElement('div', { className: 'space-y-2 mb-4' },
+            React.createElement('div', { className: 'flex justify-between text-sm' },
+              React.createElement('span', { className: 'text-gray-600' }, 'Contact:'),
+              React.createElement('span', { className: 'text-gray-900' }, client.contactName)
+            ),
+            React.createElement('div', { className: 'flex justify-between text-sm' },
+              React.createElement('span', { className: 'text-gray-600' }, 'CRM:'),
+              React.createElement('span', { className: 'text-gray-900 capitalize' }, client.crmType)
+            )
+          ),
+          React.createElement('div', { className: 'bg-green-100 px-4 py-2 rounded-lg mb-4' },
+            React.createElement('span', { className: 'text-green-600 font-medium text-sm' },
+              (client.salesRepCount || 0) + ' team • ' + (client.invoiceCount || 0) + ' facturen'
+            )
+          ),
+          React.createElement('button', {
+            onClick: () => {
+              console.log('Button clicked', client);
+              onClientClick && onClientClick(client);
+            },
+            className: 'w-full bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors'
+          }, 'Beheren')
+        ))
+      )
+    )
   );
 };
-
-// Sales Rep Invoices Component
-const SalesRepInvoices = ({ user }) => {
-  const [invoices, setInvoices] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [showUploadForm, setShowUploadForm] = useState(false);
-  const [newInvoice, setNewInvoice] = useState({
-    invoiceNumber: '',
-    amount: '',
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
-    description: '',
-    file: null
-  });
-
-  useEffect(() => {
-    fetchInvoices();
-  }, []);
-
-  const fetchInvoices = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/salesrep/invoices');
-      setInvoices(response);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const uploadInvoice = async () => {
-    try {
-      setIsLoading(true);
-      setError('');
-      
-      await uploadFile('/salesrep/invoices', newInvoice.file, {
-        invoiceNumber: newInvoice.invoiceNumber,
-        amount: newInvoice.amount,
-        month: newInvoice.month,
-        year: newInvoice.year,
-        description: newInvoice.description,
-        type: 'commission'
-      });
-      
-      setSuccess('Factuur succesvol geüpload!');
-      setNewInvoice({
-        invoiceNumber: '',
-        amount: '',
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
-        description: '',
-        file: null
-      });
-      setShowUploadForm(false);
-      await fetchInvoices();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const downloadInvoice = async (invoiceId, fileName) => {
-    try {
-      await downloadFile(`/salesrep/invoices/${invoiceId}/download`, fileName);
-    } catch (err) {
-      setError('Download mislukt');
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Mijn Facturen</h2>
-            <p className="text-gray-600">Upload en beheer je commissie facturen</p>
-          </div>
-          <button
-            onClick={() => setShowUploadForm(!showUploadForm)}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center"
-          >
-            <PlusIcon />
-            <span className="ml-2">Nieuwe Factuur</span>
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-
-      {success && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <p className="text-green-700 text-sm">{success}</p>
-        </div>
-      )}
-
-      {/* Upload Form */}
-      {showUploadForm && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Nieuwe Factuur Uploaden</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Factuurnummer</label>
-              <input
-                type="text"
-                value={newInvoice.invoiceNumber}
-                onChange={(e) => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder="F-2024-001"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Bedrag (€)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={newInvoice.amount}
-                onChange={(e) => setNewInvoice({...newInvoice, amount: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder="1500.00"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Maand</label>
-              <select
-                value={newInvoice.month}
-                onChange={(e) => setNewInvoice({...newInvoice, month: parseInt(e.target.value)})}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              >
-                {Array.from({length: 12}, (_, i) => (
-                  <option key={i+1} value={i+1}>
-                    {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Jaar</label>
-              <input
-                type="number"
-                value={newInvoice.year}
-                onChange={(e) => setNewInvoice({...newInvoice, year: parseInt(e.target.value)})}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder={new Date().getFullYear()}
-              />
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Beschrijving (optioneel)</label>
-            <input
-              type="text"
-              value={newInvoice.description}
-              onChange={(e) => setNewInvoice({...newInvoice, description: e.target.value})}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Commissie voor geplaatste kandidaten"
-            />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">PDF Bestand</label>
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={(e) => setNewInvoice({...newInvoice, file: e.target.files[0]})}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">Alleen PDF bestanden toegestaan (max 10MB)</p>
-          </div>
-
-          <div className="flex space-x-4">
-            <button
-              onClick={uploadInvoice}
-              disabled={isLoading || !newInvoice.file || !newInvoice.invoiceNumber || !newInvoice.amount}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Uploaden...' : 'Factuur Uploaden'}
-            </button>
-            
-            <button
-              onClick={() => setShowUploadForm(false)}
-              className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
-            >
-              Annuleren
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Invoices List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h3 className="text-xl font-semibold text-gray-900 mb-6">Mijn Facturen ({invoices.length})</h3>
-        
-        {invoices.length === 0 ? (
-          <div className="text-center py-8">
-            <FileTextIcon />
-            <h4 className="text-lg font-medium text-gray-900 mt-4">Nog geen facturen</h4>
-            <p className="text-gray-600 mt-2">Upload je eerste factuur om te beginnen</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {invoices
-              .sort((a, b) => b.year - a.year || b.month - a.month)
-              .map((invoice) => (
-              <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <FileTextIcon />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Factuur #{invoice.invoiceNumber}</h4>
-                    <p className="text-gray-600">
-                      €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
-                    </p>
-                    <div className="flex items-center space-x-3 text-sm text-gray-500 mt-1">
-                      <span>
-                        {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
-                      </span>
-                      {invoice.description && <span>• {invoice.description}</span>}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    invoice.status === 'paid' 
-                      ? 'bg-green-100 text-green-600' 
-                      : 'bg-yellow-100 text-yellow-600'
-                  }`}>
-                    {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
-                  </span>
-                  
-                  <button
-                    onClick={() => downloadInvoice(invoice._id, invoice.fileName)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
-                  >
-                    <DownloadIcon />
-                    <span className="ml-2">Download</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Sales Rep Dashboard Component
-const SalesRepDashboard = ({ user }) => {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  const fetchDashboard = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/salesrep/dashboard');
-      setDashboardData(response);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <p className="text-gray-600">Dashboard laden...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Welkom terug, {user?.name}!</h2>
-        <p className="text-gray-600">{dashboardData?.salesRep?.position} bij {dashboardData?.salesRep?.clientId?.name}</p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Deze Maand Omzet</p>
-              <p className="text-3xl font-bold text-gray-900">
-                €{(dashboardData?.currentRevenue?.revenue || 0).toLocaleString('nl-NL')}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <DollarSignIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Deze Maand Commissie</p>
-              <p className="text-3xl font-bold text-gray-900">
-                €{(dashboardData?.currentRevenue?.commission || 0).toLocaleString('nl-NL')}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <TrendingUpIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Mijn Facturen</p>
-              <p className="text-3xl font-bold text-gray-900">{dashboardData?.myInvoices?.length || 0}</p>
-            </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-              <FileTextIcon />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Invoices */}
-      {dashboardData?.myInvoices && dashboardData.myInvoices.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Recente Facturen</h3>
-          
-          <div className="space-y-4">
-            {dashboardData.myInvoices.map((invoice) => (
-              <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <FileTextIcon />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">Factuur #{invoice.invoiceNumber}</p>
-                    <p className="text-sm text-gray-500">
-                      €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})} • 
-                      {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
-                    </p>
-                  </div>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  invoice.status === 'paid' 
-                    ? 'bg-green-100 text-green-600' 
-                    : 'bg-yellow-100 text-yellow-600'
-                }`}>
-                  {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Revenue History */}
-      {dashboardData?.revenueHistory && dashboardData.revenueHistory.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Omzet Geschiedenis</h3>
-          
-          <div className="space-y-3">
-            {dashboardData.revenueHistory.map((record) => (
-              <div key={`${record.year}-${record.month}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="font-medium text-gray-900">
-                  {new Date(record.year, record.month - 1).toLocaleDateString('nl-NL', {month: 'long', year: 'numeric'})}
-                </span>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">€{record.revenue.toLocaleString('nl-NL')}</p>
-                  <p className="text-sm text-gray-500">€{record.commission.toLocaleString('nl-NL')} commissie</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Client Settings Component with CRM Integration
-const ClientSettings = ({ user }) => {
-  const [availableCRMs, setAvailableCRMs] = useState([]);
-  const [clientData, setClientData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
-  useEffect(() => {
-    fetchAvailableCRMs();
-    fetchClientData();
-  }, []);
-
-  const fetchAvailableCRMs = async () => {
-    try {
-      const response = await apiCall('/crm/available');
-      setAvailableCRMs(response);
-    } catch (err) {
-      setError('Kon CRM opties niet laden');
-    }
-  };
-
-  const fetchClientData = async () => {
-    try {
-      const response = await apiCall('/client/dashboard');
-      setClientData(response.client);
-    } catch (err) {
-      setError('Kon client data niet laden');
-    }
-  };
-
-  const connectCRM = async (crmType) => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall(`/client/crm/connect?type=${crmType}`);
-      
-      if (response.authUrl) {
-        window.location.href = response.authUrl;
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateCRMSettings = async (crmType) => {
-    try {
-      setIsLoading(true);
-      await apiCall('/client/crm/settings', {
-        method: 'POST',
-        body: JSON.stringify({ crmType })
-      });
-      
-      setSuccess('CRM instellingen bijgewerkt');
-      await fetchClientData();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const syncCRM = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/client/crm/sync', {
-        method: 'POST'
-      });
-      
-      setSuccess(response.message);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Instellingen</h2>
-        <p className="text-gray-600">CRM koppelingen en systeemconfiguratie</p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <div className="flex items-center">
-            <AlertCircleIcon />
-            <p className="text-red-700 text-sm ml-2">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {success && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <div className="flex items-center">
-            <CheckCircle2Icon />
-            <p className="text-green-700 text-sm ml-2">{success}</p>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900">CRM Integratie</h3>
-            <p className="text-gray-600">Koppel je CRM systeem voor automatische synchronisatie</p>
-          </div>
-          {clientData?.crmCredentials?.accessToken && (
-            <button
-              onClick={syncCRM}
-              disabled={isLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center disabled:opacity-50"
-            >
-              <RefreshCwIcon />
-              <span className="ml-2">Synchroniseren</span>
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {availableCRMs.map((crm) => (
-            <div key={crm.id} className="border border-gray-200 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900">{crm.name}</h4>
-                  <p className="text-sm text-gray-500">{crm.description}</p>
-                </div>
-                {clientData?.crmType === crm.id && (
-                  <span className="px-2 py-1 bg-green-100 text-green-600 text-xs font-medium rounded-full">
-                    Actief
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                {clientData?.crmType !== crm.id ? (
-                  <button
-                    onClick={() => updateCRMSettings(crm.id)}
-                    disabled={isLoading}
-                    className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    Selecteer
-                  </button>
-                ) : (
-                  <>
-                    {!clientData?.crmCredentials?.accessToken ? (
-                      <button
-                        onClick={() => connectCRM(crm.id)}
-                        disabled={isLoading}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        Verbinden
-                      </button>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center text-green-600 text-sm">
-                          <CheckCircle2Icon />
-                          <span className="ml-2">Verbonden</span>
-                        </div>
-                        <button
-                          onClick={() => connectCRM(crm.id)}
-                          disabled={isLoading}
-                          className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          Opnieuw verbinden
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h3 className="text-xl font-semibold text-gray-900 mb-6">Account Informatie</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Bedrijfsnaam</label>
-            <p className="text-gray-900">{clientData?.name || 'Niet beschikbaar'}</p>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Contactpersoon</label>
-            <p className="text-gray-900">{clientData?.contactName || 'Niet beschikbaar'}</p>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">E-mailadres</label>
-            <p className="text-gray-900">{clientData?.email || 'Niet beschikbaar'}</p>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Commissie Percentage</label>
-            <p className="text-gray-900">{clientData ? `${(clientData.commissionRate * 100).toFixed(1)}%` : 'Niet beschikbaar'}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Placeholder Pages
-const PlaceholderPage = ({ title, description }) => (
-  <div className="space-y-6">
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-      <h2 className="text-3xl font-bold text-gray-900 mb-2">{title}</h2>
-      <p className="text-gray-600">{description}</p>
-    </div>
-  </div>
-);
-
-// Main App Component
-const App = () => {
-  const [user, setUser] = useState(null);
-  const [currentPage, setCurrentPage] = useState('dashboard');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedClient, setSelectedClient] = useState(null);
-  const [showClientModal, setShowClientModal] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('userData');
-    
-    if (token && userData) {
-      try {
-        const parsed = JSON.parse(userData);
-        setUser(parsed);
-        
-        if (parsed.role === 'admin') {
-          setCurrentPage('admin-dashboard');
-        } else if (parsed.role === 'salesrep') {
-          setCurrentPage('salesrep-dashboard');
-        } else {
-          setCurrentPage('dashboard');
-        }
-      } catch (error) {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userData');
-      }
-    }
-  }, []);
-
-  const login = async (email, password) => {
-    setIsLoading(true);
-    try {
-      const response = await apiCall('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-      });
-
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('userData', JSON.stringify(response.user));
-      setUser(response.user);
-      
-      if (response.user.role === 'admin') {
-        setCurrentPage('admin-dashboard');
-      } else if (response.user.role === 'salesrep') {
-        setCurrentPage('salesrep-dashboard');
-      } else {
-        setCurrentPage('dashboard');
-      }
-    } catch (error) {
-      throw new Error(error.message || 'Login failed. Check your credentials.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
-    setUser(null);
-    setCurrentPage('dashboard');
-    setSelectedClient(null);
-    setShowClientModal(false);
-  };
-
-  const handleClientClick = (client) => {
-    console.log('handleClientClick called with:', client);
-    setSelectedClient(client);
-    setShowClientModal(true);
-    console.log('Modal should show:', true);
-  };
-
-  const handleClientUpdate = () => {
-    // Force refresh of admin dashboard
-    window.location.reload();
-  };
-
-  if (!user) {
-    return <LoginForm onLogin={login} isLoading={isLoading} />;
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar 
-        user={user}
-        currentPage={currentPage}
-        setCurrentPage={setCurrentPage}
-        sidebarCollapsed={sidebarCollapsed}
-        setSidebarCollapsed={setSidebarCollapsed}
-        onLogout={logout}
-      />
-
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-8 py-8">
-          {user.role === 'admin' && (
-            <>
-              {currentPage === 'admin-dashboard' && (
-                <AdminDashboard onClientClick={handleClientClick} />
-              )}
-              
-              {currentPage === 'clients' && (
-                <PlaceholderPage 
-                  title="Klanten Beheer" 
-                  description="Beheer alle klanten, hun instellingen en toegangsrechten."
-                />
-              )}
-              
-              {currentPage === 'admin-settings' && (
-                <PlaceholderPage 
-                  title="Admin Instellingen" 
-                  description="Systeemconfiguratie, gebruikersbeheer en globale instellingen."
-                />
-              )}
-            </>
-          )}
-
-          {user.role === 'salesrep' && (
-            <>
-              {currentPage === 'salesrep-dashboard' && (
-                <SalesRepDashboard user={user} />
-              )}
-              
-              {currentPage === 'salesrep-invoices' && (
-                <SalesRepInvoices user={user} />
-              )}
-              
-              {currentPage === 'salesrep-reports' && (
-                <PlaceholderPage 
-                  title="Mijn Prestaties" 
-                  description="Bekijk je omzet, commissies en performance metrics."
-                />
-              )}
-              
-              {currentPage === 'salesrep-settings' && (
-                <PlaceholderPage 
-                  title="Mijn Instellingen" 
-                  description="Persoonlijke instellingen en account beheer."
-                />
-              )}
-            </>
-          )}
-
-          {user.role === 'client' && (
-            <>
-              {currentPage === 'dashboard' && (
-                <ClientDashboard user={user} />
-              )}
-
-              {currentPage === 'invoices' && (
-                <ClientInvoices user={user} />
-              )}
-
-              {currentPage === 'team' && (
-                <PlaceholderPage 
-                  title="Team Management" 
-                  description="Beheer je recruitment team en bekijk individuele prestaties."
-                />
-              )}
-
-              {currentPage === 'reports' && (
-                <PlaceholderPage 
-                  title="Rapportages" 
-                  description="Uitgebreide analytics en rapportages van je recruitment performance."
-                />
-              )}
-
-              {currentPage === 'settings' && (
-                <ClientSettings user={user} />
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Simple Test Modal - This will show if client click works */}
-      {showClientModal && selectedClient && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px',
-          zIndex: 9999
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: '32px',
-            maxWidth: '500px',
-            width: '100%',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '24px'
-            }}>
-              <h3 style={{
-                fontSize: '24px',
-                fontWeight: '700',
-                color: '#111827',
-                margin: 0
-              }}>
-                {selectedClient.name}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowClientModal(false);
-                  setSelectedClient(null);
-                }}
-                style={{
-                  backgroundColor: '#f3f4f6',
-                  border: 'none',
-                  borderRadius: '8px',
-                  width: '40px',
-                  height: '40px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <XIcon />
-              </button>
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <p style={{ 
-                fontSize: '18px', 
-                color: '#059669', 
-                fontWeight: '600',
-                margin: '0 0 16px 0'
-              }}>
-                MODAL WERKT!
-              </p>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                Client: {selectedClient.email}<br/>
-                Contact: {selectedClient.contactName}<br/>
-                Team: {selectedClient.salesRepCount || 0} sales reps<br/>
-                Facturen: {selectedClient.invoiceCount || 0}
-              </p>
-            </div>
-
-            <button
-              onClick={() => {
-                setShowClientModal(false);
-                setSelectedClient(null);
-              }}
-              style={{
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '12px 24px',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: '600',
-                width: '100%'
-              }}
-            >
-              Sluit Modal
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default App;
-
-// Login Component
-const LoginForm = ({ onLogin, isLoading }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    
-    try {
-      await onLogin(email, password);
-    } catch (err) {
-      setError(err.message || 'Login failed');
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-600 rounded-2xl mb-4">
-            <div className="text-white">
-              <Building2Icon />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Recruiters Network</h1>
-          <p className="text-gray-600">Log in op je portaal</p>
-        </div>
-
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                <p className="text-red-700 text-sm">{error}</p>
-              </div>
-            )}
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">E-mailadres</label>
-              <input
-                type="email"
-                placeholder="jouw@email.nl"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                required
-                disabled={isLoading}
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Wachtwoord</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:transform-none"
-            >
-              {isLoading ? 'Inloggen...' : 'Inloggen'}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500 mb-2">Demo accounts:</p>
-            <div className="space-y-1 text-xs text-gray-400">
-              <p>Admin: admin@recruitersnetwork.nl / admin123</p>
-              <p>Client: demo@acmecorp.com / demo123</p>
-              <p>Sales Rep: sarah@acmecorp.com / demo123</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="text-center mt-8 text-sm text-gray-500">
-          <p>© 2024 Recruiters Network. Alle rechten voorbehouden.</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Sidebar Component
-const Sidebar = ({ user, currentPage, setCurrentPage, sidebarCollapsed, setSidebarCollapsed, onLogout }) => {
-  const menuItems = user?.role === 'admin' ? [
-    { id: 'admin-dashboard', label: 'Admin Dashboard', icon: HomeIcon },
-    { id: 'clients', label: 'Klanten Beheer', icon: UsersIcon },
-    { id: 'admin-settings', label: 'Instellingen', icon: SettingsIcon },
-  ] : user?.role === 'salesrep' ? [
-    { id: 'salesrep-dashboard', label: 'Mijn Dashboard', icon: HomeIcon },
-    { id: 'salesrep-invoices', label: 'Mijn Facturen', icon: CreditCardIcon },
-    { id: 'salesrep-reports', label: 'Mijn Prestaties', icon: BarChart3Icon },
-    { id: 'salesrep-settings', label: 'Instellingen', icon: SettingsIcon },
-  ] : [
-    { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
-    { id: 'invoices', label: 'Betalingen & Facturen', icon: CreditCardIcon },
-    { id: 'team', label: 'Team Management', icon: UsersIcon },
-    { id: 'reports', label: 'Rapportages', icon: BarChart3Icon },
-    { id: 'settings', label: 'Instellingen', icon: SettingsIcon },
-  ];
-
-  const getRoleLabel = () => {
-    switch(user?.role) {
-      case 'admin': return 'Admin Panel';
-      case 'salesrep': return 'Sales Portal';
-      default: return 'Klantportaal';
-    }
-  };
-
-  return (
-    <div className={`bg-white shadow-xl transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-72'} border-r border-gray-200`}>
-      <div className="p-6 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          {!sidebarCollapsed && (
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center">
-                <div className="text-white">
-                  <Building2Icon />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Recruiters Network</h1>
-                <p className="text-xs text-gray-500">{getRoleLabel()}</p>
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            {sidebarCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-          </button>
-        </div>
-      </div>
-
-      <nav className="px-4 py-6 space-y-2">
-        {menuItems.map((item) => {
-          const IconComponent = item.icon;
-          const isActive = currentPage === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setCurrentPage(item.id)}
-              className={`w-full flex items-center px-4 py-3 rounded-xl text-left transition-all duration-200 ${
-                isActive 
-                  ? 'bg-green-50 text-green-600 shadow-sm border border-green-100' 
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              <div className={`flex-shrink-0 ${isActive ? 'text-green-600' : 'text-gray-400'}`}>
-                <IconComponent />
-              </div>
-              {!sidebarCollapsed && <span className="ml-3 font-medium">{item.label}</span>}
-            </button>
-          );
-        })}
-      </nav>
-
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
-        <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} mb-4`}>
-          {!sidebarCollapsed && (
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                <span className="text-green-600 font-semibold text-sm">
-                  {user?.name?.charAt(0) || 'U'}
-                </span>
-              </div>
-              <div>
-                <p className="font-medium text-gray-900">{user?.name}</p>
-                <p className="text-xs text-gray-500">
-                  {user?.role === 'salesrep' 
-                    ? (user?.salesRep?.clientId?.name || 'Sales Rep')
-                    : (user?.client?.name || user?.email)
-                  }
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-        
-        <button 
-          onClick={onLogout}
-          className={`w-full flex items-center px-4 py-3 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
-        >
-          <LogOutIcon />
-          {!sidebarCollapsed && <span className="ml-3 font-medium">Uitloggen</span>}
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Client Dashboard Component
-const ClientDashboard = ({ user }) => {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  const fetchDashboard = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/client/dashboard');
-      setDashboardData(response);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <p className="text-gray-600">Dashboard laden...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h2>
-        <p className="text-gray-600">Welkom bij je klantportaal, {user?.name}!</p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Deze Maand Omzet</p>
-              <p className="text-3xl font-bold text-gray-900">
-                €{(dashboardData?.totals?.thisMonthRevenue || 0).toLocaleString('nl-NL')}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <DollarSignIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Deze Maand Commissie</p>
-              <p className="text-3xl font-bold text-gray-900">
-                €{(dashboardData?.totals?.thisMonthCommission || 0).toLocaleString('nl-NL')}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <TrendingUpIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Actieve Sales Reps</p>
-              <p className="text-3xl font-bold text-gray-900">{dashboardData?.salesReps?.length || 0}</p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-              <UsersIcon />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {dashboardData?.salesReps && dashboardData.salesReps.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Team Overzicht</h3>
-          
-          <div className="space-y-4">
-            {dashboardData.salesReps.map((rep) => (
-              <div key={rep._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <span className="text-green-600 font-semibold text-sm">
-                      {rep.name.charAt(0)}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{rep.name}</p>
-                    <p className="text-sm text-gray-500">{rep.email}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">€{(rep.thisMonthRevenue || 0).toLocaleString('nl-NL')}</p>
-                  <p className="text-sm text-gray-500">€{(rep.thisMonthCommission || 0).toLocaleString('nl-NL')} commissie</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Client Invoices Component
-const ClientInvoices = ({ user }) => {
-  const [invoices, setInvoices] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchInvoices();
-  }, []);
-
-  const fetchInvoices = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/client/invoices');
-      setInvoices(response);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const downloadInvoice = async (invoiceId, fileName) => {
-    try {
-      await downloadFile(`/client/invoices/${invoiceId}/download`, fileName);
-    } catch (err) {
-      setError('Download mislukt');
-    }
-  };
-
-  const groupedInvoices = invoices.reduce((acc, invoice) => {
-    const key = `${invoice.year}-${invoice.month}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(invoice);
-    return acc;
-  }, {});
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Betalingen & Facturen</h2>
-        <p className="text-gray-600">Overzicht van al je facturen en betalingen per maand</p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-
-      {Object.keys(groupedInvoices).length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <FileTextIcon />
-          <h3 className="text-lg font-semibold text-gray-900 mt-4">Nog geen facturen</h3>
-          <p className="text-gray-600 mt-2">Je facturen verschijnen hier zodra ze zijn geüpload</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {Object.entries(groupedInvoices)
-            .sort(([a], [b]) => b.localeCompare(a))
-            .map(([monthYear, monthInvoices]) => {
-              const [year, month] = monthYear.split('-').map(Number);
-              const monthName = new Date(year, month - 1).toLocaleDateString('nl-NL', {
-                month: 'long',
-                year: 'numeric'
-              });
-              
-              const totalAmount = monthInvoices.reduce((sum, inv) => sum + inv.amount, 0);
-              
-              return (
-                <div key={monthYear} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900 capitalize">{monthName}</h3>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500">Totaal bedrag</p>
-                      <p className="text-xl font-bold text-gray-900">
-                        €{totalAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {monthInvoices.map((invoice) => (
-                      <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                            <FileTextIcon />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">Factuur #{invoice.invoiceNumber}</h4>
-                            <p className="text-gray-600">
-                              €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
-                            </p>
-                            <div className="flex items-center space-x-3 text-sm text-gray-500 mt-1">
-                              <span>{invoice.type === 'commission' ? 'Commissie Factuur' : 'Client Factuur'}</span>
-                              {invoice.salesRepId && <span>• {invoice.salesRepId.name}</span>}
-                              {invoice.description && <span>• {invoice.description}</span>}
-                              {invoice.uploadedBy && (
-                                <span>• Geüpload door {invoice.uploadedBy.name}</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            invoice.status === 'paid' 
-                              ? 'bg-green-100 text-green-600' 
-                              : 'bg-yellow-100 text-yellow-600'
-                          }`}>
-                            {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
-                          </span>
-                          
-                          <button
-                            onClick={() => downloadInvoice(invoice._id, invoice.fileName)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
-                          >
-                            <DownloadIcon />
-                            <span className="ml-2">Download</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-        </div>
