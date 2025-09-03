@@ -32,7 +32,7 @@ const connectDB = async () => {
   }
 };
 
-// Simple schemas
+// Enhanced schemas with all required fields
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -49,13 +49,20 @@ const clientSchema = new mongoose.Schema({
   email: { type: String, required: true },
   phone: String,
   address: String,
+  
+  // Company registration details
   kvkNumber: String,
   vatNumber: String,
   bankAccount: String,
-  networkCommissionRate: { type: Number, default: 0.10 },
-  commissionRate: { type: Number, default: 0.10 },
+  
+  // Commission settings
+  networkCommissionRate: { type: Number, default: 0.10 }, // What Recruiters Network gets from sales rep commission
+  commissionRate: { type: Number, default: 0.10 }, // Client's commission rate for sales reps
   commissionCap: { type: Number, default: 50000 },
-  billingDay: { type: Number, default: 1 },
+  
+  // Billing settings
+  billingDay: { type: Number, default: 15 }, // Day of month when invoices are expected
+  
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
@@ -97,6 +104,7 @@ const invoiceSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'approved', 'revision_requested', 'paid'], default: 'pending' },
   type: { type: String, enum: ['client', 'commission'], default: 'client' },
   description: String,
+  revisionReason: String, // For when client requests changes
   invoiceData: {
     thisMonthRevenue: Number,
     commissionExcl: Number,
@@ -105,7 +113,9 @@ const invoiceSchema = new mongoose.Schema({
     totalAmount: Number,
     companyDetails: Object
   },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  approvedAt: { type: Date },
+  paidAt: { type: Date }
 });
 
 const revenueSchema = new mongoose.Schema({
@@ -142,11 +152,18 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  next();
+};
+
 // Basic API routes
 app.get('/api', (req, res) => {
   res.json({ 
-    message: 'Recruiters Network API - Simple Version',
-    version: '1.0.0',
+    message: 'Recruiters Network API - Enhanced Version',
+    version: '2.0.0',
     status: 'running'
   });
 });
@@ -200,27 +217,50 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Admin routes
-app.get('/api/admin/clients', authenticateToken, async (req, res) => {
+app.get('/api/admin/clients', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
+    const clients = await Client.find({ isActive: true })
+      .sort({ createdAt: -1 })
+      .catch(() => []);
     
-    const clients = await Client.find({ isActive: true }).sort({ createdAt: -1 }).catch(() => []);
-    res.json(clients);
+    // Add sales rep count to each client
+    const clientsWithCounts = await Promise.all(
+      clients.map(async (client) => {
+        const salesRepCount = await SalesRep.countDocuments({ 
+          clientId: client._id, 
+          isActive: true 
+        }).catch(() => 0);
+        
+        return {
+          ...client.toObject(),
+          salesRepCount
+        };
+      })
+    );
+    
+    res.json(clientsWithCounts);
   } catch (error) {
     console.error('Get clients error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-app.post('/api/admin/clients', authenticateToken, async (req, res) => {
+app.post('/api/admin/clients', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
-
-    const { name, contactName, email, phone, address, kvkNumber, vatNumber, bankAccount, networkCommissionRate, billingDay } = req.body;
+    const { 
+      name, 
+      contactName, 
+      email, 
+      phone, 
+      address, 
+      kvkNumber, 
+      vatNumber, 
+      bankAccount, 
+      networkCommissionRate, 
+      billingDay,
+      commissionRate,
+      commissionCap
+    } = req.body;
     
     const existingClient = await Client.findOne({ email }).catch(() => null);
     if (existingClient) {
@@ -237,13 +277,17 @@ app.post('/api/admin/clients', authenticateToken, async (req, res) => {
       vatNumber,
       bankAccount,
       networkCommissionRate: networkCommissionRate || 0.10,
-      billingDay: billingDay || 1
+      billingDay: billingDay || 15,
+      commissionRate: commissionRate || 0.10,
+      commissionCap: commissionCap || 50000
     });
     
     await client.save();
     
+    // Generate a secure temporary password
     const tempPassword = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(tempPassword, 12);
+    
     const clientUser = new User({
       email,
       password: hashedPassword,
@@ -265,40 +309,56 @@ app.post('/api/admin/clients', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/api/admin/clients/:clientId', authenticateToken, async (req, res) => {
+app.get('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
-    
     const client = await Client.findById(req.params.clientId).catch(() => null);
     if (!client) {
       return res.status(404).json({ message: 'Client not found' });
     }
 
-    const salesReps = await SalesRep.find({ clientId: req.params.clientId, isActive: true }).catch(() => []);
+    const salesReps = await SalesRep.find({ 
+      clientId: req.params.clientId, 
+      isActive: true 
+    }).catch(() => []);
     
-    res.json({ client, salesReps, invoices: [] });
+    const invoices = await Invoice.find({ 
+      clientId: req.params.clientId 
+    })
+    .populate('salesRepId')
+    .sort({ year: -1, month: -1 })
+    .catch(() => []);
+    
+    res.json({ client, salesReps, invoices });
   } catch (error) {
     console.error('Get client details error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-app.put('/api/admin/clients/:clientId', authenticateToken, async (req, res) => {
+app.put('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
+    const { clientId } = req.params;
+    const updateData = req.body;
     
     const client = await Client.findByIdAndUpdate(
-      req.params.clientId,
-      req.body,
+      clientId,
+      updateData,
       { new: true }
     ).catch(() => null);
     
     if (!client) {
       return res.status(404).json({ message: 'Client not found' });
+    }
+    
+    // Update the associated user email and name if changed
+    if (updateData.email || updateData.contactName) {
+      await User.findOneAndUpdate(
+        { clientId: clientId },
+        { 
+          email: updateData.email || client.email,
+          name: updateData.contactName || client.contactName
+        }
+      ).catch(() => {});
     }
     
     res.json({ message: 'Client updated successfully', client });
@@ -309,13 +369,15 @@ app.put('/api/admin/clients/:clientId', authenticateToken, async (req, res) => {
 });
 
 // Sales rep routes
-app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, async (req, res) => {
+app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
-
     const { name, email, phone, position, hireDate, commissionRate } = req.body;
+    
+    // Check if email already exists
+    const existingUser = await User.findOne({ email }).catch(() => null);
+    if (existingUser) {
+      return res.status(400).json({ message: 'User with this email already exists' });
+    }
     
     const salesRep = new SalesRep({
       name,
@@ -354,13 +416,12 @@ app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, async (req
   }
 });
 
-app.delete('/api/admin/salesreps/:salesRepId', authenticateToken, async (req, res) => {
+app.delete('/api/admin/salesreps/:salesRepId', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
-    
+    // Delete associated user first
     await User.deleteOne({ salesRepId: req.params.salesRepId });
+    
+    // Delete sales rep
     const deletedSalesRep = await SalesRep.findByIdAndDelete(req.params.salesRepId);
     
     if (!deletedSalesRep) {
@@ -382,24 +443,31 @@ app.get('/api/client/dashboard', authenticateToken, async (req, res) => {
     }
     
     const client = await Client.findById(req.user.clientId).catch(() => null);
-    const salesReps = await SalesRep.find({ clientId: req.user.clientId, isActive: true }).catch(() => []);
+    const salesReps = await SalesRep.find({ 
+      clientId: req.user.clientId, 
+      isActive: true 
+    }).catch(() => []);
     
+    // Add mock performance data for each sales rep
     const repsWithData = salesReps.map(rep => ({
       ...rep.toObject(),
-      thisMonthRevenue: Math.floor(Math.random() * 50000),
-      thisMonthCommission: Math.floor(Math.random() * 5000)
+      thisMonthRevenue: Math.floor(Math.random() * 50000) + 10000,
+      thisMonthCommission: Math.floor(Math.random() * 5000) + 1000,
+      isConnected: Math.random() > 0.3 // 70% chance of being connected
     }));
+
+    const totals = {
+      thisMonthRevenue: repsWithData.reduce((sum, rep) => sum + rep.thisMonthRevenue, 0),
+      thisMonthCommission: repsWithData.reduce((sum, rep) => sum + rep.thisMonthCommission, 0)
+    };
 
     res.json({
       client,
       salesReps: repsWithData,
-      totals: {
-        thisMonthRevenue: 0,
-        thisMonthCommission: 0
-      }
+      totals
     });
   } catch (error) {
-    console.error('Dashboard error:', error);
+    console.error('Client dashboard error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -417,7 +485,68 @@ app.get('/api/client/invoices', authenticateToken, async (req, res) => {
     
     res.json(invoices);
   } catch (error) {
-    console.error('Get invoices error:', error);
+    console.error('Get client invoices error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Invoice approval endpoints
+app.put('/api/client/invoices/:invoiceId/approve', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'client') {
+      return res.status(403).json({ message: 'Client access required' });
+    }
+    
+    const invoice = await Invoice.findOneAndUpdate(
+      { 
+        _id: req.params.invoiceId, 
+        clientId: req.user.clientId 
+      },
+      { 
+        status: 'approved', 
+        approvedAt: new Date() 
+      },
+      { new: true }
+    );
+    
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+    
+    res.json({ message: 'Invoice approved successfully', invoice });
+  } catch (error) {
+    console.error('Approve invoice error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.put('/api/client/invoices/:invoiceId/revision', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'client') {
+      return res.status(403).json({ message: 'Client access required' });
+    }
+    
+    const { reason } = req.body;
+    
+    const invoice = await Invoice.findOneAndUpdate(
+      { 
+        _id: req.params.invoiceId, 
+        clientId: req.user.clientId 
+      },
+      { 
+        status: 'revision_requested', 
+        revisionReason: reason 
+      },
+      { new: true }
+    );
+    
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+    
+    res.json({ message: 'Revision requested successfully', invoice });
+  } catch (error) {
+    console.error('Request revision error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -429,12 +558,25 @@ app.get('/api/salesrep/dashboard', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Sales representative access required' });
     }
     
-    const salesRep = await SalesRep.findById(req.user.salesRepId).populate('clientId').catch(() => null);
+    const salesRep = await SalesRep.findById(req.user.salesRepId)
+      .populate('clientId')
+      .catch(() => null);
+    
+    // Generate mock current month data
+    const currentRevenue = {
+      revenue: Math.floor(Math.random() * 50000) + 10000,
+      commission: Math.floor(Math.random() * 5000) + 1000
+    };
+    
+    const myInvoices = await Invoice.find({ salesRepId: req.user.salesRepId })
+      .sort({ year: -1, month: -1 })
+      .limit(5)
+      .catch(() => []);
     
     res.json({
       salesRep,
-      currentRevenue: { revenue: 0, commission: 0 },
-      myInvoices: [],
+      currentRevenue,
+      myInvoices,
       revenueHistory: []
     });
   } catch (error) {
@@ -469,21 +611,24 @@ app.get('/api/salesrep/company-details', authenticateToken, async (req, res) => 
     
     const salesRep = await SalesRep.findById(req.user.salesRepId).catch(() => null);
     
-    res.json({ 
-      companyDetails: salesRep?.companyDetails || {
-        companyName: '',
-        contactName: '',
-        address: '',
-        city: '',
-        postalCode: '',
-        country: 'Nederland',
-        phone: '',
-        email: '',
-        kvkNumber: '',
-        vatNumber: '',
-        bankAccount: ''
-      }
-    });
+    // Pre-fill with client data if available
+    const client = await Client.findById(req.user.clientId).catch(() => null);
+    
+    const companyDetails = salesRep?.companyDetails || {
+      companyName: '',
+      contactName: salesRep?.name || '',
+      address: client?.address || '',
+      city: '',
+      postalCode: '',
+      country: 'Nederland',
+      phone: salesRep?.phone || '',
+      email: salesRep?.email || '',
+      kvkNumber: '',
+      vatNumber: '',
+      bankAccount: ''
+    };
+    
+    res.json({ companyDetails });
   } catch (error) {
     console.error('Get company details error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -502,9 +647,13 @@ app.post('/api/salesrep/company-details', authenticateToken, async (req, res) =>
       { new: true }
     ).catch(() => null);
 
+    if (!salesRep) {
+      return res.status(404).json({ message: 'Sales representative not found' });
+    }
+
     res.json({ 
       message: 'Company details saved successfully',
-      companyDetails: salesRep?.companyDetails
+      companyDetails: salesRep.companyDetails
     });
   } catch (error) {
     console.error('Save company details error:', error);
@@ -518,10 +667,35 @@ app.post('/api/salesrep/generate-invoice', authenticateToken, async (req, res) =
       return res.status(403).json({ message: 'Sales representative access required' });
     }
     
-    const { invoiceNumber, thisMonthRevenue, commissionExcl, vatRate, vatAmount, totalAmount, month, year, description, companyDetails } = req.body;
+    const { 
+      invoiceNumber, 
+      thisMonthRevenue, 
+      commissionExcl, 
+      vatRate, 
+      vatAmount, 
+      totalAmount, 
+      month, 
+      year, 
+      description, 
+      companyDetails 
+    } = req.body;
 
+    // Validation
     if (!invoiceNumber || !commissionExcl || !month || !year) {
       return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Check for duplicate invoice for same month/year
+    const existingInvoice = await Invoice.findOne({
+      salesRepId: req.user.salesRepId,
+      month: parseInt(month),
+      year: parseInt(year)
+    });
+
+    if (existingInvoice) {
+      return res.status(400).json({ 
+        message: `Er bestaat al een factuur voor ${new Date(0, month - 1).toLocaleDateString('nl-NL', {month: 'long'})} ${year}` 
+      });
     }
 
     const invoice = new Invoice({
@@ -529,7 +703,7 @@ app.post('/api/salesrep/generate-invoice', authenticateToken, async (req, res) =
       salesRepId: req.user.salesRepId,
       uploadedBy: req.user.userId,
       invoiceNumber,
-      amount: totalAmount,
+      amount: parseFloat(totalAmount),
       month: parseInt(month),
       year: parseInt(year),
       status: 'pending',
@@ -575,7 +749,7 @@ app.delete('/api/salesrep/invoices/:invoiceId', authenticateToken, async (req, r
     const invoice = await Invoice.findOne({
       _id: req.params.invoiceId,
       salesRepId: req.user.salesRepId,
-      status: { $nin: ['paid', 'approved'] }
+      status: { $nin: ['paid', 'approved'] } // Cannot delete paid or approved invoices
     });
     
     if (!invoice) {
@@ -591,9 +765,37 @@ app.delete('/api/salesrep/invoices/:invoiceId', authenticateToken, async (req, r
   }
 });
 
-// Initialize admin user
+// Download invoice (placeholder - would need PDF generation)
+app.get('/api/salesrep/invoices/:invoiceId/download', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'salesrep') {
+      return res.status(403).json({ message: 'Sales representative access required' });
+    }
+    
+    const invoice = await Invoice.findOne({
+      _id: req.params.invoiceId,
+      salesRepId: req.user.salesRepId
+    });
+    
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+    
+    // For now, return a simple text response
+    // In production, this would generate and return a PDF
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Disposition', `attachment; filename="invoice-${invoice.invoiceNumber}.txt"`);
+    res.send(`Factuur #${invoice.invoiceNumber}\nBedrag: €${invoice.amount}\nStatus: ${invoice.status}`);
+  } catch (error) {
+    console.error('Download invoice error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Initialize admin user and demo data
 const initializeAdmin = async () => {
   try {
+    // Create admin user if doesn't exist
     const adminExists = await User.findOne({ role: 'admin' }).catch(() => null);
     if (!adminExists) {
       const hashedPassword = await bcrypt.hash('admin123', 12);
@@ -607,7 +809,7 @@ const initializeAdmin = async () => {
       console.log('✓ Default admin created: admin@recruitersnetwork.nl / admin123');
     }
 
-    // Create demo client
+    // Create demo client with all fields
     const demoClient = await Client.findOne({ email: 'demo@acmecorp.com' }).catch(() => null);
     if (!demoClient) {
       const client = new Client({
@@ -615,12 +817,14 @@ const initializeAdmin = async () => {
         contactName: 'John Doe',
         email: 'demo@acmecorp.com',
         phone: '+31 20 123 4567',
-        address: 'Damrak 70, Amsterdam',
+        address: 'Damrak 70, 1012 LM Amsterdam',
         kvkNumber: '12345678',
         vatNumber: 'NL123456789B01',
         bankAccount: 'NL91 ABNA 0417 1643 00',
         networkCommissionRate: 0.10,
-        billingDay: 15
+        billingDay: 15,
+        commissionRate: 0.10,
+        commissionCap: 50000
       });
       await client.save();
 
@@ -636,16 +840,35 @@ const initializeAdmin = async () => {
 
       // Add demo sales reps
       const salesRepsData = [
-        { name: 'Sarah Johnson', email: 'sarah@acmecorp.com', phone: '+31 20 123 4568', hireDate: new Date('2024-01-15') },
-        { name: 'Mike Chen', email: 'mike@acmecorp.com', phone: '+31 20 123 4569', hireDate: new Date('2024-03-01') }
+        { 
+          name: 'Sarah Johnson', 
+          email: 'sarah@acmecorp.com', 
+          phone: '+31 20 123 4568', 
+          hireDate: new Date('2024-01-15'),
+          position: 'Senior Sales Representative'
+        },
+        { 
+          name: 'Mike Chen', 
+          email: 'mike@acmecorp.com', 
+          phone: '+31 20 123 4569', 
+          hireDate: new Date('2024-03-01'),
+          position: 'Sales Representative'
+        },
+        { 
+          name: 'Lisa van der Berg', 
+          email: 'lisa@acmecorp.com', 
+          phone: '+31 20 123 4570', 
+          hireDate: new Date('2024-02-15'),
+          position: 'Junior Sales Representative'
+        }
       ];
 
       for (const repData of salesRepsData) {
         const rep = new SalesRep({
           ...repData,
           clientId: client._id,
-          position: 'Sales Representative',
-          isConnected: Math.random() > 0.5
+          isConnected: Math.random() > 0.3, // 70% chance of being connected
+          commissionRate: 0.10
         });
         await rep.save();
 
@@ -661,20 +884,25 @@ const initializeAdmin = async () => {
         await salesRepUser.save();
       }
 
-      console.log('✓ Demo data created');
+      console.log('✓ Demo client and sales reps created');
+      console.log('✓ Demo logins:');
+      console.log('  - Client: demo@acmecorp.com / demo123');
+      console.log('  - Sales Rep 1: sarah@acmecorp.com / demo123');
+      console.log('  - Sales Rep 2: mike@acmecorp.com / demo123');
+      console.log('  - Sales Rep 3: lisa@acmecorp.com / demo123');
     }
   } catch (error) {
     console.error('Initialization error:', error);
   }
 };
 
-// Error handling
+// Error handling middleware
 app.use((error, req, res, next) => {
   console.error('Error:', error);
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
-// Serve React app
+// Serve React app (catch-all handler)
 app.get('*', (req, res) => {
   if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, 'build/index.html'));
@@ -694,7 +922,9 @@ const startServer = async () => {
       console.log(`📝 API: http://localhost:${PORT}/api`);
       console.log(`🔑 Admin: admin@recruitersnetwork.nl / admin123`);
       console.log(`👤 Demo Client: demo@acmecorp.com / demo123`);
-      console.log(`💼 Demo Sales: sarah@acmecorp.com / demo123`);
+      console.log(`💼 Demo Sales Reps: sarah@acmecorp.com / demo123`);
+      console.log(`                    mike@acmecorp.com / demo123`);
+      console.log(`                    lisa@acmecorp.com / demo123`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
