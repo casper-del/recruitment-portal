@@ -2301,6 +2301,13 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    // Load html2pdf library for PDF generation
+    if (!document.querySelector('script[src*="html2pdf"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      document.head.appendChild(script);
+    }
+
     const token = localStorage.getItem('authToken');
     const userData = localStorage.getItem('userData');
     
