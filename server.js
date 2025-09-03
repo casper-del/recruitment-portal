@@ -11,7 +11,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-console.log('🔥 COMPLETELY NEW SERVER.JS LOADING 🔥');
+console.log('🔥 FIXED SERVER.JS - NETWORK INVOICES & CLIENT DETAILS 🔥');
 
 // Basic middleware
 app.use(cors());
@@ -96,7 +96,7 @@ const invoiceSchema = new mongoose.Schema({
   month: { type: Number, required: true },
   year: { type: Number, required: true },
   status: { type: String, enum: ['pending', 'approved', 'revision_requested', 'paid'], default: 'pending' },
-  type: { type: String, enum: ['client', 'commission'], default: 'client' },
+  type: { type: String, enum: ['client', 'commission', 'network'], default: 'client' },
   description: String,
   invoiceData: {
     thisMonthRevenue: Number,
@@ -104,7 +104,12 @@ const invoiceSchema = new mongoose.Schema({
     vatRate: Number,
     vatAmount: Number,
     totalAmount: Number,
-    companyDetails: Object
+    companyDetails: Object,
+    // For network invoices
+    totalSalesRepCommission: Number,
+    networkRate: Number,
+    networkAmount: Number,
+    salesRepInvoices: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' }]
   },
   createdAt: { type: Date, default: Date.now }
 });
@@ -135,8 +140,8 @@ const authenticateToken = (req, res, next) => {
 // Basic API routes
 app.get('/api', (req, res) => {
   res.json({ 
-    message: '🔥 COMPLETELY NEW API VERSION',
-    version: '3.0.0',
+    message: '🔥 FIXED SERVER VERSION - NETWORK INVOICES & CLIENT DETAILS',
+    version: '3.1.0',
     status: 'running'
   });
 });
@@ -195,10 +200,10 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 🔥 FIXED SALES REP COMPANY DETAILS WITH CLIENT INFO
+// 🔥 FIXED SALES REP COMPANY DETAILS WITH COMPLETE CLIENT INFO
 app.get('/api/salesrep/company-details', authenticateToken, async (req, res) => {
   try {
-    console.log('🔥 GETTING COMPANY DETAILS FOR SALES REP');
+    console.log('🔥 GETTING COMPLETE COMPANY DETAILS FOR SALES REP');
     console.log('🔥 User ID:', req.user.userId);
     console.log('🔥 Sales Rep ID:', req.user.salesRepId);
     console.log('🔥 Client ID:', req.user.clientId);
@@ -216,13 +221,14 @@ app.get('/api/salesrep/company-details', authenticateToken, async (req, res) => 
     console.log('🔥 Client found:', !!client);
     
     if (client) {
-      console.log('🔥 CLIENT DATA:', {
+      console.log('🔥 COMPLETE CLIENT DATA:', {
         name: client.name,
         contactName: client.contactName,
         address: client.address,
         phone: client.phone,
         kvkNumber: client.kvkNumber,
-        vatNumber: client.vatNumber
+        vatNumber: client.vatNumber,
+        bankAccount: client.bankAccount
       });
     } else {
       console.log('❌ NO CLIENT DATA FOUND!');
@@ -243,16 +249,17 @@ app.get('/api/salesrep/company-details', authenticateToken, async (req, res) => 
       vatNumber: salesRep?.companyDetails?.vatNumber || '',
       bankAccount: salesRep?.companyDetails?.bankAccount || '',
       
-      // 🔥 CLIENT INFORMATION - WHO THE INVOICE GOES TO
+      // 🔥 COMPLETE CLIENT INFORMATION - WHO THE INVOICE GOES TO
       clientCompanyName: client?.name || '',
       clientContactName: client?.contactName || '',
       clientAddress: client?.address || '',
       clientPhone: client?.phone || '',
       clientKvk: client?.kvkNumber || '',
-      clientVat: client?.vatNumber || ''
+      clientVat: client?.vatNumber || '',
+      clientBankAccount: client?.bankAccount || ''
     };
     
-    console.log('🔥 SENDING COMPANY DETAILS:', companyDetails);
+    console.log('🔥 SENDING COMPLETE COMPANY DETAILS WITH CLIENT KVK & BTW:', companyDetails);
     
     res.json({ companyDetails });
     
@@ -324,6 +331,20 @@ app.post('/api/salesrep/generate-invoice', authenticateToken, async (req, res) =
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
+    // Check for duplicate invoice
+    const existingInvoice = await Invoice.findOne({
+      salesRepId: req.user.salesRepId,
+      month: parseInt(month),
+      year: parseInt(year),
+      type: 'commission'
+    });
+
+    if (existingInvoice) {
+      return res.status(400).json({ 
+        message: `Factuur bestaat al voor ${new Date(0, month - 1).toLocaleDateString('nl-NL', {month: 'long'})} ${year}` 
+      });
+    }
+
     const invoice = new Invoice({
       clientId: req.user.clientId,
       salesRepId: req.user.salesRepId,
@@ -382,7 +403,7 @@ app.delete('/api/salesrep/invoices/:invoiceId', authenticateToken, async (req, r
   }
 });
 
-// 🔥 ADMIN ENDPOINTS - RESTORED
+// ADMIN ENDPOINTS
 app.get('/api/admin/clients', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -548,6 +569,73 @@ app.put('/api/admin/clients/:clientId', authenticateToken, async (req, res) => {
   }
 });
 
+// 🔥 NEW ADMIN SALES REP OVERVIEW ENDPOINT
+app.get('/api/admin/clients/:clientId/salesrep-overview', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const client = await Client.findById(req.params.clientId);
+    if (!client) {
+      return res.status(404).json({ message: 'Client not found' });
+    }
+
+    const salesReps = await SalesRep.find({ 
+      clientId: req.params.clientId, 
+      isActive: true 
+    });
+
+    // Get detailed invoice data for each sales rep
+    const salesRepsWithInvoiceData = await Promise.all(
+      salesReps.map(async (rep) => {
+        const invoices = await Invoice.find({ 
+          salesRepId: rep._id,
+          type: 'commission'
+        }).sort({ year: -1, month: -1 });
+
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear();
+        
+        const currentMonthInvoice = invoices.find(inv => 
+          inv.month === currentMonth && inv.year === currentYear
+        );
+
+        const stats = {
+          totalInvoices: invoices.length,
+          pendingInvoices: invoices.filter(inv => inv.status === 'pending').length,
+          approvedInvoices: invoices.filter(inv => inv.status === 'approved').length,
+          paidInvoices: invoices.filter(inv => inv.status === 'paid').length,
+          revisionRequestedInvoices: invoices.filter(inv => inv.status === 'revision_requested').length,
+          totalCommissionValue: invoices
+            .filter(inv => inv.status === 'approved' || inv.status === 'paid')
+            .reduce((sum, inv) => sum + (inv.invoiceData?.commissionExcl || 0), 0),
+          hasSubmittedThisMonth: !!currentMonthInvoice,
+          currentMonthStatus: currentMonthInvoice?.status || null
+        };
+
+        return {
+          ...rep.toObject(),
+          invoices: invoices.slice(0, 5), // Last 5 invoices for preview
+          stats,
+          currentMonthInvoice
+        };
+      })
+    );
+
+    res.json({
+      client,
+      salesReps: salesRepsWithInvoiceData,
+      billingDay: client.billingDay,
+      isAfterBillingDay: new Date().getDate() > (client.billingDay || 15)
+    });
+    
+  } catch (error) {
+    console.error('Get sales rep overview error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Sales rep management endpoints
 app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, async (req, res) => {
   try {
@@ -623,7 +711,7 @@ app.delete('/api/admin/salesreps/:salesRepId', authenticateToken, async (req, re
   }
 });
 
-// 🔥 CLIENT ENDPOINTS - RESTORED
+// CLIENT ENDPOINTS
 app.get('/api/client/dashboard', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'client') {
@@ -738,7 +826,7 @@ app.put('/api/client/invoices/:invoiceId/revision', authenticateToken, async (re
   }
 });
 
-// 🔥 NETWORK COMMISSION ENDPOINTS - RESTORED
+// 🔥 FIXED NETWORK COMMISSION ENDPOINTS
 app.get('/api/admin/network-commissions', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -750,6 +838,8 @@ app.get('/api/admin/network-commissions', authenticateToken, async (req, res) =>
     })
     .populate('clientId')
     .sort({ year: -1, month: -1 });
+    
+    console.log('🔥 FOUND NETWORK INVOICES:', networkInvoices.length);
     
     const formattedInvoices = networkInvoices.map(invoice => ({
       _id: invoice._id,
@@ -780,8 +870,10 @@ app.post('/api/admin/generate-network-invoice', authenticateToken, async (req, r
     
     const { clientId, month, year } = req.body;
     
+    console.log('🔥 GENERATING NETWORK INVOICE:', { clientId, month, year });
+    
     if (!clientId || !month || !year) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ message: 'Missing required fields: clientId, month, year' });
     }
     
     // Get client details
@@ -789,6 +881,8 @@ app.post('/api/admin/generate-network-invoice', authenticateToken, async (req, r
     if (!client) {
       return res.status(404).json({ message: 'Client not found' });
     }
+    
+    console.log('🔥 CLIENT FOUND:', client.name);
     
     // Check if network invoice already exists for this month/year
     const existingNetworkInvoice = await Invoice.findOne({
@@ -804,6 +898,8 @@ app.post('/api/admin/generate-network-invoice', authenticateToken, async (req, r
       });
     }
     
+    console.log('🔥 NO EXISTING NETWORK INVOICE - PROCEEDING');
+    
     // Find all approved sales rep invoices for this client in specified month/year
     const salesRepInvoices = await Invoice.find({
       clientId,
@@ -813,6 +909,8 @@ app.post('/api/admin/generate-network-invoice', authenticateToken, async (req, r
       year: parseInt(year)
     });
     
+    console.log('🔥 FOUND APPROVED SALES REP INVOICES:', salesRepInvoices.length);
+    
     if (salesRepInvoices.length === 0) {
       return res.status(400).json({ 
         message: 'Geen goedgekeurde sales rep facturen gevonden voor deze periode' 
@@ -821,8 +919,12 @@ app.post('/api/admin/generate-network-invoice', authenticateToken, async (req, r
     
     // Calculate total sales rep commission (excl BTW)
     const totalSalesRepCommission = salesRepInvoices.reduce((total, invoice) => {
-      return total + (invoice.invoiceData?.commissionExcl || 0);
+      const commissionExcl = invoice.invoiceData?.commissionExcl || 0;
+      console.log('🔥 ADDING COMMISSION:', commissionExcl);
+      return total + commissionExcl;
     }, 0);
+    
+    console.log('🔥 TOTAL SALES REP COMMISSION:', totalSalesRepCommission);
     
     // Calculate network commission
     const networkRate = client.networkCommissionRate || 0.10;
@@ -830,8 +932,17 @@ app.post('/api/admin/generate-network-invoice', authenticateToken, async (req, r
     const networkVat = networkCommissionExcl * 0.21; // 21% BTW
     const networkTotal = networkCommissionExcl + networkVat;
     
+    console.log('🔥 NETWORK CALCULATIONS:', {
+      networkRate,
+      networkCommissionExcl,
+      networkVat,
+      networkTotal
+    });
+    
     // Generate invoice number
     const invoiceNumber = `RN-${year}-${String(month).padStart(2, '0')}-${client.name.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+    
+    console.log('🔥 GENERATED INVOICE NUMBER:', invoiceNumber);
     
     // Create network invoice
     const networkInvoice = new Invoice({
@@ -857,6 +968,8 @@ app.post('/api/admin/generate-network-invoice', authenticateToken, async (req, r
     
     await networkInvoice.save();
     
+    console.log('🔥 NETWORK INVOICE SAVED SUCCESSFULLY');
+    
     res.status(201).json({
       message: 'Network factuur succesvol gegenereerd',
       invoice: networkInvoice,
@@ -867,10 +980,12 @@ app.post('/api/admin/generate-network-invoice', authenticateToken, async (req, r
     });
     
   } catch (error) {
-    console.error('Generate network invoice error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('❌ Generate network invoice error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 });
+
+// Initialize admin and demo data
 const initializeAdmin = async () => {
   try {
     console.log('🔥 INITIALIZING FRESH DATA...');
@@ -892,7 +1007,7 @@ const initializeAdmin = async () => {
     await admin.save();
     console.log('✅ Admin user created: admin@recruitersnetwork.nl / admin123');
 
-    // Create demo client with ALL FIELDS
+    // Create demo client with ALL FIELDS INCLUDING KVK & BTW
     const client = new Client({
       name: 'Acme Corporation',
       contactName: 'John Doe',
@@ -908,7 +1023,7 @@ const initializeAdmin = async () => {
       commissionCap: 50000
     });
     await client.save();
-    console.log('✅ Demo client created: Acme Corporation');
+    console.log('✅ Demo client created: Acme Corporation with KVK & BTW');
 
     const clientHashedPassword = await bcrypt.hash('demo123', 12);
     const clientUser = new User({
@@ -983,16 +1098,19 @@ const startServer = async () => {
     
     app.listen(PORT, () => {
       console.log('');
-      console.log('🔥🔥🔥 COMPLETELY NEW SERVER RUNNING 🔥🔥🔥');
+      console.log('🔥🔥🔥 FIXED SERVER WITH NETWORK INVOICES & CLIENT DETAILS 🔥🔥🔥');
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📝 API: http://localhost:${PORT}/api`);
       console.log('');
-      console.log('🔑 FRESH CREDENTIALS (database reset):');
+      console.log('🔑 FRESH CREDENTIALS:');
       console.log('   👑 Admin: admin@recruitersnetwork.nl / admin123');
       console.log('   🏢 Client: demo@acmecorp.com / demo123');
       console.log('   💼 Sales Rep: sarah@acmecorp.com / demo123');
       console.log('');
-      console.log('🔥 All issues should now be FIXED!');
+      console.log('🔧 FIXES APPLIED:');
+      console.log('   ✅ Client KVK & BTW in factuur generator');
+      console.log('   ✅ Network invoice generation fixed');
+      console.log('   ✅ Admin sales rep overview endpoint added');
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
