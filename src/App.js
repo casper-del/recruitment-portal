@@ -1133,8 +1133,7 @@ const App = () => {
   );
 };
 
-export default App;
-                import React, { useState, useEffect } from 'react';
+export default App;import React, { useState, useEffect } from 'react';
 
 console.log('🔥 COMPLETE APP.JS - ALL FEATURES + PDF + ADMIN OVERVIEW 🔥');
 
@@ -2207,7 +2206,7 @@ const AdminDashboard = () => {
   );
 };
 
-// Client Dashboard - RESTORED WITH ALL TEAM MANAGEMENT FEATURES + PDF
+// Client Dashboard - COMPLETE WITH ALL TEAM MANAGEMENT FEATURES + PDF
 const ClientDashboard = ({ user }) => {
   const [teamData, setTeamData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -2344,3 +2343,6 @@ const ClientDashboard = ({ user }) => {
   };
 
   if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-
