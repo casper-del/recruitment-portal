@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-console.log('APP.JS LOADED - COMPLETE VERSION');
+console.log('APP.JS LOADED - COMPLETE VERSION WITH UPDATES');
 
 // Icon components
 const Building2Icon = () => (
@@ -1000,7 +1000,7 @@ const SalesRepInvoices = ({ user }) => {
   );
 };
 
-// Client Dashboard Component
+// Updated Client Dashboard Component with Revenue Chart
 const ClientDashboard = ({ user }) => {
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1031,6 +1031,10 @@ const ClientDashboard = ({ user }) => {
       </div>
     );
   }
+
+  // Calculate max revenue for chart scaling
+  const maxRevenue = dashboardData && dashboardData.salesReps ? 
+    Math.max(...dashboardData.salesReps.map(rep => rep.thisMonthRevenue || 0), 1000) : 1000;
 
   return (
     <div className="space-y-6">
@@ -1093,26 +1097,71 @@ const ClientDashboard = ({ user }) => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
           <h3 className="text-xl font-semibold text-gray-900 mb-6">Team Overzicht</h3>
           
-          <div className="space-y-4">
-            {dashboardData.salesReps.map((rep) => (
-              <div key={rep._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <span className="text-green-600 font-semibold text-sm">
-                      {rep.name.charAt(0)}
-                    </span>
+          <div className="space-y-6">
+            {dashboardData.salesReps.map((rep) => {
+              const revenuePercentage = maxRevenue > 0 ? (rep.thisMonthRevenue || 0) / maxRevenue * 100 : 0;
+              
+              return (
+                <div key={rep._id} className="border border-gray-200 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <span className="text-green-600 font-semibold text-lg">
+                          {rep.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 text-lg">{rep.name}</p>
+                        <p className="text-sm text-gray-500">{rep.email}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900 text-lg">
+                        {'€' + (rep.thisMonthRevenue || 0).toLocaleString('nl-NL')}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {'€' + (rep.thisMonthCommission || 0).toLocaleString('nl-NL') + ' commissie'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{rep.name}</p>
-                    <p className="text-sm text-gray-500">{rep.email}</p>
+
+                  {/* Revenue Bar Chart */}
+                  <div className="mb-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Omzet deze maand</span>
+                      <span className="text-sm text-gray-500">
+                        {revenuePercentage.toFixed(0) + '% van top performer'}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div 
+                        className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500"
+                        style={{width: revenuePercentage + '%'}}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="text-center">
+                      <p className="text-gray-500">Positie</p>
+                      <p className="font-medium">{rep.position || 'Sales Rep'}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-500">Start datum</p>
+                      <p className="font-medium">
+                        {rep.hireDate ? new Date(rep.hireDate).toLocaleDateString('nl-NL') : 'Onbekend'}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-500">Commissie rate</p>
+                      <p className="font-medium">
+                        {((rep.commissionRate || 0.1) * 100).toFixed(1) + '%'}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">{'€' + (rep.thisMonthRevenue || 0).toLocaleString('nl-NL')}</p>
-                  <p className="text-sm text-gray-500">{'€' + (rep.thisMonthCommission || 0).toLocaleString('nl-NL') + ' commissie'}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -1120,7 +1169,7 @@ const ClientDashboard = ({ user }) => {
   );
 };
 
-// Client Invoices Component
+// Updated Client Invoices Component - Only Recruitment Network Invoices
 const ClientInvoices = ({ user }) => {
   const [invoices, setInvoices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1134,7 +1183,11 @@ const ClientInvoices = ({ user }) => {
     try {
       setIsLoading(true);
       const response = await apiCall('/client/invoices');
-      setInvoices(response);
+      // Filter out sales rep invoices - only show recruitment network invoices
+      const recruitmentInvoices = response.filter(invoice => 
+        invoice.type === 'client' || !invoice.salesRepId
+      );
+      setInvoices(recruitmentInvoices);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1144,9 +1197,29 @@ const ClientInvoices = ({ user }) => {
 
   const downloadInvoice = async (invoiceId, fileName) => {
     try {
-      await downloadFile('/client/invoices/' + invoiceId + '/download', fileName);
+      // Fixed download path
+      const response = await fetch(API_BASE + '/client/invoices/' + invoiceId + '/download', {
+        headers: {
+          Authorization: 'Bearer ' + localStorage.getItem('authToken')
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName || ('invoice-' + invoiceId + '.pdf');
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (err) {
-      setError('Download mislukt');
+      console.error('Download error:', err);
+      setError('Download mislukt: ' + err.message);
     }
   };
 
@@ -1163,12 +1236,24 @@ const ClientInvoices = ({ user }) => {
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Betalingen & Facturen</h2>
-        <p className="text-gray-600">Overzicht van al je facturen en betalingen per maand</p>
+        <p className="text-gray-600">Overzicht van recruitment fees van Recruiters Network</p>
+        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+          <p className="text-sm text-blue-700">
+            <strong>Info:</strong> Dit overzicht toont alleen facturen van Recruiters Network voor recruitment services. 
+            Sales rep commissie facturen zijn te vinden bij Team Management.
+          </p>
+        </div>
       </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="text-red-700 text-sm">{error}</p>
+          <button 
+            onClick={() => setError('')}
+            className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+          >
+            Sluiten
+          </button>
         </div>
       )}
 
@@ -1176,7 +1261,7 @@ const ClientInvoices = ({ user }) => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
           <FileTextIcon />
           <h3 className="text-lg font-semibold text-gray-900 mt-4">Nog geen facturen</h3>
-          <p className="text-gray-600 mt-2">Je facturen verschijnen hier zodra ze zijn geupload</p>
+          <p className="text-gray-600 mt-2">Je recruitment fee facturen verschijnen hier zodra ze zijn geupload</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -1211,7 +1296,7 @@ const ClientInvoices = ({ user }) => {
                     {monthInvoices.map((invoice) => (
                       <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
                         <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                             <FileTextIcon />
                           </div>
                           <div>
@@ -1220,8 +1305,9 @@ const ClientInvoices = ({ user }) => {
                               {'€' + invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
                             </p>
                             <div className="flex items-center space-x-3 text-sm text-gray-500 mt-1">
-                              <span>{invoice.type === 'commission' ? 'Commissie Factuur' : 'Client Factuur'}</span>
-                              {invoice.salesRepId && <span>{'• ' + invoice.salesRepId.name}</span>}
+                              <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium">
+                                Recruitment Fee
+                              </span>
                               {invoice.description && <span>{'• ' + invoice.description}</span>}
                               {invoice.uploadedBy && (
                                 <span>{'• Geupload door ' + invoice.uploadedBy.name}</span>
@@ -1253,6 +1339,278 @@ const ClientInvoices = ({ user }) => {
                 </div>
               );
             })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// New Team Management Component
+const ClientTeamManagement = ({ user }) => {
+  const [teamData, setTeamData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchTeamData();
+  }, []);
+
+  const fetchTeamData = async () => {
+    try {
+      setIsLoading(true);
+      const dashboardResponse = await apiCall('/client/dashboard');
+      
+      // Get sales rep invoices for each team member
+      const salesRepsWithInvoices = await Promise.all(
+        (dashboardResponse.salesReps || []).map(async (rep) => {
+          try {
+            const invoicesResponse = await apiCall('/client/invoices');
+            const repInvoices = invoicesResponse.filter(invoice => 
+              invoice.salesRepId && invoice.salesRepId._id === rep._id
+            );
+            return {
+              ...rep,
+              invoices: repInvoices,
+              totalCommissionPaid: repInvoices
+                .filter(inv => inv.status === 'paid')
+                .reduce((sum, inv) => sum + inv.amount, 0),
+              maxCommissionCap: rep.commissionCap || 50000 // Default cap
+            };
+          } catch (err) {
+            return {
+              ...rep,
+              invoices: [],
+              totalCommissionPaid: 0,
+              maxCommissionCap: rep.commissionCap || 50000
+            };
+          }
+        })
+      );
+
+      setTeamData({
+        ...dashboardResponse,
+        salesReps: salesRepsWithInvoices
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const downloadInvoice = async (invoiceId, fileName) => {
+    try {
+      const response = await fetch(API_BASE + '/client/invoices/' + invoiceId + '/download', {
+        headers: {
+          Authorization: 'Bearer ' + localStorage.getItem('authToken')
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName || ('invoice-' + invoiceId + '.pdf');
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      setError('Download mislukt: ' + err.message);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <p className="text-gray-600">Team data laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Team Management</h2>
+        <p className="text-gray-600">Beheer je recruitment team en bekijk individuele prestaties en commissie uitbetalingen</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700 text-sm">{error}</p>
+          <button 
+            onClick={() => setError('')}
+            className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+          >
+            Sluiten
+          </button>
+        </div>
+      )}
+
+      {(!teamData || !teamData.salesReps || teamData.salesReps.length === 0) ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <UsersIcon />
+          <h3 className="text-lg font-semibold text-gray-900 mt-4">Nog geen team leden</h3>
+          <p className="text-gray-600 mt-2">Je sales reps verschijnen hier zodra ze zijn toegevoegd door een admin</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {teamData.salesReps.map((rep) => {
+            const commissionPercentage = rep.maxCommissionCap > 0 ? 
+              (rep.totalCommissionPaid / rep.maxCommissionCap * 100) : 0;
+            const thisMonthCommissionPercentage = rep.maxCommissionCap > 0 ? 
+              ((rep.thisMonthCommission || 0) / rep.maxCommissionCap * 100) : 0;
+
+            return (
+              <div key={rep._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                <div className="flex items-center space-x-4 mb-6">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                    <span className="text-green-600 font-semibold text-xl">
+                      {rep.name.charAt(0)}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-gray-900">{rep.name}</h3>
+                    <p className="text-gray-600">{rep.email}</p>
+                    <p className="text-sm text-gray-500">{rep.position || 'Sales Representative'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-500">Deze maand omzet</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {'€' + (rep.thisMonthRevenue || 0).toLocaleString('nl-NL')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Commission Progress */}
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-semibold text-gray-900">Vergoeding Status</h4>
+                    <span className="text-sm text-gray-600">
+                      {'€' + rep.totalCommissionPaid.toLocaleString('nl-NL') + ' / €' + 
+                       rep.maxCommissionCap.toLocaleString('nl-NL') + ' (' + 
+                       Math.round(commissionPercentage) + '%)'}
+                    </span>
+                  </div>
+                  
+                  <div className="w-full bg-gray-200 rounded-full h-6 relative overflow-hidden">
+                    {/* Total commission paid */}
+                    <div 
+                      className="bg-green-500 h-6 rounded-full transition-all duration-700"
+                      style={{width: Math.min(commissionPercentage, 100) + '%'}}
+                    ></div>
+                    {/* This month commission overlay */}
+                    <div 
+                      className="bg-green-300 h-6 rounded-full absolute top-0 transition-all duration-700"
+                      style={{
+                        width: Math.min(thisMonthCommissionPercentage, 100) + '%',
+                        right: Math.max(0, 100 - commissionPercentage) + '%'
+                      }}
+                    ></div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center mt-2 text-sm">
+                    <span className="text-gray-600">
+                      Deze maand: €{(rep.thisMonthCommission || 0).toLocaleString('nl-NL')}
+                    </span>
+                    <span className="text-gray-600">
+                      Resterend: €{Math.max(0, rep.maxCommissionCap - rep.totalCommissionPaid).toLocaleString('nl-NL')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-500">Commissie Rate</p>
+                    <p className="font-bold text-lg text-gray-900">
+                      {((rep.commissionRate || 0.1) * 100).toFixed(1) + '%'}
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-500">Start Datum</p>
+                    <p className="font-bold text-lg text-gray-900">
+                      {rep.hireDate ? new Date(rep.hireDate).toLocaleDateString('nl-NL', {
+                        month: 'short', year: 'numeric'
+                      }) : '-'}
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-500">Facturen</p>
+                    <p className="font-bold text-lg text-gray-900">{rep.invoices.length}</p>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-500">CRM Status</p>
+                    <p className="font-bold text-lg text-gray-900">
+                      {rep.isConnected ? '✅ Connected' : '❌ Offline'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Commission Invoices */}
+                {rep.invoices.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-4">
+                      {'Commissie Facturen (' + rep.invoices.length + ')'}
+                    </h4>
+                    <div className="space-y-3">
+                      {rep.invoices
+                        .sort((a, b) => b.year - a.year || b.month - a.month)
+                        .slice(0, 5) // Show only last 5 invoices
+                        .map((invoice) => (
+                        <div key={invoice._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <FileTextIcon />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm">
+                                {'#' + invoice.invoiceNumber}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'}) + ' ' + invoice.year}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-3">
+                            <span className="font-semibold text-gray-900">
+                              {'€' + invoice.amount.toLocaleString('nl-NL')}
+                            </span>
+                            <span className={'px-2 py-1 rounded text-xs font-medium ' + (
+                              invoice.status === 'paid' 
+                                ? 'bg-green-100 text-green-600' 
+                                : 'bg-yellow-100 text-yellow-600'
+                            )}>
+                              {invoice.status === 'paid' ? 'Betaald' : 'Open'}
+                            </span>
+                            <button
+                              onClick={() => downloadInvoice(invoice._id, invoice.fileName)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs transition-colors"
+                            >
+                              Download
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {rep.invoices.length > 5 && (
+                        <p className="text-sm text-gray-500 text-center">
+                          {'... en ' + (rep.invoices.length - 5) + ' oudere facturen'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -1628,10 +1986,7 @@ const App = () => {
               )}
 
               {currentPage === 'team' && (
-                <PlaceholderPage 
-                  title="Team Management" 
-                  description="Beheer je recruitment team en bekijk individuele prestaties."
-                />
+                <ClientTeamManagement user={user} />
               )}
 
               {currentPage === 'reports' && (
