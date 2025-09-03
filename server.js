@@ -799,6 +799,37 @@ app.post('/api/salesrep/invoices', authenticateToken, requireSalesRep, upload.si
   }
 });
 
+// Sales Rep Delete Invoice - DELETE
+app.delete('/api/salesrep/invoices/:invoiceId', authenticateToken, requireSalesRep, async (req, res) => {
+  try {
+    const { invoiceId } = req.params;
+    
+    const invoice = await Invoice.findOne({
+      _id: invoiceId,
+      salesRepId: req.user.salesRepId,
+      status: { $ne: 'paid' } // Only allow deletion of unpaid invoices
+    });
+    
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found or cannot be deleted (already paid)' });
+    }
+
+    // Delete file if it exists
+    if (invoice.filePath && fs.existsSync(invoice.filePath)) {
+      fs.unlinkSync(invoice.filePath);
+    }
+
+    await Invoice.findByIdAndDelete(invoiceId);
+    
+    res.json({ 
+      message: 'Invoice deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete invoice error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 app.get('/api/salesrep/invoices/:invoiceId/download', authenticateToken, requireSalesRep, async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.invoiceId);
