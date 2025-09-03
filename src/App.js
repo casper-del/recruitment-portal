@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-console.log('APP.JS LOADED - COMPLETE VERSION WITH UPDATES');
+console.log('APP.JS LOADED - COMPLETE VERSION WITH INVOICE GENERATOR');
 
 // Icon components
 const Building2Icon = () => (
@@ -18,7 +18,7 @@ const Building2Icon = () => (
 
 const HomeIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+    <path d="M3 9l9-7 9v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
     <polyline points="9,22 9,12 15,12 15,22"/>
   </svg>
 );
@@ -146,6 +146,21 @@ const LinkIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
     <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+  </svg>
+);
+
+const EyeIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+);
+
+const PrinterIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="6,9 6,2 18,2 18,9"/>
+    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+    <rect width="12" height="8" x="6" y="14"/>
   </svg>
 );
 
@@ -740,24 +755,38 @@ const SalesRepDashboard = ({ user }) => {
   );
 };
 
-// Sales Rep Invoices Component
+// Updated Sales Rep Invoices Component with Invoice Generator
 const SalesRepInvoices = ({ user }) => {
   const [invoices, setInvoices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [showUploadForm, setShowUploadForm] = useState(false);
-  const [newInvoice, setNewInvoice] = useState({
-    invoiceNumber: '',
-    amount: '',
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
-    description: '',
-    file: null
+  const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
+  const [companyDetails, setCompanyDetails] = useState({
+    companyName: '',
+    contactName: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    country: 'Nederland',
+    phone: '',
+    email: '',
+    kvkNumber: '',
+    vatNumber: ''
   });
+  const [invoiceData, setInvoiceData] = useState({
+    thisMonthRevenue: '',
+    commissionExcl: '',
+    vatRate: '21',
+    description: '',
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear()
+  });
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     fetchInvoices();
+    loadCompanyDetails();
   }, []);
 
   const fetchInvoices = async () => {
@@ -772,30 +801,92 @@ const SalesRepInvoices = ({ user }) => {
     }
   };
 
-  const uploadInvoice = async () => {
+  const loadCompanyDetails = async () => {
+    try {
+      const response = await apiCall('/salesrep/company-details');
+      if (response.companyDetails) {
+        setCompanyDetails(response.companyDetails);
+      } else {
+        // Pre-fill with user data if available
+        if (user && user.salesRep) {
+          setCompanyDetails(prev => ({
+            ...prev,
+            contactName: user.name,
+            email: user.email,
+            phone: user.salesRep.phone || ''
+          }));
+        }
+      }
+    } catch (err) {
+      // Company details not found - first time setup
+      if (user && user.salesRep) {
+        setCompanyDetails(prev => ({
+          ...prev,
+          contactName: user.name,
+          email: user.email,
+          phone: user.salesRep.phone || ''
+        }));
+      }
+    }
+  };
+
+  const saveCompanyDetails = async () => {
+    try {
+      await apiCall('/salesrep/company-details', {
+        method: 'POST',
+        body: JSON.stringify(companyDetails)
+      });
+      setSuccess('Bedrijfsgegevens opgeslagen!');
+    } catch (err) {
+      setError('Kon bedrijfsgegevens niet opslaan');
+    }
+  };
+
+  const generateInvoice = async () => {
     try {
       setIsLoading(true);
       setError('');
       
-      await uploadFile('/salesrep/invoices', newInvoice.file, {
-        invoiceNumber: newInvoice.invoiceNumber,
-        amount: newInvoice.amount,
-        month: newInvoice.month,
-        year: newInvoice.year,
-        description: newInvoice.description,
-        type: 'commission'
+      // Calculate VAT and total
+      const commissionAmount = parseFloat(invoiceData.commissionExcl) || 0;
+      const vatRate = parseFloat(invoiceData.vatRate) / 100;
+      const vatAmount = commissionAmount * vatRate;
+      const totalAmount = commissionAmount + vatAmount;
+      
+      // Generate invoice number
+      const invoiceNumber = 'F-' + invoiceData.year + '-' + 
+                           String(invoiceData.month).padStart(2, '0') + '-' + 
+                           String(Date.now()).slice(-4);
+      
+      const invoicePayload = {
+        invoiceNumber,
+        thisMonthRevenue: parseFloat(invoiceData.thisMonthRevenue) || 0,
+        commissionExcl: commissionAmount,
+        vatRate: parseFloat(invoiceData.vatRate),
+        vatAmount,
+        totalAmount,
+        month: invoiceData.month,
+        year: invoiceData.year,
+        description: invoiceData.description,
+        companyDetails
+      };
+      
+      const response = await apiCall('/salesrep/generate-invoice', {
+        method: 'POST',
+        body: JSON.stringify(invoicePayload)
       });
       
-      setSuccess('Factuur succesvol geupload!');
-      setNewInvoice({
-        invoiceNumber: '',
-        amount: '',
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
+      setSuccess('Factuur succesvol gegenereerd!');
+      setInvoiceData({
+        thisMonthRevenue: '',
+        commissionExcl: '',
+        vatRate: '21',
         description: '',
-        file: null
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear()
       });
-      setShowUploadForm(false);
+      setShowInvoiceGenerator(false);
+      setShowPreview(false);
       await fetchInvoices();
     } catch (err) {
       setError(err.message);
@@ -812,17 +903,36 @@ const SalesRepInvoices = ({ user }) => {
     }
   };
 
+  // Calculate live totals for preview
+  const commissionAmount = parseFloat(invoiceData.commissionExcl) || 0;
+  const vatRate = parseFloat(invoiceData.vatRate) / 100;
+  const vatAmount = commissionAmount * vatRate;
+  const totalAmount = commissionAmount + vatAmount;
+
+  // Get client details for invoice
+  const clientDetails = user && user.salesRep && user.salesRep.clientId ? {
+    name: user.salesRep.clientId.name,
+    contactName: user.salesRep.clientId.contactName,
+    address: user.salesRep.clientId.address,
+    email: user.salesRep.clientId.email
+  } : {
+    name: 'Client naam wordt automatisch ingevuld',
+    contactName: 'Contact persoon',
+    address: 'Adres gegevens',
+    email: 'client@email.com'
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Mijn Facturen</h2>
-            <p className="text-gray-600">Upload en beheer je commissie facturen</p>
+            <p className="text-gray-600">Genereer professionele facturen voor je commissies</p>
           </div>
           <button
-            onClick={() => setShowUploadForm(!showUploadForm)}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center"
+            onClick={() => setShowInvoiceGenerator(!showInvoiceGenerator)}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center"
           >
             <PlusIcon />
             <span className="ml-2">Nieuwe Factuur</span>
@@ -832,115 +942,406 @@ const SalesRepInvoices = ({ user }) => {
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <XIcon />
+            </button>
+          </div>
         </div>
       )}
 
       {success && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <p className="text-green-700 text-sm">{success}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-green-700 text-sm">{success}</p>
+            <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">
+              <XIcon />
+            </button>
+          </div>
         </div>
       )}
 
-      {showUploadForm && (
+      {showInvoiceGenerator && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Nieuwe Factuur Uploaden</h3>
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Factuur Generator</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Factuurnummer</label>
-              <input
-                type="text"
-                value={newInvoice.invoiceNumber}
-                onChange={(e) => setNewInvoice(Object.assign({}, newInvoice, {invoiceNumber: e.target.value}))}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder="F-2024-001"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Bedrag (€)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={newInvoice.amount}
-                onChange={(e) => setNewInvoice(Object.assign({}, newInvoice, {amount: e.target.value}))}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder="1500.00"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Maand</label>
-              <select
-                value={newInvoice.month}
-                onChange={(e) => setNewInvoice(Object.assign({}, newInvoice, {month: parseInt(e.target.value)}))}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          {/* Company Details Section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900">Bedrijfsgegevens</h4>
+              <button
+                onClick={saveCompanyDetails}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
               >
-                {Array.from({length: 12}, (_, i) => (
-                  <option key={i+1} value={i+1}>
-                    {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
-                  </option>
-                ))}
-              </select>
+                Opslaan
+              </button>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Jaar</label>
-              <input
-                type="number"
-                value={newInvoice.year}
-                onChange={(e) => setNewInvoice(Object.assign({}, newInvoice, {year: parseInt(e.target.value)}))}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder={new Date().getFullYear().toString()}
-              />
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Beschrijving (optioneel)</label>
-            <input
-              type="text"
-              value={newInvoice.description}
-              onChange={(e) => setNewInvoice(Object.assign({}, newInvoice, {description: e.target.value}))}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Commissie voor geplaatste kandidaten"
-            />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">PDF Bestand</label>
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={(e) => setNewInvoice(Object.assign({}, newInvoice, {file: e.target.files[0]}))}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">Alleen PDF bestanden toegestaan (max 10MB)</p>
-          </div>
-
-          <div className="flex space-x-4">
-            <button
-              onClick={uploadInvoice}
-              disabled={isLoading || !newInvoice.file || !newInvoice.invoiceNumber || !newInvoice.amount}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Uploaden...' : 'Factuur Uploaden'}
-            </button>
             
-            <button
-              onClick={() => setShowUploadForm(false)}
-              className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
-            >
-              Annuleren
-            </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bedrijfsnaam *</label>
+                <input
+                  type="text"
+                  value={companyDetails.companyName}
+                  onChange={(e) => setCompanyDetails({...companyDetails, companyName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Jouw Bedrijf B.V."
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contactpersoon *</label>
+                <input
+                  type="text"
+                  value={companyDetails.contactName}
+                  onChange={(e) => setCompanyDetails({...companyDetails, contactName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Je naam"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>
+                <input
+                  type="text"
+                  value={companyDetails.address}
+                  onChange={(e) => setCompanyDetails({...companyDetails, address: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Straatnaam 123"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
+                  <input
+                    type="text"
+                    value={companyDetails.postalCode}
+                    onChange={(e) => setCompanyDetails({...companyDetails, postalCode: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="1234AB"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Plaats</label>
+                  <input
+                    type="text"
+                    value={companyDetails.city}
+                    onChange={(e) => setCompanyDetails({...companyDetails, city: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Amsterdam"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefoon</label>
+                <input
+                  type="tel"
+                  value={companyDetails.phone}
+                  onChange={(e) => setCompanyDetails({...companyDetails, phone: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="+31 6 12345678"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
+                <input
+                  type="email"
+                  value={companyDetails.email}
+                  onChange={(e) => setCompanyDetails({...companyDetails, email: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="jouw@email.nl"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">KVK Nummer</label>
+                <input
+                  type="text"
+                  value={companyDetails.kvkNumber}
+                  onChange={(e) => setCompanyDetails({...companyDetails, kvkNumber: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="12345678"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">BTW Nummer</label>
+                <input
+                  type="text"
+                  value={companyDetails.vatNumber}
+                  onChange={(e) => setCompanyDetails({...companyDetails, vatNumber: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="NL123456789B01"
+                />
+              </div>
+            </div>
           </div>
+
+          <div className="border-t border-gray-200 pt-6">
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Factuur Gegevens</h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Omzet deze maand (informatie) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={invoiceData.thisMonthRevenue}
+                    onChange={(e) => setInvoiceData({...invoiceData, thisMonthRevenue: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="25000.00"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Dit wordt niet gefactureerd, maar helpt bij tracking</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mijn commissie excl. BTW *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={invoiceData.commissionExcl}
+                    onChange={(e) => setInvoiceData({...invoiceData, commissionExcl: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="2500.00"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">BTW Tarief</label>
+                  <select
+                    value={invoiceData.vatRate}
+                    onChange={(e) => setInvoiceData({...invoiceData, vatRate: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="21">Hoog (21%)</option>
+                    <option value="9">Laag (9%)</option>
+                    <option value="0">Vrijgesteld (0%)</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Maand</label>
+                    <select
+                      value={invoiceData.month}
+                      onChange={(e) => setInvoiceData({...invoiceData, month: parseInt(e.target.value)})}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                      {Array.from({length: 12}, (_, i) => (
+                        <option key={i+1} value={i+1}>
+                          {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Jaar</label>
+                    <input
+                      type="number"
+                      value={invoiceData.year}
+                      onChange={(e) => setInvoiceData({...invoiceData, year: parseInt(e.target.value)})}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder={new Date().getFullYear().toString()}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Omschrijving</label>
+                  <input
+                    type="text"
+                    value={invoiceData.description}
+                    onChange={(e) => setInvoiceData({...invoiceData, description: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Commissie voor geplaatste kandidaten"
+                  />
+                </div>
+              </div>
+
+              {/* Live Preview */}
+              <div className="bg-gray-50 p-6 rounded-xl">
+                <h5 className="font-semibold text-gray-900 mb-4">Live Preview</h5>
+                
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Omzet deze maand:</span>
+                    <span className="font-medium">€{(parseFloat(invoiceData.thisMonthRevenue) || 0).toLocaleString('nl-NL', {minimumFractionDigits: 2})}</span>
+                  </div>
+                  
+                  <div className="border-t border-gray-300 pt-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Commissie excl. BTW:</span>
+                      <span className="font-medium">€{commissionAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">BTW {invoiceData.vatRate}%:</span>
+                      <span className="font-medium">€{vatAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="border-t border-gray-300 pt-2">
+                    <div className="flex justify-between font-bold">
+                      <span>Totaal:</span>
+                      <span>€{totalAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-300 pt-2">
+                    <p className="text-xs text-gray-500">
+                      Factuur voor: {clientDetails.name}<br/>
+                      Periode: {new Date(0, invoiceData.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoiceData.year}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex space-x-4 mt-6">
+              <button
+                onClick={() => setShowPreview(!showPreview)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center"
+              >
+                <EyeIcon />
+                <span className="ml-2">{showPreview ? 'Verberg Preview' : 'Toon Preview'}</span>
+              </button>
+              
+              <button
+                onClick={generateInvoice}
+                disabled={isLoading || !invoiceData.thisMonthRevenue || !invoiceData.commissionExcl || !companyDetails.companyName || !companyDetails.email}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                <PrinterIcon />
+                <span className="ml-2">{isLoading ? 'Genereren...' : 'Factuur Genereren'}</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowInvoiceGenerator(false);
+                  setShowPreview(false);
+                }}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+              >
+                Annuleren
+              </button>
+            </div>
+          </div>
+
+          {/* Full Invoice Preview */}
+          {showPreview && (
+            <div className="border-t border-gray-200 pt-8 mt-8">
+              <div className="bg-white border-2 border-gray-300 rounded-xl p-8 max-w-4xl mx-auto">
+                <div className="text-center mb-8">
+                  <h3 className="text-2xl font-bold text-gray-900">FACTUUR</h3>
+                  <p className="text-gray-600">
+                    F-{invoiceData.year}-{String(invoiceData.month).padStart(2, '0')}-{String(Date.now()).slice(-4)}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-8 mb-8">
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">Van:</h4>
+                    <div className="text-sm text-gray-700">
+                      <p className="font-medium">{companyDetails.companyName || 'Bedrijfsnaam'}</p>
+                      <p>{companyDetails.contactName}</p>
+                      {companyDetails.address && <p>{companyDetails.address}</p>}
+                      {(companyDetails.postalCode || companyDetails.city) && (
+                        <p>{companyDetails.postalCode} {companyDetails.city}</p>
+                      )}
+                      {companyDetails.phone && <p>{companyDetails.phone}</p>}
+                      <p>{companyDetails.email}</p>
+                      {companyDetails.kvkNumber && <p>KVK: {companyDetails.kvkNumber}</p>}
+                      {companyDetails.vatNumber && <p>BTW: {companyDetails.vatNumber}</p>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">Aan:</h4>
+                    <div className="text-sm text-gray-700">
+                      <p className="font-medium">{clientDetails.name}</p>
+                      <p>{clientDetails.contactName}</p>
+                      {clientDetails.address && <p>{clientDetails.address}</p>}
+                      <p>{clientDetails.email}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-8">
+                  <p className="text-sm text-gray-600">
+                    <strong>Factuurdatum:</strong> {new Date().toLocaleDateString('nl-NL')}<br/>
+                    <strong>Periode:</strong> {new Date(0, invoiceData.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoiceData.year}
+                  </p>
+                </div>
+
+                <div className="border border-gray-300 rounded-lg overflow-hidden mb-8">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Omschrijving</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium text-gray-900">Bedrag</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      <tr>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          <div>
+                            <p className="font-medium">
+                              {invoiceData.description || 'Commissie voor geplaatste kandidaten'}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Omzet deze maand: €{(parseFloat(invoiceData.thisMonthRevenue) || 0).toLocaleString('nl-NL', {minimumFractionDigits: 2})}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                          €{commissionAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex justify-end mb-8">
+                  <div className="w-64">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>Subtotaal:</span>
+                        <span>€{commissionAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>BTW {invoiceData.vatRate}%:</span>
+                        <span>€{vatAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</span>
+                      </div>
+                      <div className="border-t border-gray-300 pt-2 flex justify-between font-bold">
+                        <span>Totaal:</span>
+                        <span>€{totalAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-xs text-gray-500 border-t border-gray-200 pt-4">
+                  <p>Betalingstermijn: 30 dagen na factuurdatum</p>
+                  <p className="mt-2">Deze factuur is gegenereerd via het Recruiters Network platform.</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
+      {/* Invoices List */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h3 className="text-xl font-semibold text-gray-900 mb-6">{'Mijn Facturen (' + invoices.length + ')'}</h3>
         
@@ -948,7 +1349,7 @@ const SalesRepInvoices = ({ user }) => {
           <div className="text-center py-8">
             <FileTextIcon />
             <h4 className="text-lg font-medium text-gray-900 mt-4">Nog geen facturen</h4>
-            <p className="text-gray-600 mt-2">Upload je eerste factuur om te beginnen</p>
+            <p className="text-gray-600 mt-2">Genereer je eerste factuur om te beginnen</p>
           </div>
         ) : (
           <div className="space-y-4">
