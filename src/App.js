@@ -1,4 +1,215 @@
-import React, { useState, useEffect } from 'react';
+// CLIENT INVOICES PAGE - Shows both Sales Rep and Network invoices
+const ClientInvoicesPage = ({ user }) => {
+  const [salesRepInvoices, setSalesRepInvoices] = useState([]);
+  const [networkInvoices, setNetworkInvoices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    fetchAllInvoices();
+  }, []);
+
+  const fetchAllInvoices = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch sales rep invoices
+      const salesRepResponse = await apiCall('/client/invoices');
+      setSalesRepInvoices(salesRepResponse || []);
+      
+      // Fetch network invoices (invoices from Recruiters Network to this client)
+      const networkResponse = await apiCall('/client/network-invoices');
+      setNetworkInvoices(networkResponse || []);
+      
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const downloadInvoicePDF = async (invoice, type = 'salesrep') => {
+    try {
+      console.log(`CLIENT DOWNLOADING ${type.toUpperCase()} INVOICE PDF:`, invoice);
+      
+      let companyDetails, clientDetails;
+      
+      if (type === 'network') {
+        // Network invoice: FROM Recruiters Network TO this client
+        companyDetails = {
+          companyName: 'Recruiters Network B.V.',
+          contactName: 'Admin Team',
+          address: 'Herengracht 123, 1015 BG Amsterdam',
+          city: 'Amsterdam',
+          postalCode: '1015 BG',
+          email: 'admin@recruitersnetwork.nl',
+          phone: '+31 20 123 4567',
+          kvkNumber: '87654321',
+          vatNumber: 'NL987654321B01',
+          bankAccount: 'NL12 RABO 0123 4567 89'
+        };
+        clientDetails = {
+          name: user.client?.name || 'Client',
+          contactName: user.name,
+          address: user.client?.address || '',
+          kvkNumber: user.client?.kvkNumber || '',
+          vatNumber: user.client?.vatNumber || ''
+        };
+      } else {
+        // Sales rep invoice: FROM sales rep TO this client
+        companyDetails = invoice.invoiceData?.companyDetails || {};
+        clientDetails = {
+          clientCompanyName: user.client?.name || 'Client',
+          clientContactName: user.name,
+          clientAddress: user.client?.address || '',
+          clientKvk: user.client?.kvkNumber || '',
+          clientVat: user.client?.vatNumber || ''
+        };
+      }
+
+      await generateInvoicePDF(invoice, companyDetails, clientDetails);
+      setSuccess('PDF wordt gedownload...');
+    } catch (err) {
+      console.error('PDF download error:', err);
+      setError('Kon PDF niet genereren');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <p className="text-gray-600">Facturen laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Betalingen & Facturen</h2>
+            <p className="text-gray-600">Overzicht van alle facturen van sales reps en Recruiters Network</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-500">Client:</p>
+            <p className="text-lg font-semibold text-gray-900">{user?.client?.name}</p>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-green-700 text-sm">{success}</p>
+            <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Sales Rep Facturen Section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Sales Rep Facturen ({salesRepInvoices.length})</h3>
+        <p className="text-gray-600 mb-4">Facturen van je sales team leden</p>
+        
+        {salesRepInvoices.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <icons.FileText />
+            </div>
+            <h4 className="text-lg font-medium text-gray-900">Nog geen sales rep facturen</h4>
+            <p className="text-gray-600 mt-2">Sales rep facturen zullen hier verschijnen zodra ze worden ingediend</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {salesRepInvoices.map((invoice) => (
+              <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:shadow-sm transition-shadow">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <icons.FileText />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">#{invoice.invoiceNumber}</h4>
+                    <p className="text-gray-600">{invoice.salesRepId?.name || 'Sales Rep'}</p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Commissie: €{(invoice.invoiceData?.commissionExcl || 0).toLocaleString('nl-NL', {minimumFractionDigits: 2})} 
+                      {invoice.invoiceData?.thisMonthRevenue && ` • Omzet: €${invoice.invoiceData.thisMonthRevenue.toLocaleString('nl-NL')}`}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="text-right">
+                    <p className="font-semibold text-gray-900">€{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</p>
+                    <p className="text-xs text-gray-500">incl. BTW</p>
+                  </div>
+
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    invoice.status === 'paid' 
+                      ? 'bg-green-100 text-green-600' 
+                      : invoice.status === 'approved'
+                      ? 'bg-blue-100 text-blue-600'
+                      : invoice.status === 'revision_requested'
+                      ? 'bg-yellow-100 text-yellow-600'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {invoice.status === 'paid' ? 'Betaald' : 
+                     invoice.status === 'approved' ? 'Goedgekeurd' :
+                     invoice.status === 'revision_requested' ? 'Herzien' :
+                     'Te beoordelen'}
+                  </span>
+
+                  <button
+                    onClick={() => downloadInvoicePDF(invoice, 'salesrep')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors text-sm flex items-center"
+                  >
+                    <icons.Download />
+                    <span className="ml-1">PDF</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Recruiters Network Facturen Section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Recruiters Network Facturen ({networkInvoices.length})</h3>
+        <p className="text-gray-600 mb-4">Facturen van Recruiters Network voor jullie network commissies</p>
+        
+        {networkInvoices.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <icons.Building2 />
+            </div>
+            <h4 className="text-lg font-medium text-gray-900">Nog geen network facturen</h4>
+            <p className="text-gray-600 mt-2">Network commissie facturen zullen hier verschijnen</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {networkInvoices.map((invoice) => (
+              <div key={invoice._id} className="flex items-center justify-between p-4 border border-green-200 rounded-xl hover:shadow-sm transition-shadow bg-green-50">
+                <div className="flex items-import React, { useState, useEffect } from 'react';
 
 console.log('COMPLETE APP - OPTIMIZED VERSION LOADED');
 
@@ -2503,7 +2714,7 @@ const App = () => {
           {user.role === 'client' && (
             <div>
               {currentPage === 'dashboard' && <ClientTeamDashboard user={user} />}
-              {currentPage === 'invoices' && <SimpleDashboard title="Client Invoices" />}
+              {currentPage === 'invoices' && <ClientInvoicesPage user={user} />}
               {currentPage === 'reports' && <SimpleDashboard title="Client Reports" />}
               {currentPage === 'settings' && <SimpleDashboard title="Client Settings" />}
             </div>
