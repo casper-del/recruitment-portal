@@ -765,7 +765,131 @@ app.delete('/api/salesrep/invoices/:invoiceId', authenticateToken, async (req, r
   }
 });
 
-// Download invoice (placeholder - would need PDF generation)
+// Network Commission endpoints for admin
+app.get('/api/admin/network-commissions', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const networkInvoices = await Invoice.find({ 
+      type: 'network' 
+    })
+    .populate('clientId')
+    .sort({ year: -1, month: -1 });
+    
+    const formattedInvoices = networkInvoices.map(invoice => ({
+      _id: invoice._id,
+      clientName: invoice.clientId?.name || 'Unknown',
+      invoiceNumber: invoice.invoiceNumber,
+      month: invoice.month,
+      year: invoice.year,
+      monthName: new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'}),
+      status: invoice.status,
+      totalSalesRepCommission: invoice.invoiceData?.totalSalesRepCommission || 0,
+      networkRate: invoice.invoiceData?.networkRate || 0,
+      networkAmount: invoice.invoiceData?.networkAmount || 0,
+      createdAt: invoice.createdAt
+    }));
+    
+    res.json(formattedInvoices);
+  } catch (error) {
+    console.error('Get network commissions error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.post('/api/admin/generate-network-invoice', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { clientId, month, year } = req.body;
+    
+    if (!clientId || !month || !year) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+    
+    // Get client details
+    const client = await Client.findById(clientId);
+    if (!client) {
+      return res.status(404).json({ message: 'Client not found' });
+    }
+    
+    // Check if network invoice already exists for this month/year
+    const existingNetworkInvoice = await Invoice.findOne({
+      clientId,
+      type: 'network',
+      month: parseInt(month),
+      year: parseInt(year)
+    });
+    
+    if (existingNetworkInvoice) {
+      return res.status(400).json({ 
+        message: `Network factuur bestaat al voor ${new Date(0, month - 1).toLocaleDateString('nl-NL', {month: 'long'})} ${year}` 
+      });
+    }
+    
+    // Find all approved sales rep invoices for this client in specified month/year
+    const salesRepInvoices = await Invoice.find({
+      clientId,
+      type: 'commission',
+      status: 'approved',
+      month: parseInt(month),
+      year: parseInt(year)
+    });
+    
+    if (salesRepInvoices.length === 0) {
+      return res.status(400).json({ 
+        message: 'Geen goedgekeurde sales rep facturen gevonden voor deze periode' 
+      });
+    }
+    
+    // Calculate total sales rep commission (excl BTW)
+    const totalSalesRepCommission = salesRepInvoices.reduce((total, invoice) => {
+      return total + (invoice.invoiceData?.commissionExcl || 0);
+    }, 0);
+    
+    // Calculate network commission
+    const networkRate = client.networkCommissionRate || 0.10;
+    const networkCommissionExcl = totalSalesRepCommission * networkRate;
+    const networkVat = networkCommissionExcl * 0.21; // 21% BTW
+    const networkTotal = networkCommissionExcl + networkVat;
+    
+    // Generate invoice number
+    const invoiceNumber = `RN-${year}-${String(month).padStart(2, '0')}-${client.name.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+    
+    // Create network invoice
+    const networkInvoice = new Invoice({
+      clientId,
+      uploadedBy: req.user.userId,
+      invoiceNumber,
+      amount: networkTotal,
+      month: parseInt(month),
+      year: parseInt(year),
+      status: 'pending',
+      type: 'network',
+      description: `Recruiters Network commissie - ${new Date(0, month - 1).toLocaleDateString('nl-NL', {month: 'long'})} ${year}`,
+      invoiceData: {
+        totalSalesRepCommission,
+        networkRate,
+        networkAmount: networkCommissionExcl,
+        vatRate: 21,
+        vatAmount: networkVat,
+        totalAmount: networkTotal,
+        salesRepInvoices: salesRepInvoices.map(inv => inv._id)
+      }
+    });
+    
+    await networkInvoice.save();
+    
+    res.status(201).json({
+      message: 'Network factuur succesvol gegenereerd',
+      invoice: networkInvoice,
+      totalSalesRepCommission,
+      networkRate,
+      networkAmount: networkCommissionExcl,
+      networkTotal
+    });
+    
+  } catch (error) {
+    console.error('Generate network invoice error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 app.get('/api/salesrep/invoices/:invoiceId/download', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'salesrep') {
