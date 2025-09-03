@@ -80,6 +80,33 @@ const icons = {
       <polyline points="6,9 6,2 18,2 18,9"/>
       <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
     </svg>
+  ),
+  Calendar: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+      <line x1="16" x2="16" y1="2" y2="6"/>
+      <line x1="8" x2="8" y1="2" y2="6"/>
+      <line x1="3" x2="21" y1="10" y2="10"/>
+    </svg>
+  ),
+  CheckCircle: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22,4 12,14.01 9,11.01"/>
+    </svg>
+  ),
+  Clock: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12,6 12,12 16,14"/>
+    </svg>
+  ),
+  AlertTriangle: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" x2="12" y1="9" y2="13"/>
+      <line x1="12" x2="12.01" y1="17" y2="17"/>
+    </svg>
   )
 };
 
@@ -322,126 +349,154 @@ const AdminDashboard = () => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
           <h3 className="text-xl font-semibold text-gray-900 mb-6">Nieuwe Klant Toevoegen</h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bedrijfsnaam *</label>
-              <input
-                type="text"
-                value={newClient.name}
-                onChange={(e) => setNewClient({...newClient, name: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                placeholder="Acme Corporation"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contactpersoon *</label>
-              <input
-                type="text"
-                value={newClient.contactName}
-                onChange={(e) => setNewClient({...newClient, contactName: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                placeholder="John Doe"
-                required
-              />
+          <div className="space-y-6">
+            {/* Basis Informatie */}
+            <div className="p-6 bg-gray-50 rounded-lg">
+              <h5 className="font-semibold mb-4">Basis Informatie</h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bedrijfsnaam *</label>
+                  <input
+                    type="text"
+                    value={newClient.name}
+                    onChange={(e) => setNewClient({...newClient, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    placeholder="Acme Corporation"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contactpersoon *</label>
+                  <input
+                    type="text"
+                    value={newClient.contactName}
+                    onChange={(e) => setNewClient({...newClient, contactName: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    placeholder="John Doe"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
+                  <input
+                    type="email"
+                    value={newClient.email}
+                    onChange={(e) => setNewClient({...newClient, email: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    placeholder="contact@acme.com"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Telefoon</label>
+                  <input
+                    type="tel"
+                    value={newClient.phone}
+                    onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    placeholder="+31 20 123 4567"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>
+                  <input
+                    type="text"
+                    value={newClient.address}
+                    onChange={(e) => setNewClient({...newClient, address: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    placeholder="Damrak 70, 1012 LM Amsterdam"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
-              <input
-                type="email"
-                value={newClient.email}
-                onChange={(e) => setNewClient({...newClient, email: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                placeholder="contact@acme.com"
-                required
-              />
+            {/* Bedrijfsregistratie */}
+            <div className="p-6 bg-blue-50 rounded-lg">
+              <h5 className="font-semibold mb-4">Bedrijfsregistratie</h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">KVK Nummer</label>
+                  <input
+                    type="text"
+                    value={newClient.kvkNumber}
+                    onChange={(e) => setNewClient({...newClient, kvkNumber: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    placeholder="12345678"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">BTW Nummer</label>
+                  <input
+                    type="text"
+                    value={newClient.vatNumber}
+                    onChange={(e) => setNewClient({...newClient, vatNumber: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    placeholder="NL123456789B01"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">IBAN Bankrekeningnummer</label>
+                  <input
+                    type="text"
+                    value={newClient.bankAccount}
+                    onChange={(e) => setNewClient({...newClient, bankAccount: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    placeholder="NL91 ABNA 0417 1643 00"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefoon</label>
-              <input
-                type="tel"
-                value={newClient.phone}
-                onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                placeholder="+31 20 123 4567"
-              />
-            </div>
+            {/* Network Commissie */}
+            <div className="p-6 bg-green-50 rounded-lg">
+              <h5 className="font-semibold mb-4">Network Commissie & Facturatie</h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Network Commissie %</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="1"
+                    value={newClient.networkCommissionRate}
+                    onChange={(e) => setNewClient({...newClient, networkCommissionRate: parseFloat(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                    placeholder="0.10"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Percentage van sales rep commissie (bijv. 0.10 = 10%)</p>
+                </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>
-              <input
-                type="text"
-                value={newClient.address}
-                onChange={(e) => setNewClient({...newClient, address: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                placeholder="Damrak 70, 1012 LM Amsterdam"
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Facturatie Dag van de Maand</label>
+                  <select
+                    value={newClient.billingDay}
+                    onChange={(e) => setNewClient({...newClient, billingDay: parseInt(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                  >
+                    {Array.from({length: 28}, (_, i) => (
+                      <option key={i+1} value={i+1}>{i+1}e van de maand</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Dag waarop facturen verwacht worden</p>
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">KVK Nummer</label>
-              <input
-                type="text"
-                value={newClient.kvkNumber}
-                onChange={(e) => setNewClient({...newClient, kvkNumber: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                placeholder="12345678"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">BTW Nummer</label>
-              <input
-                type="text"
-                value={newClient.vatNumber}
-                onChange={(e) => setNewClient({...newClient, vatNumber: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                placeholder="NL123456789B01"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">IBAN</label>
-              <input
-                type="text"
-                value={newClient.bankAccount}
-                onChange={(e) => setNewClient({...newClient, bankAccount: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                placeholder="NL91 ABNA 0417 1643 00"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Network Commissie %</label>
-              <input
-                type="number"
-                step="0.01"
-                value={newClient.networkCommissionRate}
-                onChange={(e) => setNewClient({...newClient, networkCommissionRate: parseFloat(e.target.value)})}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-                placeholder="0.10"
-              />
-              <p className="text-xs text-gray-500 mt-1">% van sales rep commissie</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Facturatie Dag</label>
-              <select
-                value={newClient.billingDay}
-                onChange={(e) => setNewClient({...newClient, billingDay: parseInt(e.target.value)})}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
-              >
-                {Array.from({length: 28}, (_, i) => (
-                  <option key={i+1} value={i+1}>{i+1}e van de maand</option>
-                ))}
-              </select>
+              <div className="mt-4 p-4 bg-white border border-green-200 rounded-lg">
+                <p className="text-sm text-gray-700">
+                  <strong>Voorbeeld berekening:</strong> Als een sales rep €2.500 commissie excl. BTW factureert 
+                  en de network commissie is 10%, dan kan Recruiters Network €250 excl. BTW factureren.
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="flex space-x-4">
+          <div className="flex space-x-4 mt-6">
             <button
               onClick={addClient}
               disabled={isLoading || !newClient.name || !newClient.contactName || !newClient.email}
@@ -489,13 +544,19 @@ const AdminDashboard = () => {
                     <span className="text-gray-900">{client.contactName}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Sales Reps:</span>
-                    <span className="text-gray-900">{client.salesRepCount || 0}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Network Commissie:</span>
                     <span className="text-gray-900">{((client.networkCommissionRate || 0.10) * 100).toFixed(1)}%</span>
                   </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Facturatie dag:</span>
+                    <span className="text-gray-900">{client.billingDay || 15}e</span>
+                  </div>
+                  {client.kvkNumber && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">KVK:</span>
+                      <span className="text-gray-900">{client.kvkNumber}</span>
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -522,7 +583,7 @@ const AdminDashboard = () => {
   );
 };
 
-// Working Client Management Modal
+// Working Client Management Modal - WITH ALL REQUIRED FIELDS
 const ClientManagementModal = ({ client, onClose, onRefresh }) => {
   const [clientDetails, setClientDetails] = useState(null);
   const [salesReps, setSalesReps] = useState([]);
@@ -547,6 +608,11 @@ const ClientManagementModal = ({ client, onClose, onRefresh }) => {
     email: '',
     phone: '',
     address: '',
+    kvkNumber: '',
+    vatNumber: '',
+    bankAccount: '',
+    networkCommissionRate: 0.10,
+    billingDay: 15,
     commissionRate: 0.10,
     commissionCap: 50000
   });
@@ -564,12 +630,18 @@ const ClientManagementModal = ({ client, onClose, onRefresh }) => {
       setClientDetails(response.client);
       setSalesReps(response.salesReps || []);
       
+      // Set edit data with ALL fields including new ones
       setEditData({
         name: response.client.name || '',
         contactName: response.client.contactName || '',
         email: response.client.email || '',
         phone: response.client.phone || '',
         address: response.client.address || '',
+        kvkNumber: response.client.kvkNumber || '',
+        vatNumber: response.client.vatNumber || '',
+        bankAccount: response.client.bankAccount || '',
+        networkCommissionRate: response.client.networkCommissionRate || 0.10,
+        billingDay: response.client.billingDay || 15,
         commissionRate: response.client.commissionRate || 0.10,
         commissionCap: response.client.commissionCap || 50000
       });
@@ -640,7 +712,7 @@ const ClientManagementModal = ({ client, onClose, onRefresh }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl p-8 max-w-4xl w-full max-h-[90vh] overflow-auto">
+      <div className="bg-white rounded-xl p-8 max-w-6xl w-full max-h-[90vh] overflow-auto">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-2xl font-bold text-gray-900">
             {client.name} - Beheer
@@ -686,68 +758,148 @@ const ClientManagementModal = ({ client, onClose, onRefresh }) => {
               </div>
 
               {editingClient ? (
-                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Bedrijfsnaam</label>
-                    <input
-                      type="text"
-                      value={editData.name}
-                      onChange={(e) => setEditData({...editData, name: e.target.value})}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
+                <div className="space-y-6">
+                  <div className="p-6 bg-gray-50 rounded-lg">
+                    <h5 className="font-semibold mb-4">Basis Informatie</h5>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Bedrijfsnaam</label>
+                        <input
+                          type="text"
+                          value={editData.name}
+                          onChange={(e) => setEditData({...editData, name: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Contactpersoon</label>
+                        <input
+                          type="text"
+                          value={editData.contactName}
+                          onChange={(e) => setEditData({...editData, contactName: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">E-mail</label>
+                        <input
+                          type="email"
+                          value={editData.email}
+                          onChange={(e) => setEditData({...editData, email: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Telefoon</label>
+                        <input
+                          type="tel"
+                          value={editData.phone}
+                          onChange={(e) => setEditData({...editData, phone: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-1">Adres</label>
+                        <input
+                          type="text"
+                          value={editData.address}
+                          onChange={(e) => setEditData({...editData, address: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Contactpersoon</label>
-                    <input
-                      type="text"
-                      value={editData.contactName}
-                      onChange={(e) => setEditData({...editData, contactName: e.target.value})}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
+
+                  <div className="p-6 bg-blue-50 rounded-lg">
+                    <h5 className="font-semibold mb-4">Bedrijfsregistratie</h5>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">KVK Nummer</label>
+                        <input
+                          type="text"
+                          value={editData.kvkNumber}
+                          onChange={(e) => setEditData({...editData, kvkNumber: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                          placeholder="12345678"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">BTW Nummer</label>
+                        <input
+                          type="text"
+                          value={editData.vatNumber}
+                          onChange={(e) => setEditData({...editData, vatNumber: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                          placeholder="NL123456789B01"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-1">IBAN Bankrekeningnummer</label>
+                        <input
+                          type="text"
+                          value={editData.bankAccount}
+                          onChange={(e) => setEditData({...editData, bankAccount: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                          placeholder="NL91 ABNA 0417 1643 00"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">E-mail</label>
-                    <input
-                      type="email"
-                      value={editData.email}
-                      onChange={(e) => setEditData({...editData, email: e.target.value})}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
+
+                  <div className="p-6 bg-green-50 rounded-lg">
+                    <h5 className="font-semibold mb-4">Network Commissie & Facturatie</h5>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Network Commissie %</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="1"
+                          value={editData.networkCommissionRate}
+                          onChange={(e) => setEditData({...editData, networkCommissionRate: parseFloat(e.target.value) || 0})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Wat Recruiters Network krijgt van sales rep commissie</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Facturatie Dag</label>
+                        <select
+                          value={editData.billingDay}
+                          onChange={(e) => setEditData({...editData, billingDay: parseInt(e.target.value)})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        >
+                          {Array.from({length: 28}, (_, i) => (
+                            <option key={i+1} value={i+1}>{i+1}e van de maand</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Telefoon</label>
-                    <input
-                      type="tel"
-                      value={editData.phone}
-                      onChange={(e) => setEditData({...editData, phone: e.target.value})}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium mb-1">Adres</label>
-                    <input
-                      type="text"
-                      value={editData.address}
-                      onChange={(e) => setEditData({...editData, address: e.target.value})}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-                  <div className="col-span-2 pt-4">
+
+                  <div className="pt-4">
                     <button
                       onClick={updateClient}
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 mr-4"
                     >
                       Opslaan
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg text-sm">
-                  <div><span className="text-gray-600">Bedrijf: </span>{clientDetails?.name}</div>
-                  <div><span className="text-gray-600">Contact: </span>{clientDetails?.contactName}</div>
-                  <div><span className="text-gray-600">E-mail: </span>{clientDetails?.email}</div>
-                  <div><span className="text-gray-600">Telefoon: </span>{clientDetails?.phone || '-'}</div>
-                  <div className="col-span-2"><span className="text-gray-600">Adres: </span>{clientDetails?.address || '-'}</div>
+                <div className="space-y-4 p-4 bg-gray-50 rounded-lg text-sm">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><span className="text-gray-600">Bedrijf: </span>{clientDetails?.name}</div>
+                    <div><span className="text-gray-600">Contact: </span>{clientDetails?.contactName}</div>
+                    <div><span className="text-gray-600">E-mail: </span>{clientDetails?.email}</div>
+                    <div><span className="text-gray-600">Telefoon: </span>{clientDetails?.phone || '-'}</div>
+                    <div><span className="text-gray-600">KVK: </span>{clientDetails?.kvkNumber || '-'}</div>
+                    <div><span className="text-gray-600">BTW: </span>{clientDetails?.vatNumber || '-'}</div>
+                    <div><span className="text-gray-600">IBAN: </span>{clientDetails?.bankAccount || '-'}</div>
+                    <div><span className="text-gray-600">Network Commissie: </span>{((clientDetails?.networkCommissionRate || 0.10) * 100).toFixed(1)}%</div>
+                    <div><span className="text-gray-600">Facturatie dag: </span>{clientDetails?.billingDay || 15}e</div>
+                    <div className="col-span-2"><span className="text-gray-600">Adres: </span>{clientDetails?.address || '-'}</div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1167,7 +1319,7 @@ const SalesRepInvoices = ({ user }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bankrekeningnummer (IBAN) *</label>
                 <input
                   type="text"
-                  value={companyDetails.bankAccount || ''}
+                  value={companyDetails.bankAccount}
                   onChange={(e) => setCompanyDetails({...companyDetails, bankAccount: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
                   placeholder="NL91 ABNA 0417 1643 00"
@@ -1390,11 +1542,13 @@ const SalesRepInvoices = ({ user }) => {
   );
 };
 
-// Client Team Management - FIXED VERSION
-const ClientTeamManagement = ({ user }) => {
+// Improved Client Dashboard - TEAM MANAGEMENT FOCUS
+const ClientDashboard = ({ user }) => {
   const [teamData, setTeamData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedRep, setSelectedRep] = useState(null);
+  const [showRepModal, setShowRepModal] = useState(false);
 
   useEffect(() => {
     fetchTeamData();
@@ -1411,18 +1565,29 @@ const ClientTeamManagement = ({ user }) => {
       const invoicesResponse = await apiCall('/client/invoices');
       console.log('Invoices response:', invoicesResponse);
 
+      // Process sales reps with invoice data
       const salesRepsWithInvoices = (dashboardResponse.salesReps || []).map((rep) => {
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear();
+        
         const repInvoices = invoicesResponse.filter(invoice => 
           invoice.salesRepId && invoice.salesRepId._id === rep._id
+        );
+        
+        const currentMonthInvoice = repInvoices.find(inv => 
+          inv.month === currentMonth && inv.year === currentYear
         );
         
         return {
           ...rep,
           invoices: repInvoices,
+          currentMonthInvoice,
+          hasSubmittedThisMonth: !!currentMonthInvoice,
           totalCommissionPaid: repInvoices
             .filter(inv => inv.status === 'paid')
-            .reduce((sum, inv) => sum + inv.amount, 0),
-          maxCommissionCap: rep.commissionCap || 50000
+            .reduce((sum, inv) => sum + (inv.amount || 0), 0),
+          pendingInvoices: repInvoices.filter(inv => inv.status === 'pending').length,
+          approvedInvoices: repInvoices.filter(inv => inv.status === 'approved').length
         };
       });
 
@@ -1430,7 +1595,13 @@ const ClientTeamManagement = ({ user }) => {
 
       setTeamData({
         ...dashboardResponse,
-        salesReps: salesRepsWithInvoices
+        salesReps: salesRepsWithInvoices,
+        stats: {
+          totalRevenue: salesRepsWithInvoices.reduce((sum, rep) => sum + (rep.thisMonthRevenue || 0), 0),
+          totalCommission: salesRepsWithInvoices.reduce((sum, rep) => sum + (rep.thisMonthCommission || 0), 0),
+          submittedInvoices: salesRepsWithInvoices.filter(rep => rep.hasSubmittedThisMonth).length,
+          totalTeamMembers: salesRepsWithInvoices.length
+        }
       });
     } catch (err) {
       console.error('Team data fetch error:', err);
@@ -1440,23 +1611,134 @@ const ClientTeamManagement = ({ user }) => {
     }
   };
 
+  const handleRepClick = (rep) => {
+    setSelectedRep(rep);
+    setShowRepModal(true);
+  };
+
+  const approveInvoice = async (invoiceId) => {
+    try {
+      await apiCall(`/client/invoices/${invoiceId}/approve`, { method: 'PUT' });
+      await fetchTeamData();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const requestRevision = async (invoiceId, reason) => {
+    try {
+      await apiCall(`/client/invoices/${invoiceId}/revision`, { 
+        method: 'PUT',
+        body: JSON.stringify({ reason })
+      });
+      await fetchTeamData();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <p className="text-gray-600">Team data laden...</p>
+          <p className="text-gray-600">Team dashboard laden...</p>
         </div>
       </div>
     );
   }
 
+  const currentDate = new Date();
+  const billingDay = teamData?.client?.billingDay || 15;
+  const isAfterBillingDay = currentDate.getDate() > billingDay;
+
   return (
     <div className="space-y-6">
+      {/* Header with statistics */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Team Management</h2>
-        <p className="text-gray-600">Beheer je recruitment team en bekijk individuele prestaties</p>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Team Management</h2>
+            <p className="text-gray-600">
+              Beheer je recruitment team • Facturatie deadline: {billingDay}e van de maand
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center space-x-2 mb-2">
+              <icons.Calendar />
+              <span className="text-sm text-gray-500">
+                {isAfterBillingDay ? '🔴 Na deadline' : '🟢 Voor deadline'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Statistics Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <icons.DollarSign />
+              </div>
+              <div>
+                <p className="text-sm text-green-600">Deze Maand Omzet</p>
+                <p className="text-xl font-bold text-green-900">
+                  €{(teamData?.stats?.totalRevenue || 0).toLocaleString('nl-NL')}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <icons.TrendingUp />
+              </div>
+              <div>
+                <p className="text-sm text-blue-600">Deze Maand Commissie</p>
+                <p className="text-xl font-bold text-blue-900">
+                  €{(teamData?.stats?.totalCommission || 0).toLocaleString('nl-NL')}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                <icons.FileText />
+              </div>
+              <div>
+                <p className="text-sm text-purple-600">Facturen Ingediend</p>
+                <p className="text-xl font-bold text-purple-900">
+                  {teamData?.stats?.submittedInvoices || 0}/{teamData?.stats?.totalTeamMembers || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-orange-50 p-4 rounded-xl border border-orange-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                <icons.Users />
+              </div>
+              <div>
+                <p className="text-sm text-orange-600">Actieve Reps</p>
+                <p className="text-xl font-bold text-orange-900">
+                  {teamData?.salesReps?.filter(rep => rep.isConnected).length || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Team Members Grid */}
       {(!teamData || !teamData.salesReps || teamData.salesReps.length === 0) ? (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
           <icons.Users />
@@ -1464,126 +1746,230 @@ const ClientTeamManagement = ({ user }) => {
           <p className="text-gray-600 mt-2">Je sales reps verschijnen hier zodra ze zijn toegevoegd door een admin</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {teamData.salesReps.map((rep) => {
-            const commissionPercentage = rep.maxCommissionCap > 0 ? 
-              (rep.totalCommissionPaid / rep.maxCommissionCap * 100) : 0;
+            const getStatusInfo = () => {
+              if (rep.hasSubmittedThisMonth) {
+                const invoice = rep.currentMonthInvoice;
+                if (invoice.status === 'paid') return { text: '💰 Betaald', color: 'green' };
+                if (invoice.status === 'approved') return { text: '✅ Goedgekeurd', color: 'blue' };
+                if (invoice.status === 'revision_requested') return { text: '🔄 Herzien', color: 'yellow' };
+                return { text: '⏳ Te beoordelen', color: 'yellow' };
+              }
+              return isAfterBillingDay 
+                ? { text: '🔴 Te laat', color: 'red' }
+                : { text: '❌ Nog niet ingediend', color: 'gray' };
+            };
 
+            const status = getStatusInfo();
+            
             return (
-              <div key={rep._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                <div className="flex items-center space-x-4 mb-6">
+              <div 
+                key={rep._id} 
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => handleRepClick(rep)}
+              >
+                <div className="flex items-center space-x-4 mb-4">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                     <span className="text-green-600 font-semibold text-xl">
                       {rep.name.charAt(0)}
                     </span>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-xl font-bold text-gray-900">{rep.name}</h3>
-                    <p className="text-gray-600">{rep.email}</p>
-                    <p className="text-sm text-gray-500">{rep.position || 'Sales Representative'}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-500">Deze maand omzet</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      €{(rep.thisMonthRevenue || 0).toLocaleString('nl-NL')}
-                    </p>
+                    <h3 className="text-lg font-bold text-gray-900">{rep.name}</h3>
+                    <p className="text-sm text-gray-600">{rep.email}</p>
+                    <p className="text-xs text-gray-500">{rep.position || 'Sales Representative'}</p>
                   </div>
                 </div>
 
-                <div className="mb-6">
-                  <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-semibold text-gray-900">Commissie Status</h4>
-                    <span className="text-sm text-gray-600">
-                      €{rep.totalCommissionPaid.toLocaleString('nl-NL')} / €{rep.maxCommissionCap.toLocaleString('nl-NL')} ({Math.round(commissionPercentage)}%)
+                <div className="space-y-3">
+                  {/* Status Badge */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Status:</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      status.color === 'green' ? 'bg-green-100 text-green-600' :
+                      status.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                      status.color === 'yellow' ? 'bg-yellow-100 text-yellow-600' :
+                      status.color === 'red' ? 'bg-red-100 text-red-600' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {status.text}
                     </span>
                   </div>
-                  
-                  <div className="w-full bg-gray-200 rounded-full h-6">
-                    <div 
-                      className="bg-green-500 h-6 rounded-full transition-all duration-700"
-                      style={{width: Math.min(commissionPercentage, 100) + '%'}}
-                    ></div>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500">Commissie Rate</p>
-                    <p className="font-bold text-lg text-gray-900">
-                      {((rep.commissionRate || 0.1) * 100).toFixed(1)}%
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500">Start Datum</p>
-                    <p className="font-bold text-lg text-gray-900">
-                      {rep.hireDate ? new Date(rep.hireDate).toLocaleDateString('nl-NL', {
-                        month: 'short', year: 'numeric'
-                      }) : '-'}
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500">Facturen</p>
-                    <p className="font-bold text-lg text-gray-900">{rep.invoices.length}</p>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500">Status</p>
-                    <p className="font-bold text-lg text-gray-900">
-                      {rep.isConnected ? '✅ Actief' : '❌ Offline'}
-                    </p>
-                  </div>
-                </div>
-
-                {rep.invoices.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="font-semibold text-gray-900 mb-4">
-                      Commissie Facturen ({rep.invoices.length})
-                    </h4>
-                    <div className="space-y-3">
-                      {rep.invoices
-                        .sort((a, b) => b.year - a.year || b.month - a.month)
-                        .slice(0, 3)
-                        .map((invoice) => (
-                        <div key={invoice._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <icons.FileText />
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900 text-sm">
-                                #{invoice.invoiceNumber}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center space-x-3">
-                            <span className="font-semibold text-gray-900">
-                              €{invoice.amount.toLocaleString('nl-NL')}
-                            </span>
-                            <span className={'px-2 py-1 rounded text-xs font-medium ' + (
-                              invoice.status === 'paid' 
-                                ? 'bg-green-100 text-green-600' 
-                                : 'bg-yellow-100 text-yellow-600'
-                            )}>
-                              {invoice.status === 'paid' ? 'Betaald' : 'Open'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {rep.invoices.length > 3 && (
-                        <p className="text-sm text-gray-500 text-center">
-                          ... en {rep.invoices.length - 3} oudere facturen
-                        </p>
-                      )}
+                  {/* Performance Stats */}
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-500">Deze maand:</span>
+                      <p className="font-semibold text-gray-900">
+                        €{(rep.thisMonthRevenue || 0).toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Commissie:</span>
+                      <p className="font-semibold text-gray-900">
+                        €{(rep.thisMonthCommission || 0).toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Facturen:</span>
+                      <p className="font-semibold text-gray-900">{rep.invoices.length}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Start:</span>
+                      <p className="font-semibold text-gray-900">
+                        {rep.hireDate ? new Date(rep.hireDate).toLocaleDateString('nl-NL', {
+                          month: 'short', year: '2-digit'
+                        }) : '-'}
+                      </p>
                     </div>
                   </div>
-                )}
+
+                  {/* Quick Actions */}
+                  {rep.hasSubmittedThisMonth && rep.currentMonthInvoice.status === 'pending' && (
+                    <div className="flex space-x-2 mt-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          approveInvoice(rep.currentMonthInvoice._id);
+                        }}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-2 rounded-lg transition-colors flex items-center justify-center"
+                      >
+                        <icons.CheckCircle />
+                        <span className="ml-1">Goedkeuren</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const reason = prompt('Reden voor wijziging:');
+                          if (reason) requestRevision(rep.currentMonthInvoice._id, reason);
+                        }}
+                        className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-3 py-2 rounded-lg transition-colors flex items-center justify-center"
+                      >
+                        <icons.AlertTriangle />
+                        <span className="ml-1">Wijziging</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Sales Rep Detail Modal */}
+      {showRepModal && selectedRep && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-8 max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">{selectedRep.name}</h3>
+                <p className="text-gray-600">{selectedRep.email}</p>
+              </div>
+              <button
+                onClick={() => setShowRepModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <icons.X />
+              </button>
+            </div>
+
+            {/* Rep Details */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600">Positie</p>
+                <p className="font-semibold">{selectedRep.position}</p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600">Start Datum</p>
+                <p className="font-semibold">
+                  {selectedRep.hireDate ? new Date(selectedRep.hireDate).toLocaleDateString('nl-NL') : '-'}
+                </p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600">Commissie Rate</p>
+                <p className="font-semibold">{((selectedRep.commissionRate || 0.1) * 100).toFixed(1)}%</p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600">Status</p>
+                <p className="font-semibold">
+                  {selectedRep.isConnected ? '🟢 Actief' : '🔴 Offline'}
+                </p>
+              </div>
+            </div>
+
+            {/* Invoice History */}
+            <div>
+              <h4 className="text-xl font-semibold text-gray-900 mb-4">
+                Factuur Geschiedenis ({selectedRep.invoices.length})
+              </h4>
+              
+              {selectedRep.invoices.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <p className="text-gray-500">Nog geen facturen ingediend</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {selectedRep.invoices
+                    .sort((a, b) => b.year - a.year || b.month - a.month)
+                    .map((invoice) => (
+                    <div key={invoice._id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h5 className="font-semibold text-gray-900">
+                            #{invoice.invoiceNumber}
+                          </h5>
+                          <p className="text-sm text-gray-600">
+                            {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
+                          </p>
+                          <p className="text-lg font-bold text-gray-900">
+                            €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3">
+                          <span className={'px-3 py-1 rounded-full text-sm font-medium ' + (
+                            invoice.status === 'paid' ? 'bg-green-100 text-green-600' :
+                            invoice.status === 'approved' ? 'bg-blue-100 text-blue-600' :
+                            invoice.status === 'revision_requested' ? 'bg-yellow-100 text-yellow-600' :
+                            'bg-gray-100 text-gray-600'
+                          )}>
+                            {invoice.status === 'paid' ? 'Betaald' :
+                             invoice.status === 'approved' ? 'Goedgekeurd' :
+                             invoice.status === 'revision_requested' ? 'Herzien' :
+                             'Te beoordelen'}
+                          </span>
+                          
+                          {invoice.status === 'pending' && (
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => approveInvoice(invoice._id)}
+                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center"
+                              >
+                                <icons.CheckCircle />
+                                <span className="ml-1">Goedkeuren</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const reason = prompt('Reden voor wijziging:');
+                                  if (reason) requestRevision(invoice._id, reason);
+                                }}
+                                className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm flex items-center"
+                              >
+                                <icons.AlertTriangle />
+                                <span className="ml-1">Wijziging</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1686,129 +2072,6 @@ const SalesRepDashboard = ({ user }) => {
   );
 };
 
-const ClientDashboard = ({ user }) => {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  const fetchDashboard = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/client/dashboard');
-      setDashboardData(response);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <p className="text-gray-600">Dashboard laden...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h2>
-        <p className="text-gray-600">Welkom bij je klantportaal, {user && user.name}!</p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Deze Maand Omzet</p>
-              <p className="text-3xl font-bold text-gray-900">
-                €{((dashboardData && dashboardData.totals && dashboardData.totals.thisMonthRevenue) || 0).toLocaleString('nl-NL')}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <icons.DollarSign />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Deze Maand Commissie</p>
-              <p className="text-3xl font-bold text-gray-900">
-                €{((dashboardData && dashboardData.totals && dashboardData.totals.thisMonthCommission) || 0).toLocaleString('nl-NL')}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <icons.TrendingUp />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Actieve Sales Reps</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {(dashboardData && dashboardData.salesReps && dashboardData.salesReps.length) || 0}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-              <icons.Users />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {dashboardData && dashboardData.salesReps && dashboardData.salesReps.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Team Overzicht</h3>
-          
-          <div className="space-y-4">
-            {dashboardData.salesReps.map((rep) => (
-              <div key={rep._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <span className="text-green-600 font-semibold text-lg">
-                      {rep.name.charAt(0)}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{rep.name}</p>
-                    <p className="text-sm text-gray-500">{rep.email}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">
-                    €{(rep.thisMonthRevenue || 0).toLocaleString('nl-NL')}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    €{(rep.thisMonthCommission || 0).toLocaleString('nl-NL')} commissie
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 // Placeholder Component
 const PlaceholderPage = ({ title, description }) => (
   <div className="space-y-6">
@@ -1831,7 +2094,7 @@ const Sidebar = ({ user, currentPage, setCurrentPage, onLogout }) => {
     { id: 'salesrep-reports', label: 'Mijn Prestaties', icon: icons.Users },
     { id: 'salesrep-settings', label: 'Instellingen', icon: icons.Settings }
   ] : [
-    { id: 'dashboard', label: 'Dashboard', icon: icons.Home },
+    { id: 'dashboard', label: 'Team Dashboard', icon: icons.Home },
     { id: 'invoices', label: 'Betalingen & Facturen', icon: icons.CreditCard },
     { id: 'team', label: 'Team Management', icon: icons.Users },
     { id: 'reports', label: 'Rapportages', icon: icons.Users },
