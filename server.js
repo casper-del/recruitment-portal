@@ -830,13 +830,11 @@ app.get('/api/salesrep/company-details', authenticateToken, requireSalesRep, asy
       return res.status(404).json({ message: 'Sales representative not found' });
     }
 
-    // Check if company details exist
     if (salesRep.companyDetails) {
       res.json({ 
         companyDetails: salesRep.companyDetails 
       });
     } else {
-      // Return empty structure for first-time setup
       res.json({ 
         companyDetails: null 
       });
@@ -912,12 +910,10 @@ app.post('/api/salesrep/generate-invoice', authenticateToken, requireSalesRep, a
       companyDetails
     } = req.body;
 
-    // Validate required fields
     if (!invoiceNumber || !commissionExcl || !month || !year) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Check if invoice number already exists
     const existingInvoice = await Invoice.findOne({ 
       invoiceNumber,
       salesRepId: req.user.salesRepId
@@ -927,7 +923,6 @@ app.post('/api/salesrep/generate-invoice', authenticateToken, requireSalesRep, a
       return res.status(400).json({ message: 'Invoice number already exists' });
     }
 
-    // Create the invoice
     const invoice = new Invoice({
       clientId: req.user.clientId,
       salesRepId: req.user.salesRepId,
@@ -939,7 +934,6 @@ app.post('/api/salesrep/generate-invoice', authenticateToken, requireSalesRep, a
       status: 'pending',
       type: 'commission',
       description: description || `Commissie voor ${new Date(0, month - 1).toLocaleDateString('nl-NL', {month: 'long'})} ${year}`,
-      // Store additional invoice data
       invoiceData: {
         thisMonthRevenue: parseFloat(thisMonthRevenue) || 0,
         commissionExcl: parseFloat(commissionExcl),
@@ -952,7 +946,6 @@ app.post('/api/salesrep/generate-invoice', authenticateToken, requireSalesRep, a
 
     await invoice.save();
 
-    // Update/Create revenue record for tracking
     await Revenue.findOneAndUpdate(
       {
         salesRepId: req.user.salesRepId,
