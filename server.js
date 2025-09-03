@@ -91,7 +91,8 @@ const salesRepSchema = new mongoose.Schema({
     phone: String,
     email: String,
     kvkNumber: String,
-    vatNumber: String
+    vatNumber: String,
+    bankAccount: String
   },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
@@ -137,7 +138,8 @@ const invoiceSchema = new mongoose.Schema({
       phone: String,
       email: String,
       kvkNumber: String,
-      vatNumber: String
+      vatNumber: String,
+      bankAccount: String
     }
   },
   createdAt: { type: Date, default: Date.now }
@@ -858,7 +860,8 @@ app.post('/api/salesrep/company-details', authenticateToken, requireSalesRep, as
       phone,
       email,
       kvkNumber,
-      vatNumber
+      vatNumber,
+      bankAccount
     } = req.body;
 
     const salesRep = await SalesRep.findByIdAndUpdate(
@@ -874,7 +877,8 @@ app.post('/api/salesrep/company-details', authenticateToken, requireSalesRep, as
           phone,
           email,
           kvkNumber,
-          vatNumber
+          vatNumber,
+          bankAccount
         }
       },
       { new: true, runValidators: true }
@@ -1159,7 +1163,7 @@ const startServer = async () => {
       console.log(`📝 API Documentation: http://localhost:${PORT}/api`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Multi-Portal System: Admin | Client | Sales Rep`);
-      console.log(`💰 Invoice Generator: Ready for Sales Reps`);
+      console.log(`💰 Invoice Generator: Ready for Sales Reps with Bank Account Support`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
