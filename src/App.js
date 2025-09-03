@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-console.log('🔥 APP.JS LOADED - VERSION 2024-EMERGENCY-TEST 🔥');
+console.log('🔥 APP.JS LOADED - VERSION 2024-FIXED 🔥');
 
 // Icon components
 const Building2Icon = () => (
@@ -149,40 +149,6 @@ const XIcon = () => (
   </svg>
 );
 
-const TrashIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="m3 6 18 0"/>
-    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
-    <line x1="10" x2="10" y1="11" y2="17"/>
-    <line x1="14" x2="14" y1="11" y2="17"/>
-  </svg>
-);
-
-const UserPlusIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-    <circle cx="8.5" cy="7" r="4"/>
-    <line x1="20" x2="20" y1="8" y2="14"/>
-    <line x1="23" x2="17" y1="11" y2="11"/>
-  </svg>
-);
-
-const LinkIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-  </svg>
-);
-
-const UploadIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-    <polyline points="17,8 12,3 7,8"/>
-    <line x1="12" x2="12" y1="3" y2="15"/>
-  </svg>
-);
-
 // API Configuration
 const API_BASE = process.env.REACT_APP_API_URL || (
   window.location.hostname === 'localhost' 
@@ -261,6 +227,1070 @@ const downloadFile = async (endpoint, filename) => {
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
 };
+
+// Admin Dashboard Component (moved before App to avoid reference errors)
+const AdminDashboard = ({ onClientClick }) => {
+  const [clients, setClients] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/admin/clients');
+      setClients(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <p className="text-gray-600">Dashboard laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate stats
+  const totalClients = clients.length;
+  const totalSalesReps = clients.reduce((sum, client) => sum + (client.salesRepCount || 0), 0);
+  const connectedClients = clients.filter(client => (client.connectedCount || 0) > 0).length;
+  const totalInvoices = clients.reduce((sum, client) => sum + (client.invoiceCount || 0), 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
+        <p className="text-gray-600">Beheer klanten, teams en facturatie</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Totaal Klanten</p>
+              <p className="text-3xl font-bold text-gray-900">{totalClients}</p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+              <UsersIcon />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Sales Reps</p>
+              <p className="text-3xl font-bold text-gray-900">{totalSalesReps}</p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+              <UsersIcon />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">CRM Connected</p>
+              <p className="text-3xl font-bold text-gray-900">{connectedClients}</p>
+            </div>
+            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+              <SettingsIcon />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Facturen</p>
+              <p className="text-3xl font-bold text-gray-900">{totalInvoices}</p>
+            </div>
+            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+              <FileTextIcon />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Clients List */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Klanten Overzicht</h3>
+        
+        {clients.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">Nog geen klanten toegevoegd</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {clients.map((client) => (
+              <div key={client._id} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-blue-600 font-semibold text-lg">
+                      {client.name.charAt(0)}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900">{client.name}</h4>
+                    <p className="text-sm text-gray-500">{client.email}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Contact:</span>
+                    <span className="text-gray-900">{client.contactName}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">CRM:</span>
+                    <span className="text-gray-900 capitalize">{client.crmType}</span>
+                  </div>
+                </div>
+
+                <div className="bg-green-100 px-4 py-2 rounded-lg">
+                  <span className="text-green-600 font-medium text-sm">
+                    {client.salesRepCount || 0} team • {client.invoiceCount || 0} facturen
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => {
+                    console.log('Button clicked', client);
+                    onClientClick && onClientClick(client);
+                  }}
+                  className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors"
+                >
+                  Beheren
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Sales Rep Invoices Component
+const SalesRepInvoices = ({ user }) => {
+  const [invoices, setInvoices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [newInvoice, setNewInvoice] = useState({
+    invoiceNumber: '',
+    amount: '',
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+    description: '',
+    file: null
+  });
+
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const fetchInvoices = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/salesrep/invoices');
+      setInvoices(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const uploadInvoice = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      await uploadFile('/salesrep/invoices', newInvoice.file, {
+        invoiceNumber: newInvoice.invoiceNumber,
+        amount: newInvoice.amount,
+        month: newInvoice.month,
+        year: newInvoice.year,
+        description: newInvoice.description,
+        type: 'commission'
+      });
+      
+      setSuccess('Factuur succesvol geüpload!');
+      setNewInvoice({
+        invoiceNumber: '',
+        amount: '',
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+        description: '',
+        file: null
+      });
+      setShowUploadForm(false);
+      await fetchInvoices();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const downloadInvoice = async (invoiceId, fileName) => {
+    try {
+      await downloadFile(`/salesrep/invoices/${invoiceId}/download`, fileName);
+    } catch (err) {
+      setError('Download mislukt');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Mijn Facturen</h2>
+            <p className="text-gray-600">Upload en beheer je commissie facturen</p>
+          </div>
+          <button
+            onClick={() => setShowUploadForm(!showUploadForm)}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors flex items-center"
+          >
+            <PlusIcon />
+            <span className="ml-2">Nieuwe Factuur</span>
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700 text-sm">{error}</p>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <p className="text-green-700 text-sm">{success}</p>
+        </div>
+      )}
+
+      {/* Upload Form */}
+      {showUploadForm && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Nieuwe Factuur Uploaden</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Factuurnummer</label>
+              <input
+                type="text"
+                value={newInvoice.invoiceNumber}
+                onChange={(e) => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                placeholder="F-2024-001"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Bedrag (€)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={newInvoice.amount}
+                onChange={(e) => setNewInvoice({...newInvoice, amount: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                placeholder="1500.00"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Maand</label>
+              <select
+                value={newInvoice.month}
+                onChange={(e) => setNewInvoice({...newInvoice, month: parseInt(e.target.value)})}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              >
+                {Array.from({length: 12}, (_, i) => (
+                  <option key={i+1} value={i+1}>
+                    {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Jaar</label>
+              <input
+                type="number"
+                value={newInvoice.year}
+                onChange={(e) => setNewInvoice({...newInvoice, year: parseInt(e.target.value)})}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                placeholder={new Date().getFullYear()}
+              />
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Beschrijving (optioneel)</label>
+            <input
+              type="text"
+              value={newInvoice.description}
+              onChange={(e) => setNewInvoice({...newInvoice, description: e.target.value})}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Commissie voor geplaatste kandidaten"
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">PDF Bestand</label>
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => setNewInvoice({...newInvoice, file: e.target.files[0]})}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">Alleen PDF bestanden toegestaan (max 10MB)</p>
+          </div>
+
+          <div className="flex space-x-4">
+            <button
+              onClick={uploadInvoice}
+              disabled={isLoading || !newInvoice.file || !newInvoice.invoiceNumber || !newInvoice.amount}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Uploaden...' : 'Factuur Uploaden'}
+            </button>
+            
+            <button
+              onClick={() => setShowUploadForm(false)}
+              className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              Annuleren
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Invoices List */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Mijn Facturen ({invoices.length})</h3>
+        
+        {invoices.length === 0 ? (
+          <div className="text-center py-8">
+            <FileTextIcon />
+            <h4 className="text-lg font-medium text-gray-900 mt-4">Nog geen facturen</h4>
+            <p className="text-gray-600 mt-2">Upload je eerste factuur om te beginnen</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {invoices
+              .sort((a, b) => b.year - a.year || b.month - a.month)
+              .map((invoice) => (
+              <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <FileTextIcon />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Factuur #{invoice.invoiceNumber}</h4>
+                    <p className="text-gray-600">
+                      €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
+                    </p>
+                    <div className="flex items-center space-x-3 text-sm text-gray-500 mt-1">
+                      <span>
+                        {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
+                      </span>
+                      {invoice.description && <span>• {invoice.description}</span>}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    invoice.status === 'paid' 
+                      ? 'bg-green-100 text-green-600' 
+                      : 'bg-yellow-100 text-yellow-600'
+                  }`}>
+                    {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
+                  </span>
+                  
+                  <button
+                    onClick={() => downloadInvoice(invoice._id, invoice.fileName)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
+                  >
+                    <DownloadIcon />
+                    <span className="ml-2">Download</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Sales Rep Dashboard Component
+const SalesRepDashboard = ({ user }) => {
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  const fetchDashboard = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/salesrep/dashboard');
+      setDashboardData(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <p className="text-gray-600">Dashboard laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Welkom terug, {user?.name}!</h2>
+        <p className="text-gray-600">{dashboardData?.salesRep?.position} bij {dashboardData?.salesRep?.clientId?.name}</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Deze Maand Omzet</p>
+              <p className="text-3xl font-bold text-gray-900">
+                €{(dashboardData?.currentRevenue?.revenue || 0).toLocaleString('nl-NL')}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+              <DollarSignIcon />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Deze Maand Commissie</p>
+              <p className="text-3xl font-bold text-gray-900">
+                €{(dashboardData?.currentRevenue?.commission || 0).toLocaleString('nl-NL')}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+              <TrendingUpIcon />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Mijn Facturen</p>
+              <p className="text-3xl font-bold text-gray-900">{dashboardData?.myInvoices?.length || 0}</p>
+            </div>
+            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+              <FileTextIcon />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Invoices */}
+      {dashboardData?.myInvoices && dashboardData.myInvoices.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Recente Facturen</h3>
+          
+          <div className="space-y-4">
+            {dashboardData.myInvoices.map((invoice) => (
+              <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <FileTextIcon />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">Factuur #{invoice.invoiceNumber}</p>
+                    <p className="text-sm text-gray-500">
+                      €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})} • 
+                      {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
+                    </p>
+                  </div>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  invoice.status === 'paid' 
+                    ? 'bg-green-100 text-green-600' 
+                    : 'bg-yellow-100 text-yellow-600'
+                }`}>
+                  {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Revenue History */}
+      {dashboardData?.revenueHistory && dashboardData.revenueHistory.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Omzet Geschiedenis</h3>
+          
+          <div className="space-y-3">
+            {dashboardData.revenueHistory.map((record) => (
+              <div key={`${record.year}-${record.month}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span className="font-medium text-gray-900">
+                  {new Date(record.year, record.month - 1).toLocaleDateString('nl-NL', {month: 'long', year: 'numeric'})}
+                </span>
+                <div className="text-right">
+                  <p className="font-semibold text-gray-900">€{record.revenue.toLocaleString('nl-NL')}</p>
+                  <p className="text-sm text-gray-500">€{record.commission.toLocaleString('nl-NL')} commissie</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Client Settings Component with CRM Integration
+const ClientSettings = ({ user }) => {
+  const [availableCRMs, setAvailableCRMs] = useState([]);
+  const [clientData, setClientData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    fetchAvailableCRMs();
+    fetchClientData();
+  }, []);
+
+  const fetchAvailableCRMs = async () => {
+    try {
+      const response = await apiCall('/crm/available');
+      setAvailableCRMs(response);
+    } catch (err) {
+      setError('Kon CRM opties niet laden');
+    }
+  };
+
+  const fetchClientData = async () => {
+    try {
+      const response = await apiCall('/client/dashboard');
+      setClientData(response.client);
+    } catch (err) {
+      setError('Kon client data niet laden');
+    }
+  };
+
+  const connectCRM = async (crmType) => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall(`/client/crm/connect?type=${crmType}`);
+      
+      if (response.authUrl) {
+        window.location.href = response.authUrl;
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateCRMSettings = async (crmType) => {
+    try {
+      setIsLoading(true);
+      await apiCall('/client/crm/settings', {
+        method: 'POST',
+        body: JSON.stringify({ crmType })
+      });
+      
+      setSuccess('CRM instellingen bijgewerkt');
+      await fetchClientData();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const syncCRM = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/client/crm/sync', {
+        method: 'POST'
+      });
+      
+      setSuccess(response.message);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Instellingen</h2>
+        <p className="text-gray-600">CRM koppelingen en systeemconfiguratie</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center">
+            <AlertCircleIcon />
+            <p className="text-red-700 text-sm ml-2">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center">
+            <CheckCircle2Icon />
+            <p className="text-green-700 text-sm ml-2">{success}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">CRM Integratie</h3>
+            <p className="text-gray-600">Koppel je CRM systeem voor automatische synchronisatie</p>
+          </div>
+          {clientData?.crmCredentials?.accessToken && (
+            <button
+              onClick={syncCRM}
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center disabled:opacity-50"
+            >
+              <RefreshCwIcon />
+              <span className="ml-2">Synchroniseren</span>
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {availableCRMs.map((crm) => (
+            <div key={crm.id} className="border border-gray-200 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900">{crm.name}</h4>
+                  <p className="text-sm text-gray-500">{crm.description}</p>
+                </div>
+                {clientData?.crmType === crm.id && (
+                  <span className="px-2 py-1 bg-green-100 text-green-600 text-xs font-medium rounded-full">
+                    Actief
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {clientData?.crmType !== crm.id ? (
+                  <button
+                    onClick={() => updateCRMSettings(crm.id)}
+                    disabled={isLoading}
+                    className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Selecteer
+                  </button>
+                ) : (
+                  <>
+                    {!clientData?.crmCredentials?.accessToken ? (
+                      <button
+                        onClick={() => connectCRM(crm.id)}
+                        disabled={isLoading}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        Verbinden
+                      </button>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center text-green-600 text-sm">
+                          <CheckCircle2Icon />
+                          <span className="ml-2">Verbonden</span>
+                        </div>
+                        <button
+                          onClick={() => connectCRM(crm.id)}
+                          disabled={isLoading}
+                          className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          Opnieuw verbinden
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Account Informatie</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Bedrijfsnaam</label>
+            <p className="text-gray-900">{clientData?.name || 'Niet beschikbaar'}</p>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Contactpersoon</label>
+            <p className="text-gray-900">{clientData?.contactName || 'Niet beschikbaar'}</p>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">E-mailadres</label>
+            <p className="text-gray-900">{clientData?.email || 'Niet beschikbaar'}</p>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Commissie Percentage</label>
+            <p className="text-gray-900">{clientData ? `${(clientData.commissionRate * 100).toFixed(1)}%` : 'Niet beschikbaar'}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Placeholder Pages
+const PlaceholderPage = ({ title, description }) => (
+  <div className="space-y-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+      <h2 className="text-3xl font-bold text-gray-900 mb-2">{title}</h2>
+      <p className="text-gray-600">{description}</p>
+    </div>
+  </div>
+);
+
+// Main App Component
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [showClientModal, setShowClientModal] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    const userData = localStorage.getItem('userData');
+    
+    if (token && userData) {
+      try {
+        const parsed = JSON.parse(userData);
+        setUser(parsed);
+        
+        if (parsed.role === 'admin') {
+          setCurrentPage('admin-dashboard');
+        } else if (parsed.role === 'salesrep') {
+          setCurrentPage('salesrep-dashboard');
+        } else {
+          setCurrentPage('dashboard');
+        }
+      } catch (error) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+      }
+    }
+  }, []);
+
+  const login = async (email, password) => {
+    setIsLoading(true);
+    try {
+      const response = await apiCall('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+      });
+
+      localStorage.setItem('authToken', response.token);
+      localStorage.setItem('userData', JSON.stringify(response.user));
+      setUser(response.user);
+      
+      if (response.user.role === 'admin') {
+        setCurrentPage('admin-dashboard');
+      } else if (response.user.role === 'salesrep') {
+        setCurrentPage('salesrep-dashboard');
+      } else {
+        setCurrentPage('dashboard');
+      }
+    } catch (error) {
+      throw new Error(error.message || 'Login failed. Check your credentials.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userData');
+    setUser(null);
+    setCurrentPage('dashboard');
+    setSelectedClient(null);
+    setShowClientModal(false);
+  };
+
+  const handleClientClick = (client) => {
+    console.log('handleClientClick called with:', client);
+    setSelectedClient(client);
+    setShowClientModal(true);
+    console.log('Modal should show:', true);
+  };
+
+  const handleClientUpdate = () => {
+    // Force refresh of admin dashboard
+    window.location.reload();
+  };
+
+  if (!user) {
+    return <LoginForm onLogin={login} isLoading={isLoading} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      <Sidebar 
+        user={user}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        sidebarCollapsed={sidebarCollapsed}
+        setSidebarCollapsed={setSidebarCollapsed}
+        onLogout={logout}
+      />
+
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-7xl mx-auto px-8 py-8">
+          {user.role === 'admin' && (
+            <>
+              {currentPage === 'admin-dashboard' && (
+                <AdminDashboard onClientClick={handleClientClick} />
+              )}
+              
+              {currentPage === 'clients' && (
+                <PlaceholderPage 
+                  title="Klanten Beheer" 
+                  description="Beheer alle klanten, hun instellingen en toegangsrechten."
+                />
+              )}
+              
+              {currentPage === 'admin-settings' && (
+                <PlaceholderPage 
+                  title="Admin Instellingen" 
+                  description="Systeemconfiguratie, gebruikersbeheer en globale instellingen."
+                />
+              )}
+            </>
+          )}
+
+          {user.role === 'salesrep' && (
+            <>
+              {currentPage === 'salesrep-dashboard' && (
+                <SalesRepDashboard user={user} />
+              )}
+              
+              {currentPage === 'salesrep-invoices' && (
+                <SalesRepInvoices user={user} />
+              )}
+              
+              {currentPage === 'salesrep-reports' && (
+                <PlaceholderPage 
+                  title="Mijn Prestaties" 
+                  description="Bekijk je omzet, commissies en performance metrics."
+                />
+              )}
+              
+              {currentPage === 'salesrep-settings' && (
+                <PlaceholderPage 
+                  title="Mijn Instellingen" 
+                  description="Persoonlijke instellingen en account beheer."
+                />
+              )}
+            </>
+          )}
+
+          {user.role === 'client' && (
+            <>
+              {currentPage === 'dashboard' && (
+                <ClientDashboard user={user} />
+              )}
+
+              {currentPage === 'invoices' && (
+                <ClientInvoices user={user} />
+              )}
+
+              {currentPage === 'team' && (
+                <PlaceholderPage 
+                  title="Team Management" 
+                  description="Beheer je recruitment team en bekijk individuele prestaties."
+                />
+              )}
+
+              {currentPage === 'reports' && (
+                <PlaceholderPage 
+                  title="Rapportages" 
+                  description="Uitgebreide analytics en rapportages van je recruitment performance."
+                />
+              )}
+
+              {currentPage === 'settings' && (
+                <ClientSettings user={user} />
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Simple Test Modal - This will show if client click works */}
+      {showClientModal && selectedClient && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          zIndex: 9999
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '24px'
+            }}>
+              <h3 style={{
+                fontSize: '24px',
+                fontWeight: '700',
+                color: '#111827',
+                margin: 0
+              }}>
+                {selectedClient.name}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowClientModal(false);
+                  setSelectedClient(null);
+                }}
+                style={{
+                  backgroundColor: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  width: '40px',
+                  height: '40px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <XIcon />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <p style={{ 
+                fontSize: '18px', 
+                color: '#059669', 
+                fontWeight: '600',
+                margin: '0 0 16px 0'
+              }}>
+                MODAL WERKT!
+              </p>
+              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                Client: {selectedClient.email}<br/>
+                Contact: {selectedClient.contactName}<br/>
+                Team: {selectedClient.salesRepCount || 0} sales reps<br/>
+                Facturen: {selectedClient.invoiceCount || 0}
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowClientModal(false);
+                setSelectedClient(null);
+              }}
+              style={{
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 24px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: '600',
+                width: '100%'
+              }}
+            >
+              Sluit Modal
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;
 
 // Login Component
 const LoginForm = ({ onLogin, isLoading }) => {
@@ -354,7 +1384,7 @@ const LoginForm = ({ onLogin, isLoading }) => {
 };
 
 // Sidebar Component
-const Sidebar = ({ user, activeMenuItem, setActiveMenuItem, sidebarCollapsed, setSidebarCollapsed, onLogout }) => {
+const Sidebar = ({ user, currentPage, setCurrentPage, sidebarCollapsed, setSidebarCollapsed, onLogout }) => {
   const menuItems = user?.role === 'admin' ? [
     { id: 'admin-dashboard', label: 'Admin Dashboard', icon: HomeIcon },
     { id: 'clients', label: 'Klanten Beheer', icon: UsersIcon },
@@ -398,240 +1428,6 @@ const Sidebar = ({ user, activeMenuItem, setActiveMenuItem, sidebarCollapsed, se
             </div>
           )}
 
-          {/* INVOICES TAB */}
-          {activeTab === 'invoices' && (
-            <div>
-              <div style={{
-                backgroundColor: '#fefce8',
-                padding: '24px',
-                borderRadius: '12px',
-                marginBottom: '24px'
-              }}>
-                <h3 style={{fontSize: '20px', fontWeight: '700', marginBottom: '16px', color: '#374151'}}>
-                  📄 Recruitment Fee Factuur Uploaden
-                </h3>
-                <p style={{fontSize: '14px', color: '#a16207', marginBottom: '20px', lineHeight: '1.5'}}>
-                  💡 <strong>Info:</strong> Deze facturen zijn voor jouw recruitment fees die je ontvangt van {client.name}, 
-                  gebaseerd op de omzet van geplaatste kandidaten. Dit is NIET hetzelfde als sales rep commissie facturen.
-                </p>
-                
-                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '20px'}}>
-                  <input
-                    style={inputStyle}
-                    type="text"
-                    placeholder="Factuurnummer *"
-                    value={newInvoice.invoiceNumber}
-                    onChange={(e) => setNewInvoice({...newInvoice, invoiceNumber: e.target.value})}
-                  />
-                  
-                  <input
-                    style={inputStyle}
-                    type="number"
-                    placeholder="Bedrag (€) *"
-                    value={newInvoice.amount}
-                    onChange={(e) => setNewInvoice({...newInvoice, amount: e.target.value})}
-                  />
-                  
-                  <select
-                    style={inputStyle}
-                    value={newInvoice.month}
-                    onChange={(e) => setNewInvoice({...newInvoice, month: parseInt(e.target.value)})}
-                  >
-                    {Array.from({length: 12}, (_, i) => (
-                      <option key={i+1} value={i+1}>
-                        {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
-                      </option>
-                    ))}
-                  </select>
-                  
-                  <input
-                    style={inputStyle}
-                    type="number"
-                    placeholder="Jaar"
-                    value={newInvoice.year}
-                    onChange={(e) => setNewInvoice({...newInvoice, year: parseInt(e.target.value)})}
-                  />
-                  
-                  <select
-                    style={inputStyle}
-                    value={newInvoice.type}
-                    onChange={(e) => setNewInvoice({...newInvoice, type: e.target.value})}
-                  >
-                    <option value="client">💼 Client Factuur (Recruitment Fee)</option>
-                    <option value="commission">💰 Commissie Factuur (Sales Rep)</option>
-                  </select>
-                  
-                  {newInvoice.type === 'commission' && clientData?.salesReps && (
-                    <select
-                      style={inputStyle}
-                      value={newInvoice.salesRepId}
-                      onChange={(e) => setNewInvoice({...newInvoice, salesRepId: e.target.value})}
-                    >
-                      <option value="">Selecteer Sales Rep</option>
-                      {clientData.salesReps.map((rep) => (
-                        <option key={rep._id} value={rep._id}>{rep.name}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                <input
-                  style={inputStyle}
-                  type="text"
-                  placeholder="Beschrijving / Notities (optioneel)"
-                  value={newInvoice.description}
-                  onChange={(e) => setNewInvoice({...newInvoice, description: e.target.value})}
-                />
-                
-                <div style={{marginBottom: '20px'}}>
-                  <input
-                    style={inputStyle}
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => setNewInvoice({...newInvoice, file: e.target.files[0]})}
-                  />
-                  <p style={{fontSize: '12px', color: '#6b7280', marginTop: '4px'}}>
-                    📎 Alleen PDF bestanden toegestaan (max 10MB)
-                  </p>
-                </div>
-                
-                <button
-                  style={{
-                    ...buttonStyle,
-                    opacity: isLoading || !newInvoice.file || !newInvoice.invoiceNumber || !newInvoice.amount ? 0.5 : 1,
-                    fontSize: '16px',
-                    padding: '16px 32px'
-                  }}
-                  onClick={uploadInvoice}
-                  disabled={isLoading || !newInvoice.file || !newInvoice.invoiceNumber || !newInvoice.amount}
-                >
-                  {isLoading ? '⏳ Uploaden...' : '📤 Factuur Uploaden'}
-                </button>
-              </div>
-
-              {/* INVOICES LIST */}
-              {clientData?.invoices && clientData.invoices.length > 0 && (
-                <div>
-                  <h3 style={{fontSize: '20px', fontWeight: '700', marginBottom: '16px', color: '#374151'}}>
-                    📋 Geüploade Facturen ({clientData.invoices.length})
-                  </h3>
-                  
-                  <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                    {clientData.invoices
-                      .sort((a, b) => b.year - a.year || b.month - a.month)
-                      .map((invoice) => (
-                      <div key={invoice._id} style={{
-                        backgroundColor: 'white',
-                        border: '2px solid #e5e7eb',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-                      }}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                            <div style={{
-                              width: '56px',
-                              height: '56px',
-                              backgroundColor: '#dbeafe',
-                              borderRadius: '12px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '24px'
-                            }}>
-                              📄
-                            </div>
-                            <div>
-                              <h4 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#111827'}}>
-                                Factuur #{invoice.invoiceNumber}
-                              </h4>
-                              <p style={{margin: '4px 0', fontSize: '16px', fontWeight: '600', color: '#059669'}}>
-                                €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
-                              </p>
-                              <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px'}}>
-                                <span style={{fontSize: '14px', color: '#6b7280'}}>
-                                  📅 {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
-                                </span>
-                                <span style={{
-                                  fontSize: '12px',
-                                  padding: '4px 8px',
-                                  borderRadius: '6px',
-                                  backgroundColor: invoice.type === 'commission' ? '#fef3c7' : '#dbeafe',
-                                  color: invoice.type === 'commission' ? '#92400e' : '#1e40af'
-                                }}>
-                                  {invoice.type === 'commission' ? '💰 Commissie' : '💼 Client Fee'}
-                                </span>
-                                {invoice.salesRepId && (
-                                  <span style={{fontSize: '12px', color: '#6b7280'}}>
-                                    👤 {invoice.salesRepId.name}
-                                  </span>
-                                )}
-                                {invoice.description && (
-                                  <span style={{fontSize: '12px', color: '#6b7280'}}>
-                                    💬 {invoice.description}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                            <span style={{
-                              padding: '8px 16px',
-                              borderRadius: '8px',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              backgroundColor: invoice.status === 'paid' ? '#ecfdf5' : '#fef3c7',
-                              color: invoice.status === 'paid' ? '#059669' : '#92400e'
-                            }}>
-                              {invoice.status === 'paid' ? '✅ Betaald' : '⏳ Openstaand'}
-                            </span>
-                            
-                            <button
-                              style={{
-                                backgroundColor: '#3b82f6',
-                                color: 'white',
-                                padding: '12px 16px',
-                                border: 'none',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                              }}
-                              onClick={() => downloadInvoice(invoice._id, invoice.fileName)}
-                            >
-                              📥 Download
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {(!clientData?.invoices || clientData.invoices.length === 0) && (
-                <div style={{
-                  textAlign: 'center',
-                  padding: '40px',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '12px',
-                  border: '2px dashed #d1d5db'
-                }}>
-                  <div style={{fontSize: '48px', marginBottom: '16px'}}>📄</div>
-                  <h3 style={{fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 8px 0'}}>
-                    Nog geen facturen
-                  </h3>
-                  <p style={{fontSize: '14px', color: '#6b7280', margin: 0}}>
-                    Upload je eerste recruitment fee factuur om te beginnen!
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -644,11 +1440,11 @@ const Sidebar = ({ user, activeMenuItem, setActiveMenuItem, sidebarCollapsed, se
       <nav className="px-4 py-6 space-y-2">
         {menuItems.map((item) => {
           const IconComponent = item.icon;
-          const isActive = activeMenuItem === item.id;
+          const isActive = currentPage === item.id;
           return (
             <button
               key={item.id}
-              onClick={() => setActiveMenuItem(item.id)}
+              onClick={() => setCurrentPage(item.id)}
               className={`w-full flex items-center px-4 py-3 rounded-xl text-left transition-all duration-200 ${
                 isActive 
                   ? 'bg-green-50 text-green-600 shadow-sm border border-green-100' 
@@ -946,558 +1742,3 @@ const ClientInvoices = ({ user }) => {
               );
             })}
         </div>
-      )}
-    </div>
-  );
-};
-
-// Client Settings Component with CRM Integration
-const ClientSettings = ({ user }) => {
-  const [availableCRMs, setAvailableCRMs] = useState([]);
-  const [clientData, setClientData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
-  useEffect(() => {
-    fetchAvailableCRMs();
-    fetchClientData();
-  }, []);
-
-  const fetchAvailableCRMs = async () => {
-    try {
-      const response = await apiCall('/crm/available');
-      setAvailableCRMs(response);
-    } catch (err) {
-      setError('Kon CRM opties niet laden');
-    }
-  };
-
-  const fetchClientData = async () => {
-    try {
-      const response = await apiCall('/client/dashboard');
-      setClientData(response.client);
-    } catch (err) {
-      setError('Kon client data niet laden');
-    }
-  };
-
-  const connectCRM = async (crmType) => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall(`/client/crm/connect?type=${crmType}`);
-      
-      if (response.authUrl) {
-        window.location.href = response.authUrl;
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateCRMSettings = async (crmType) => {
-    try {
-      setIsLoading(true);
-      await apiCall('/client/crm/settings', {
-        method: 'POST',
-        body: JSON.stringify({ crmType })
-      });
-      
-      setSuccess('CRM instellingen bijgewerkt');
-      await fetchClientData();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const syncCRM = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/client/crm/sync', {
-        method: 'POST'
-      });
-      
-      setSuccess(response.message);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Instellingen</h2>
-        <p className="text-gray-600">CRM koppelingen en systeemconfiguratie</p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <div className="flex items-center">
-            <AlertCircleIcon />
-            <p className="text-red-700 text-sm ml-2">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {success && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <div className="flex items-center">
-            <CheckCircle2Icon />
-            <p className="text-green-700 text-sm ml-2">{success}</p>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900">CRM Integratie</h3>
-            <p className="text-gray-600">Koppel je CRM systeem voor automatische synchronisatie</p>
-          </div>
-          {clientData?.crmCredentials?.accessToken && (
-            <button
-              onClick={syncCRM}
-              disabled={isLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center disabled:opacity-50"
-            >
-              <RefreshCwIcon />
-              <span className="ml-2">Synchroniseren</span>
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {availableCRMs.map((crm) => (
-            <div key={crm.id} className="border border-gray-200 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900">{crm.name}</h4>
-                  <p className="text-sm text-gray-500">{crm.description}</p>
-                </div>
-                {clientData?.crmType === crm.id && (
-                  <span className="px-2 py-1 bg-green-100 text-green-600 text-xs font-medium rounded-full">
-                    Actief
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                {clientData?.crmType !== crm.id ? (
-                  <button
-                    onClick={() => updateCRMSettings(crm.id)}
-                    disabled={isLoading}
-                    className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    Selecteer
-                  </button>
-                ) : (
-                  <>
-                    {!clientData?.crmCredentials?.accessToken ? (
-                      <button
-                        onClick={() => connectCRM(crm.id)}
-                        disabled={isLoading}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center disabled:opacity-50"
-                      >
-                        <LinkIcon />
-                        <span className="ml-2">Verbinden</span>
-                      </button>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center text-green-600 text-sm">
-                          <CheckCircle2Icon />
-                          <span className="ml-2">Verbonden</span>
-                        </div>
-                        <button
-                          onClick={() => connectCRM(crm.id)}
-                          disabled={isLoading}
-                          className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          Opnieuw verbinden
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h3 className="text-xl font-semibold text-gray-900 mb-6">Account Informatie</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Bedrijfsnaam</label>
-            <p className="text-gray-900">{clientData?.name || 'Niet beschikbaar'}</p>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Contactpersoon</label>
-            <p className="text-gray-900">{clientData?.contactName || 'Niet beschikbaar'}</p>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">E-mailadres</label>
-            <p className="text-gray-900">{clientData?.email || 'Niet beschikbaar'}</p>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Commissie Percentage</label>
-            <p className="text-gray-900">{clientData ? `${(clientData.commissionRate * 100).toFixed(1)}%` : 'Niet beschikbaar'}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Sales Rep Dashboard Component
-const SalesRepDashboard = ({ user }) => {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  const fetchDashboard = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/salesrep/dashboard');
-      setDashboardData(response);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <p className="text-gray-600">Dashboard laden...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Welkom terug, {user?.name}!</h2>
-        <p className="text-gray-600">{dashboardData?.salesRep?.position} bij {dashboardData?.salesRep?.clientId?.name}</p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
-      )}
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Deze Maand Omzet</p>
-              <p className="text-3xl font-bold text-gray-900">
-                €{(dashboardData?.currentRevenue?.revenue || 0).toLocaleString('nl-NL')}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-              <DollarSignIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Deze Maand Commissie</p>
-              <p className="text-3xl font-bold text-gray-900">
-                €{(dashboardData?.currentRevenue?.commission || 0).toLocaleString('nl-NL')}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <TrendingUpIcon />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Mijn Facturen</p>
-              <p className="text-3xl font-bold text-gray-900">{dashboardData?.myInvoices?.length || 0}</p>
-            </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-              <FileTextIcon />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Invoices */}
-      {dashboardData?.myInvoices && dashboardData.myInvoices.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Recente Facturen</h3>
-          
-          <div className="space-y-4">
-            {dashboardData.myInvoices.map((invoice) => (
-              <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <FileTextIcon />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">Factuur #{invoice.invoiceNumber}</p>
-                    <p className="text-sm text-gray-500">
-                      €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})} • 
-                      {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
-                    </p>
-                  </div>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  invoice.status === 'paid' 
-                    ? 'bg-green-100 text-green-600' 
-                    : 'bg-yellow-100 text-yellow-600'
-                }`}>
-                  {invoice.status === 'paid' ? 'Betaald' : 'Openstaand'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Revenue History */}
-      {dashboardData?.revenueHistory && dashboardData.revenueHistory.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Omzet Geschiedenis</h3>
-          
-          <div className="space-y-3">
-            {dashboardData.revenueHistory.map((record) => (
-              <div key={`${record.year}-${record.month}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="font-medium text-gray-900">
-                  {new Date(record.year, record.month - 1).toLocaleDateString('nl-NL', {month: 'long', year: 'numeric'})}
-                </span>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">€{record.revenue.toLocaleString('nl-NL')}</p>
-                  <p className="text-sm text-gray-500">€{record.commission.toLocaleString('nl-NL')} commissie</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-const PlaceholderPage = ({ title, description }) => (
-  <div className="space-y-6">
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-      <h2 className="text-3xl font-bold text-gray-900 mb-2">{title}</h2>
-      <p className="text-gray-600">{description}</p>
-    </div>
-  </div>
-);
-
-// Main App Component
-const App = () => {
-  const [user, setUser] = useState(null);
-  const [activeMenuItem, setActiveMenuItem] = useState('dashboard');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedClient, setSelectedClient] = useState(null);
-  const [showClientModal, setShowClientModal] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('userData');
-    
-    if (token && userData) {
-      try {
-        const parsed = JSON.parse(userData);
-        setUser(parsed);
-        
-        if (parsed.role === 'admin') {
-          setActiveMenuItem('admin-dashboard');
-        } else if (parsed.role === 'salesrep') {
-          setActiveMenuItem('salesrep-dashboard');
-        } else {
-          setActiveMenuItem('dashboard');
-        }
-      } catch (error) {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userData');
-      }
-    }
-  }, []);
-
-  const login = async (email, password) => {
-    setIsLoading(true);
-    try {
-      const response = await apiCall('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-      });
-
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('userData', JSON.stringify(response.user));
-      setUser(response.user);
-      
-      if (response.user.role === 'admin') {
-        setActiveMenuItem('admin-dashboard');
-      } else if (response.user.role === 'salesrep') {
-        setActiveMenuItem('salesrep-dashboard');
-      } else {
-        setActiveMenuItem('dashboard');
-      }
-    } catch (error) {
-      throw new Error(error.message || 'Login failed. Check your credentials.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
-    setUser(null);
-    setActiveMenuItem('dashboard');
-    setSelectedClient(null);
-    setShowClientModal(false);
-  };
-
-  const handleClientClick = (client) => {
-    console.log('handleClientClick called with:', client);
-    setSelectedClient(client);
-    setShowClientModal(true);
-    console.log('Modal should show:', true);
-  };
-
-  const handleClientUpdate = () => {
-    // Force refresh of admin dashboard
-    window.location.reload();
-  };
-
-  if (!user) {
-    return <LoginForm onLogin={login} isLoading={isLoading} />;
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar 
-        user={user}
-        activeMenuItem={activeMenuItem}
-        setActiveMenuItem={setActiveMenuItem}
-        sidebarCollapsed={sidebarCollapsed}
-        setSidebarCollapsed={setSidebarCollapsed}
-        onLogout={logout}
-      />
-
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-8 py-8">
-          {user.role === 'admin' && (
-            <>
-              {activeMenuItem === 'admin-dashboard' && (
-                <PlaceholderPage 
-                  title="Admin Dashboard" 
-                  description="Beheer klanten, teams en facturatie"
-                />
-              )}
-              
-              {activeMenuItem === 'clients' && (
-                <PlaceholderPage 
-                  title="Klanten Beheer" 
-                  description="Beheer alle klanten, hun instellingen en toegangsrechten."
-                />
-              )}
-              
-              {activeMenuItem === 'admin-settings' && (
-                <PlaceholderPage 
-                  title="Admin Instellingen" 
-                  description="Systeemconfiguratie, gebruikersbeheer en globale instellingen."
-                />
-              )}
-            </>
-          )}
-
-          {user.role === 'salesrep' && (
-            <>
-              {activeMenuItem === 'salesrep-dashboard' && (
-                <PlaceholderPage 
-                  title="Sales Rep Dashboard" 
-                  description="Welkom bij je sales portal"
-                />
-              )}
-              
-              {activeMenuItem === 'salesrep-invoices' && (
-                <PlaceholderPage 
-                  title="Mijn Facturen" 
-                  description="Upload en beheer je commissie facturen"
-                />
-              )}
-              
-              {activeMenuItem === 'salesrep-reports' && (
-                <PlaceholderPage 
-                  title="Mijn Prestaties" 
-                  description="Bekijk je omzet, commissies en performance metrics."
-                />
-              )}
-              
-              {activeMenuItem === 'salesrep-settings' && (
-                <PlaceholderPage 
-                  title="Mijn Instellingen" 
-                  description="Persoonlijke instellingen en account beheer."
-                />
-              )}
-            </>
-          )}
-
-          {user.role === 'client' && (
-            <>
-              {activeMenuItem === 'dashboard' && (
-                <ClientDashboard user={user} />
-              )}
-
-              {activeMenuItem === 'invoices' && (
-                <ClientInvoices user={user} />
-              )}
-
-              {activeMenuItem === 'team' && (
-                <PlaceholderPage 
-                  title="Team Management" 
-                  description="Beheer je recruitment team en bekijk individuele prestaties."
-                />
-              )}
-
-              {activeMenuItem === 'reports' && (
-                <PlaceholderPage 
-                  title="Rapportages" 
-                  description="Uitgebreide analytics en rapportages van je recruitment performance."
-                />
-              )}
-
-              {activeMenuItem === 'settings' && (
-                <ClientSettings user={user} />
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default App;
