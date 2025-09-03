@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 console.log('APP.JS LOADED - WORKING VERSION');
 
-// Icon components (simplified inline versions)
+// Icon components
 const icons = {
   Building2: () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -189,7 +189,7 @@ const LoginForm = ({ onLogin, isLoading }) => {
   );
 };
 
-// Simple Admin Dashboard - WITH WORKING MODAL
+// Admin Dashboard - FIXED VERSION
 const AdminDashboard = () => {
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
@@ -213,7 +213,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // THIS IS THE KEY FIX - Direct event handlers
   const handleClientClick = (client) => {
     console.log('CLICKING CLIENT:', client.name);
     setSelectedClient(client);
@@ -282,7 +281,6 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                {/* WORKING BUTTON - Direct onClick */}
                 <button
                   type="button"
                   onClick={() => handleClientClick(client)}
@@ -296,7 +294,6 @@ const AdminDashboard = () => {
         )}
       </div>
 
-      {/* WORKING MODAL */}
       {showModal && selectedClient && (
         <ClientManagementModal 
           client={selectedClient} 
@@ -350,7 +347,6 @@ const ClientManagementModal = ({ client, onClose, onRefresh }) => {
       setClientDetails(response.client);
       setSalesReps(response.salesReps || []);
       
-      // Set edit data
       setEditData({
         name: response.client.name || '',
         contactName: response.client.contactName || '',
@@ -460,7 +456,7 @@ const ClientManagementModal = ({ client, onClose, onRefresh }) => {
           </div>
         ) : (
           <div className="space-y-8">
-            {/* Client Info Section */}
+            {/* Client Info */}
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h4 className="text-lg font-semibold">Client Gegevens</h4>
@@ -519,29 +515,10 @@ const ClientManagementModal = ({ client, onClose, onRefresh }) => {
                       className="w-full px-3 py-2 border rounded-lg"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Commissie Rate</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editData.commissionRate}
-                      onChange={(e) => setEditData({...editData, commissionRate: parseFloat(e.target.value)})}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Commissie Cap</label>
-                    <input
-                      type="number"
-                      value={editData.commissionCap}
-                      onChange={(e) => setEditData({...editData, commissionCap: parseInt(e.target.value)})}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
                   <div className="col-span-2 pt-4">
                     <button
                       onClick={updateClient}
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 mr-2"
+                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                     >
                       Opslaan
                     </button>
@@ -666,7 +643,7 @@ const ClientManagementModal = ({ client, onClose, onRefresh }) => {
   );
 };
 
-// Working Sales Rep Invoice Generator
+// Sales Rep Invoices Component with Generator - FIXED VERSION
 const SalesRepInvoices = ({ user }) => {
   const [invoices, setInvoices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -888,7 +865,6 @@ const SalesRepInvoices = ({ user }) => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
           <h3 className="text-xl font-semibold text-gray-900 mb-6">Factuur Generator</h3>
           
-          {/* Company Details */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-lg font-semibold text-gray-900">Bedrijfsgegevens</h4>
@@ -984,7 +960,6 @@ const SalesRepInvoices = ({ user }) => {
             </div>
           </div>
 
-          {/* Invoice Data */}
           <div className="border-t border-gray-200 pt-6">
             <h4 className="text-lg font-semibold text-gray-900 mb-4">Factuur Gegevens</h4>
             
@@ -1070,7 +1045,6 @@ const SalesRepInvoices = ({ user }) => {
                 </div>
               </div>
 
-              {/* Live Preview */}
               <div className="bg-gray-50 p-6 rounded-xl">
                 <h5 className="font-semibold text-gray-900 mb-4">Live Preview</h5>
                 
@@ -1099,6 +1073,13 @@ const SalesRepInvoices = ({ user }) => {
                     </div>
                   </div>
                 </div>
+
+                {companyDetails.bankAccount && (
+                  <div className="mt-4 pt-4 border-t border-gray-300">
+                    <p className="text-xs text-gray-600">Betaling op rekening:</p>
+                    <p className="text-xs font-mono">{companyDetails.bankAccount}</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1123,7 +1104,6 @@ const SalesRepInvoices = ({ user }) => {
         </div>
       )}
 
-      {/* Invoices List */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h3 className="text-xl font-semibold text-gray-900 mb-6">Mijn Facturen ({invoices.length})</h3>
         
@@ -1193,7 +1173,7 @@ const SalesRepInvoices = ({ user }) => {
   );
 };
 
-// Working Client Team Management
+// Client Team Management - FIXED VERSION
 const ClientTeamManagement = ({ user }) => {
   const [teamData, setTeamData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1208,15 +1188,12 @@ const ClientTeamManagement = ({ user }) => {
       setIsLoading(true);
       console.log('Fetching team data for user:', user);
       
-      // First get dashboard data
       const dashboardResponse = await apiCall('/client/dashboard');
       console.log('Dashboard response:', dashboardResponse);
       
-      // Then get invoices
       const invoicesResponse = await apiCall('/client/invoices');
       console.log('Invoices response:', invoicesResponse);
 
-      // Process sales reps with their invoices
       const salesRepsWithInvoices = (dashboardResponse.salesReps || []).map((rep) => {
         const repInvoices = invoicesResponse.filter(invoice => 
           invoice.salesRepId && invoice.salesRepId._id === rep._id
@@ -1256,23 +1233,11 @@ const ClientTeamManagement = ({ user }) => {
     );
   }
 
-  console.log('Rendering team data:', teamData);
-
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Team Management</h2>
         <p className="text-gray-600">Beheer je recruitment team en bekijk individuele prestaties</p>
-        
-        {/* Debug info */}
-        <div className="mt-4 p-4 bg-gray-100 rounded text-sm">
-          <p><strong>Debug info:</strong></p>
-          <p>User: {user?.email}</p>
-          <p>Client ID: {user?.clientId}</p>
-          <p>Team data loaded: {teamData ? 'Yes' : 'No'}</p>
-          <p>Sales reps count: {teamData?.salesReps?.length || 0}</p>
-          {error && <p className="text-red-600">Error: {error}</p>}
-        </div>
       </div>
 
       {(!teamData || !teamData.salesReps || teamData.salesReps.length === 0) ? (
@@ -1325,6 +1290,20 @@ const ClientTeamManagement = ({ user }) => {
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-500">Commissie Rate</p>
+                    <p className="font-bold text-lg text-gray-900">
+                      {((rep.commissionRate || 0.1) * 100).toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-500">Start Datum</p>
+                    <p className="font-bold text-lg text-gray-900">
+                      {rep.hireDate ? new Date(rep.hireDate).toLocaleDateString('nl-NL', {
+                        month: 'short', year: 'numeric'
+                      }) : '-'}
+                    </p>
+                  </div>
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <p className="text-sm text-gray-500">Facturen</p>
                     <p className="font-bold text-lg text-gray-900">{rep.invoices.length}</p>
@@ -1815,18 +1794,4 @@ const App = () => {
   );
 };
 
-export default App; text-gray-500">Commissie Rate</p>
-                    <p className="font-bold text-lg text-gray-900">
-                      {((rep.commissionRate || 0.1) * 100).toFixed(1)}%
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500">Start Datum</p>
-                    <p className="font-bold text-lg text-gray-900">
-                      {rep.hireDate ? new Date(rep.hireDate).toLocaleDateString('nl-NL', {
-                        month: 'short', year: 'numeric'
-                      }) : '-'}
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm
+export default App;
