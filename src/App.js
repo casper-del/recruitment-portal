@@ -1998,9 +1998,9 @@ const App = () => {
 
           {user.role === 'client' && (
             <div>
-              {currentPage === 'dashboard' && <ClientTeamDashboard user={user} />}
+              {currentPage === 'dashboard' && <ClientDashboard user={user} />}
               {currentPage === 'invoices' && <PlaceholderPage title="Betalingen & Facturen" description="Overzicht van facturen" />}
-              {currentPage === 'team' && <ClientTeamDashboard user={user} />}
+              {currentPage === 'team' && <ClientDashboard user={user} />}
               {currentPage === 'reports' && <PlaceholderPage title="Rapportages" description="Analytics en rapportages" />}
               {currentPage === 'settings' && <PlaceholderPage title="Instellingen" description="CRM koppelingen" />}
             </div>
