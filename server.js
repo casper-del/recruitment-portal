@@ -65,6 +65,20 @@ const clientSchema = new mongoose.Schema({
   },
   commissionRate: { type: Number, default: 0.10 },
   commissionCap: { type: Number, default: 50000 },
+  // Invoice details for sales reps to use
+  invoiceCompanyName: String,
+  invoiceContactName: String,
+  invoiceAddress: String,
+  invoiceCity: String,
+  invoicePostalCode: String,
+  invoiceCountry: { type: String, default: 'Nederland' },
+  invoicePhone: String,
+  invoiceEmail: String,
+  invoiceKvkNumber: String,
+  invoiceVatNumber: String,
+  invoiceBankAccount: String,
+  // Billing cycle
+  billingDay: { type: Number, default: 1 }, // Day of month when invoices are due
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
@@ -116,11 +130,13 @@ const invoiceSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   month: { type: Number, required: true },
   year: { type: Number, required: true },
-  status: { type: String, enum: ['pending', 'paid'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'approved', 'revision_requested', 'paid'], default: 'pending' },
   type: { type: String, enum: ['client', 'commission'], default: 'client' },
   filePath: String,
   fileName: String,
   paidAt: Date,
+  approvedAt: Date,
+  revisionMessage: String,
   description: String,
   invoiceData: {
     thisMonthRevenue: Number,
@@ -222,9 +238,9 @@ const upload = multer({
 app.get('/api', (req, res) => {
   res.json({ 
     message: 'Recruiters Network API',
-    version: '2.0.0',
+    version: '2.1.0',
     status: 'running',
-    features: ['Admin Portal', 'Client Portal', 'Sales Rep Portal', 'Invoice Management', 'Invoice Generator']
+    features: ['Admin Portal', 'Client Portal', 'Sales Rep Portal', 'Invoice Management', 'Invoice Generator', 'Invoice Approval System']
   });
 });
 
@@ -275,10 +291,15 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Admin Routes - Client Management
+// Admin Routes - Client Management with Invoice Details
 app.post('/api/admin/clients', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { name, contactName, email, phone, address, commissionRate, commissionCap, crmType } = req.body;
+    const { 
+      name, contactName, email, phone, address, commissionRate, commissionCap, crmType,
+      invoiceCompanyName, invoiceContactName, invoiceAddress, invoiceCity, invoicePostalCode,
+      invoiceCountry, invoicePhone, invoiceEmail, invoiceKvkNumber, invoiceVatNumber,
+      invoiceBankAccount, billingDay
+    } = req.body;
     
     const existingClient = await Client.findOne({ email });
     if (existingClient) {
@@ -293,7 +314,19 @@ app.post('/api/admin/clients', authenticateToken, requireAdmin, async (req, res)
       address,
       commissionRate: commissionRate || 0.10,
       commissionCap: commissionCap || 50000,
-      crmType: crmType || 'teamleader'
+      crmType: crmType || 'teamleader',
+      invoiceCompanyName,
+      invoiceContactName,
+      invoiceAddress,
+      invoiceCity,
+      invoicePostalCode,
+      invoiceCountry: invoiceCountry || 'Nederland',
+      invoicePhone,
+      invoiceEmail,
+      invoiceKvkNumber,
+      invoiceVatNumber,
+      invoiceBankAccount,
+      billingDay: billingDay || 1
     });
     
     await client.save();
@@ -318,6 +351,65 @@ app.post('/api/admin/clients', authenticateToken, requireAdmin, async (req, res)
     });
   } catch (error) {
     console.error('Create client error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+app.put('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const { 
+      name, contactName, email, phone, address, commissionRate, commissionCap, crmType,
+      invoiceCompanyName, invoiceContactName, invoiceAddress, invoiceCity, invoicePostalCode,
+      invoiceCountry, invoicePhone, invoiceEmail, invoiceKvkNumber, invoiceVatNumber,
+      invoiceBankAccount, billingDay
+    } = req.body;
+    
+    const client = await Client.findByIdAndUpdate(
+      clientId,
+      {
+        name,
+        contactName,
+        email,
+        phone,
+        address,
+        commissionRate,
+        commissionCap,
+        crmType,
+        invoiceCompanyName,
+        invoiceContactName,
+        invoiceAddress,
+        invoiceCity,
+        invoicePostalCode,
+        invoiceCountry: invoiceCountry || 'Nederland',
+        invoicePhone,
+        invoiceEmail,
+        invoiceKvkNumber,
+        invoiceVatNumber,
+        invoiceBankAccount,
+        billingDay: billingDay || 1
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!client) {
+      return res.status(404).json({ message: 'Client not found' });
+    }
+    
+    await User.findOneAndUpdate(
+      { clientId: clientId },
+      { 
+        email,
+        name: contactName 
+      }
+    );
+    
+    res.json({ 
+      message: 'Client updated successfully',
+      client 
+    });
+  } catch (error) {
+    console.error('Update client error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -367,48 +459,6 @@ app.get('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (
     });
   } catch (error) {
     console.error('Get client details error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-app.put('/api/admin/clients/:clientId', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { clientId } = req.params;
-    const { name, contactName, email, phone, address, commissionRate, commissionCap, crmType } = req.body;
-    
-    const client = await Client.findByIdAndUpdate(
-      clientId,
-      {
-        name,
-        contactName,
-        email,
-        phone,
-        address,
-        commissionRate,
-        commissionCap,
-        crmType
-      },
-      { new: true, runValidators: true }
-    );
-    
-    if (!client) {
-      return res.status(404).json({ message: 'Client not found' });
-    }
-    
-    await User.findOneAndUpdate(
-      { clientId: clientId },
-      { 
-        email,
-        name: contactName 
-      }
-    );
-    
-    res.json({ 
-      message: 'Client updated successfully',
-      client 
-    });
-  } catch (error) {
-    console.error('Update client error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -696,6 +746,64 @@ app.get('/api/client/invoices', authenticateToken, requireClient, async (req, re
   }
 });
 
+// Client Invoice Approval System
+app.post('/api/client/invoices/:invoiceId/approve', authenticateToken, requireClient, async (req, res) => {
+  try {
+    const { invoiceId } = req.params;
+    
+    const invoice = await Invoice.findOne({
+      _id: invoiceId,
+      clientId: req.user.clientId,
+      status: 'pending'
+    });
+    
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found or already processed' });
+    }
+
+    invoice.status = 'approved';
+    invoice.approvedAt = new Date();
+    await invoice.save();
+    
+    res.json({ 
+      message: 'Invoice approved successfully',
+      invoice
+    });
+  } catch (error) {
+    console.error('Approve invoice error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+app.post('/api/client/invoices/:invoiceId/revision', authenticateToken, requireClient, async (req, res) => {
+  try {
+    const { invoiceId } = req.params;
+    const { message } = req.body;
+    
+    const invoice = await Invoice.findOne({
+      _id: invoiceId,
+      clientId: req.user.clientId,
+      status: 'pending'
+    });
+    
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found or already processed' });
+    }
+
+    invoice.status = 'revision_requested';
+    invoice.revisionMessage = message;
+    await invoice.save();
+    
+    res.json({ 
+      message: 'Revision requested successfully',
+      invoice
+    });
+  } catch (error) {
+    console.error('Request revision error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 app.get('/api/client/invoices/:invoiceId/download', authenticateToken, requireClient, async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.invoiceId);
@@ -799,7 +907,7 @@ app.post('/api/salesrep/invoices', authenticateToken, requireSalesRep, upload.si
   }
 });
 
-// Sales Rep Delete Invoice - DELETE
+// Sales Rep Delete Invoice
 app.delete('/api/salesrep/invoices/:invoiceId', authenticateToken, requireSalesRep, async (req, res) => {
   try {
     const { invoiceId } = req.params;
@@ -807,42 +915,11 @@ app.delete('/api/salesrep/invoices/:invoiceId', authenticateToken, requireSalesR
     const invoice = await Invoice.findOne({
       _id: invoiceId,
       salesRepId: req.user.salesRepId,
-      status: { $ne: 'paid' } // Only allow deletion of unpaid invoices
+      status: { $nin: ['paid', 'approved'] } // Can't delete paid or approved invoices
     });
     
     if (!invoice) {
-      return res.status(404).json({ message: 'Invoice not found or cannot be deleted (already paid)' });
-    }
-
-    // Delete file if it exists
-    if (invoice.filePath && fs.existsSync(invoice.filePath)) {
-      fs.unlinkSync(invoice.filePath);
-    }
-
-    await Invoice.findByIdAndDelete(invoiceId);
-    
-    res.json({ 
-      message: 'Invoice deleted successfully'
-    });
-  } catch (error) {
-    console.error('Delete invoice error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// Sales Rep Delete Invoice - DELETE
-app.delete('/api/salesrep/invoices/:invoiceId', authenticateToken, requireSalesRep, async (req, res) => {
-  try {
-    const { invoiceId } = req.params;
-    
-    const invoice = await Invoice.findOne({
-      _id: invoiceId,
-      salesRepId: req.user.salesRepId,
-      status: { $ne: 'paid' } // Only allow deletion of unpaid invoices
-    });
-    
-    if (!invoice) {
-      return res.status(404).json({ message: 'Invoice not found or cannot be deleted (already paid)' });
+      return res.status(404).json({ message: 'Invoice not found or cannot be deleted (already processed)' });
     }
 
     // Delete file if it exists
@@ -885,22 +962,41 @@ app.get('/api/salesrep/invoices/:invoiceId/download', authenticateToken, require
   }
 });
 
-// Sales Rep Company Details - GET
+// Sales Rep Company Details with Client Invoice Data Pre-fill
 app.get('/api/salesrep/company-details', authenticateToken, requireSalesRep, async (req, res) => {
   try {
-    const salesRep = await SalesRep.findById(req.user.salesRepId);
+    const salesRep = await SalesRep.findById(req.user.salesRepId).populate('clientId');
     
     if (!salesRep) {
       return res.status(404).json({ message: 'Sales representative not found' });
     }
 
-    if (salesRep.companyDetails) {
+    // If no company details set, pre-fill with client invoice data
+    if (!salesRep.companyDetails || !salesRep.companyDetails.companyName) {
+      const client = salesRep.clientId;
+      const prefillData = {
+        companyName: client.invoiceCompanyName || client.name,
+        contactName: client.invoiceContactName || client.contactName,
+        address: client.invoiceAddress || client.address,
+        city: client.invoiceCity || '',
+        postalCode: client.invoicePostalCode || '',
+        country: client.invoiceCountry || 'Nederland',
+        phone: client.invoicePhone || client.phone,
+        email: client.invoiceEmail || client.email,
+        kvkNumber: client.invoiceKvkNumber || '',
+        vatNumber: client.invoiceVatNumber || '',
+        bankAccount: client.invoiceBankAccount || ''
+      };
+      
       res.json({ 
-        companyDetails: salesRep.companyDetails 
+        companyDetails: prefillData,
+        isPrefilled: true,
+        message: 'Company details pre-filled from client data'
       });
     } else {
       res.json({ 
-        companyDetails: null 
+        companyDetails: salesRep.companyDetails,
+        isPrefilled: false
       });
     }
   } catch (error) {
@@ -960,7 +1056,7 @@ app.post('/api/salesrep/company-details', authenticateToken, requireSalesRep, as
   }
 });
 
-// Sales Rep Generate Invoice - POST
+// Sales Rep Generate Invoice
 app.post('/api/salesrep/generate-invoice', authenticateToken, requireSalesRep, async (req, res) => {
   try {
     const {
@@ -1147,7 +1243,20 @@ const initializeAdmin = async () => {
         address: 'Damrak 70, 1012 LM Amsterdam',
         commissionRate: 0.10,
         commissionCap: 50000,
-        crmType: 'hubspot'
+        crmType: 'hubspot',
+        // Pre-filled invoice details
+        invoiceCompanyName: 'Acme Corporation B.V.',
+        invoiceContactName: 'John Doe',
+        invoiceAddress: 'Damrak 70',
+        invoiceCity: 'Amsterdam',
+        invoicePostalCode: '1012 LM',
+        invoiceCountry: 'Nederland',
+        invoicePhone: '+31 20 123 4567',
+        invoiceEmail: 'facturen@acmecorp.com',
+        invoiceKvkNumber: '12345678',
+        invoiceVatNumber: 'NL123456789B01',
+        invoiceBankAccount: 'NL91 ABNA 0417 1643 00',
+        billingDay: 15
       });
       await client.save();
 
@@ -1190,6 +1299,7 @@ const initializeAdmin = async () => {
 
       console.log('✓ Demo client created: demo@acmecorp.com / demo123');
       console.log('✓ Demo sales reps created with password: demo123');
+      console.log('✓ Invoice details pre-configured for sales reps');
     }
   } catch (error) {
     console.error('Initialization error:', error);
@@ -1225,7 +1335,8 @@ const startServer = async () => {
       console.log(`📝 API Documentation: http://localhost:${PORT}/api`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Multi-Portal System: Admin | Client | Sales Rep`);
-      console.log(`💰 Invoice Generator: Ready for Sales Reps with Bank Account Support`);
+      console.log(`💰 Invoice Generator: Ready with Pre-filled Client Data`);
+      console.log(`✅ Invoice Approval System: Client can approve/request changes`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
