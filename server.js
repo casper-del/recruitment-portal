@@ -919,104 +919,109 @@ app.get('/api/salesrep/invoices/:invoiceId/download', authenticateToken, async (
 // Initialize admin user and demo data
 const initializeAdmin = async () => {
   try {
-    // Create admin user if doesn't exist
-    const adminExists = await User.findOne({ role: 'admin' }).catch(() => null);
-    if (!adminExists) {
-      const hashedPassword = await bcrypt.hash('admin123', 12);
-      const admin = new User({
-        email: 'admin@recruitersnetwork.nl',
-        password: hashedPassword,
-        role: 'admin',
-        name: 'Admin User'
-      });
-      await admin.save();
-      console.log('✓ Default admin created: admin@recruitersnetwork.nl / admin123');
-    }
+    console.log('🔄 Initializing admin and demo data...');
+    
+    // Always recreate admin user to ensure it works
+    await User.deleteOne({ email: 'admin@recruitersnetwork.nl' });
+    const hashedPassword = await bcrypt.hash('admin123', 12);
+    const admin = new User({
+      email: 'admin@recruitersnetwork.nl',
+      password: hashedPassword,
+      role: 'admin',
+      name: 'Admin User'
+    });
+    await admin.save();
+    console.log('✓ Admin user created/updated: admin@recruitersnetwork.nl / admin123');
 
-    // Create demo client with all fields
-    const demoClient = await Client.findOne({ email: 'demo@acmecorp.com' }).catch(() => null);
-    if (!demoClient) {
-      const client = new Client({
-        name: 'Acme Corporation',
-        contactName: 'John Doe',
-        email: 'demo@acmecorp.com',
-        phone: '+31 20 123 4567',
-        address: 'Damrak 70, 1012 LM Amsterdam',
-        kvkNumber: '12345678',
-        vatNumber: 'NL123456789B01',
-        bankAccount: 'NL91 ABNA 0417 1643 00',
-        networkCommissionRate: 0.10,
-        billingDay: 15,
-        commissionRate: 0.10,
-        commissionCap: 50000
-      });
-      await client.save();
+    // Always recreate demo client to ensure all fields are present
+    await User.deleteMany({ email: { $in: ['demo@acmecorp.com', 'sarah@acmecorp.com', 'mike@acmecorp.com', 'lisa@acmecorp.com'] } });
+    await SalesRep.deleteMany({ email: { $in: ['sarah@acmecorp.com', 'mike@acmecorp.com', 'lisa@acmecorp.com'] } });
+    await Client.deleteOne({ email: 'demo@acmecorp.com' });
 
-      const hashedPassword = await bcrypt.hash('demo123', 12);
-      const clientUser = new User({
-        email: 'demo@acmecorp.com',
-        password: hashedPassword,
-        role: 'client',
-        name: 'John Doe',
-        clientId: client._id
-      });
-      await clientUser.save();
+    const client = new Client({
+      name: 'Acme Corporation',
+      contactName: 'John Doe',
+      email: 'demo@acmecorp.com',
+      phone: '+31 20 123 4567',
+      address: 'Damrak 70, 1012 LM Amsterdam',
+      kvkNumber: '12345678',
+      vatNumber: 'NL123456789B01',
+      bankAccount: 'NL91 ABNA 0417 1643 00',
+      networkCommissionRate: 0.10,
+      billingDay: 15,
+      commissionRate: 0.10,
+      commissionCap: 50000
+    });
+    await client.save();
 
-      // Add demo sales reps
-      const salesRepsData = [
-        { 
-          name: 'Sarah Johnson', 
-          email: 'sarah@acmecorp.com', 
-          phone: '+31 20 123 4568', 
-          hireDate: new Date('2024-01-15'),
-          position: 'Senior Sales Representative'
-        },
-        { 
-          name: 'Mike Chen', 
-          email: 'mike@acmecorp.com', 
-          phone: '+31 20 123 4569', 
-          hireDate: new Date('2024-03-01'),
-          position: 'Sales Representative'
-        },
-        { 
-          name: 'Lisa van der Berg', 
-          email: 'lisa@acmecorp.com', 
-          phone: '+31 20 123 4570', 
-          hireDate: new Date('2024-02-15'),
-          position: 'Junior Sales Representative'
-        }
-      ];
+    const clientHashedPassword = await bcrypt.hash('demo123', 12);
+    const clientUser = new User({
+      email: 'demo@acmecorp.com',
+      password: clientHashedPassword,
+      role: 'client',
+      name: 'John Doe',
+      clientId: client._id
+    });
+    await clientUser.save();
 
-      for (const repData of salesRepsData) {
-        const rep = new SalesRep({
-          ...repData,
-          clientId: client._id,
-          isConnected: Math.random() > 0.3, // 70% chance of being connected
-          commissionRate: 0.10
-        });
-        await rep.save();
-
-        const repPassword = await bcrypt.hash('demo123', 12);
-        const salesRepUser = new User({
-          email: repData.email,
-          password: repPassword,
-          role: 'salesrep',
-          name: repData.name,
-          clientId: client._id,
-          salesRepId: rep._id
-        });
-        await salesRepUser.save();
+    // Add demo sales reps
+    const salesRepsData = [
+      { 
+        name: 'Sarah Johnson', 
+        email: 'sarah@acmecorp.com', 
+        phone: '+31 20 123 4568', 
+        hireDate: new Date('2024-01-15'),
+        position: 'Senior Sales Representative'
+      },
+      { 
+        name: 'Mike Chen', 
+        email: 'mike@acmecorp.com', 
+        phone: '+31 20 123 4569', 
+        hireDate: new Date('2024-03-01'),
+        position: 'Sales Representative'
+      },
+      { 
+        name: 'Lisa van der Berg', 
+        email: 'lisa@acmecorp.com', 
+        phone: '+31 20 123 4570', 
+        hireDate: new Date('2024-02-15'),
+        position: 'Junior Sales Representative'
       }
+    ];
 
-      console.log('✓ Demo client and sales reps created');
-      console.log('✓ Demo logins:');
-      console.log('  - Client: demo@acmecorp.com / demo123');
-      console.log('  - Sales Rep 1: sarah@acmecorp.com / demo123');
-      console.log('  - Sales Rep 2: mike@acmecorp.com / demo123');
-      console.log('  - Sales Rep 3: lisa@acmecorp.com / demo123');
+    for (const repData of salesRepsData) {
+      const rep = new SalesRep({
+        ...repData,
+        clientId: client._id,
+        isConnected: Math.random() > 0.3, // 70% chance of being connected
+        commissionRate: 0.10
+      });
+      await rep.save();
+
+      const repPassword = await bcrypt.hash('demo123', 12);
+      const salesRepUser = new User({
+        email: repData.email,
+        password: repPassword,
+        role: 'salesrep',
+        name: repData.name,
+        clientId: client._id,
+        salesRepId: rep._id
+      });
+      await salesRepUser.save();
+      
+      console.log(`✓ Created sales rep: ${repData.name} (${repData.email})`);
     }
+
+    console.log('✅ All demo data created successfully!');
+    console.log('📝 LOGIN CREDENTIALS:');
+    console.log('   👑 Admin: admin@recruitersnetwork.nl / admin123');
+    console.log('   🏢 Client: demo@acmecorp.com / demo123');
+    console.log('   💼 Sales Rep 1: sarah@acmecorp.com / demo123');
+    console.log('   💼 Sales Rep 2: mike@acmecorp.com / demo123');
+    console.log('   💼 Sales Rep 3: lisa@acmecorp.com / demo123');
+    
   } catch (error) {
-    console.error('Initialization error:', error);
+    console.error('❌ Initialization error:', error);
   }
 };
 
