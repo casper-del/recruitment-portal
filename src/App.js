@@ -2246,6 +2246,7 @@ const App = () => {
             <div>
               {currentPage === 'admin-dashboard' && <AdminDashboard />}
               {currentPage === 'clients' && <PlaceholderPage title="Klanten Beheer" description="Beheer alle klanten" />}
+              {currentPage === 'network-commissions' && <AdminNetworkCommissions />}
               {currentPage === 'admin-settings' && <PlaceholderPage title="Admin Instellingen" description="Systeemconfiguratie" />}
             </div>
           )}
