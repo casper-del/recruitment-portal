@@ -81,6 +81,18 @@ const salesRepSchema = new mongoose.Schema({
   isConnected: { type: Boolean, default: false },
   totalRevenue: { type: Number, default: 0 },
   totalCommission: { type: Number, default: 0 },
+  companyDetails: {
+    companyName: String,
+    contactName: String,
+    address: String,
+    city: String,
+    postalCode: String,
+    country: { type: String, default: 'Nederland' },
+    phone: String,
+    email: String,
+    kvkNumber: String,
+    vatNumber: String
+  },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
@@ -109,6 +121,25 @@ const invoiceSchema = new mongoose.Schema({
   fileName: String,
   paidAt: Date,
   description: String,
+  invoiceData: {
+    thisMonthRevenue: Number,
+    commissionExcl: Number,
+    vatRate: Number,
+    vatAmount: Number,
+    totalAmount: Number,
+    companyDetails: {
+      companyName: String,
+      contactName: String,
+      address: String,
+      city: String,
+      postalCode: String,
+      country: String,
+      phone: String,
+      email: String,
+      kvkNumber: String,
+      vatNumber: String
+    }
+  },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -191,7 +222,7 @@ app.get('/api', (req, res) => {
     message: 'Recruiters Network API',
     version: '2.0.0',
     status: 'running',
-    features: ['Admin Portal', 'Client Portal', 'Sales Rep Portal', 'Invoice Management']
+    features: ['Admin Portal', 'Client Portal', 'Sales Rep Portal', 'Invoice Management', 'Invoice Generator']
   });
 });
 
@@ -790,6 +821,177 @@ app.get('/api/salesrep/invoices/:invoiceId/download', authenticateToken, require
   }
 });
 
+// Sales Rep Company Details - GET
+app.get('/api/salesrep/company-details', authenticateToken, requireSalesRep, async (req, res) => {
+  try {
+    const salesRep = await SalesRep.findById(req.user.salesRepId);
+    
+    if (!salesRep) {
+      return res.status(404).json({ message: 'Sales representative not found' });
+    }
+
+    // Check if company details exist
+    if (salesRep.companyDetails) {
+      res.json({ 
+        companyDetails: salesRep.companyDetails 
+      });
+    } else {
+      // Return empty structure for first-time setup
+      res.json({ 
+        companyDetails: null 
+      });
+    }
+  } catch (error) {
+    console.error('Get company details error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Sales Rep Company Details - POST/UPDATE
+app.post('/api/salesrep/company-details', authenticateToken, requireSalesRep, async (req, res) => {
+  try {
+    const {
+      companyName,
+      contactName,
+      address,
+      city,
+      postalCode,
+      country,
+      phone,
+      email,
+      kvkNumber,
+      vatNumber
+    } = req.body;
+
+    const salesRep = await SalesRep.findByIdAndUpdate(
+      req.user.salesRepId,
+      {
+        companyDetails: {
+          companyName,
+          contactName,
+          address,
+          city,
+          postalCode,
+          country: country || 'Nederland',
+          phone,
+          email,
+          kvkNumber,
+          vatNumber
+        }
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!salesRep) {
+      return res.status(404).json({ message: 'Sales representative not found' });
+    }
+
+    res.json({ 
+      message: 'Company details saved successfully',
+      companyDetails: salesRep.companyDetails
+    });
+  } catch (error) {
+    console.error('Save company details error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Sales Rep Generate Invoice - POST
+app.post('/api/salesrep/generate-invoice', authenticateToken, requireSalesRep, async (req, res) => {
+  try {
+    const {
+      invoiceNumber,
+      thisMonthRevenue,
+      commissionExcl,
+      vatRate,
+      vatAmount,
+      totalAmount,
+      month,
+      year,
+      description,
+      companyDetails
+    } = req.body;
+
+    // Validate required fields
+    if (!invoiceNumber || !commissionExcl || !month || !year) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Check if invoice number already exists
+    const existingInvoice = await Invoice.findOne({ 
+      invoiceNumber,
+      salesRepId: req.user.salesRepId
+    });
+
+    if (existingInvoice) {
+      return res.status(400).json({ message: 'Invoice number already exists' });
+    }
+
+    // Create the invoice
+    const invoice = new Invoice({
+      clientId: req.user.clientId,
+      salesRepId: req.user.salesRepId,
+      uploadedBy: req.user.userId,
+      invoiceNumber,
+      amount: totalAmount,
+      month: parseInt(month),
+      year: parseInt(year),
+      status: 'pending',
+      type: 'commission',
+      description: description || `Commissie voor ${new Date(0, month - 1).toLocaleDateString('nl-NL', {month: 'long'})} ${year}`,
+      // Store additional invoice data
+      invoiceData: {
+        thisMonthRevenue: parseFloat(thisMonthRevenue) || 0,
+        commissionExcl: parseFloat(commissionExcl),
+        vatRate: parseFloat(vatRate),
+        vatAmount: parseFloat(vatAmount),
+        totalAmount: parseFloat(totalAmount),
+        companyDetails
+      }
+    });
+
+    await invoice.save();
+
+    // Update/Create revenue record for tracking
+    await Revenue.findOneAndUpdate(
+      {
+        salesRepId: req.user.salesRepId,
+        clientId: req.user.clientId,
+        month: parseInt(month),
+        year: parseInt(year)
+      },
+      {
+        revenue: parseFloat(thisMonthRevenue) || 0,
+        commission: parseFloat(commissionExcl),
+        lastSyncAt: new Date()
+      },
+      { 
+        upsert: true, 
+        new: true 
+      }
+    );
+
+    await invoice.populate(['uploadedBy', 'salesRepId']);
+
+    res.status(201).json({ 
+      message: 'Invoice generated successfully',
+      invoice: {
+        _id: invoice._id,
+        invoiceNumber: invoice.invoiceNumber,
+        amount: invoice.amount,
+        month: invoice.month,
+        year: invoice.year,
+        status: invoice.status,
+        description: invoice.description,
+        createdAt: invoice.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Generate invoice error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // CRM Integration Routes (simplified)
 app.get('/api/client/crm/connect', authenticateToken, async (req, res) => {
   try {
@@ -964,6 +1166,7 @@ const startServer = async () => {
       console.log(`📝 API Documentation: http://localhost:${PORT}/api`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Multi-Portal System: Admin | Client | Sales Rep`);
+      console.log(`💰 Invoice Generator: Ready for Sales Reps`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
