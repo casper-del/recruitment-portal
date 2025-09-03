@@ -1,4 +1,304 @@
-import React, { useState, useEffect } from 'react';
+// Admin Network Commissions - COMPLETE WITH ALL FUNCTIONALITY
+const AdminNetworkCommissions = () => {
+  const [commissions, setCommissions] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  console.log('🔥 AdminNetworkCommissions COMPONENT LOADED');
+
+  useEffect(() => {
+    fetchClients();
+    fetchCommissions();
+  }, []);
+
+  const fetchClients = async () => {
+    try {
+      const response = await apiCall('/admin/clients');
+      setClients(response);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const fetchCommissions = async () => {
+    try {
+      const response = await apiCall('/admin/network-commissions');
+      setCommissions(response);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const generateNetworkInvoice = async () => {
+    if (!selectedClient) {
+      setError('Selecteer een client');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/admin/generate-network-invoice', {
+        method: 'POST',
+        body: JSON.stringify({
+          clientId: selectedClient,
+          month: selectedMonth,
+          year: selectedYear
+        })
+      });
+      
+      setSuccess(`Network factuur gegenereerd: €${response.networkAmount.toFixed(2)}`);
+      await fetchCommissions();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">🔥 Network Commissie Facturen</h2>
+        <p className="text-gray-600">Genereer facturen voor Recruiters Network commissies</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-green-700 text-sm">{success}</p>
+            <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Network Invoice Generator */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Nieuwe Network Factuur Genereren</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Client</label>
+            <select
+              value={selectedClient || ''}
+              onChange={(e) => setSelectedClient(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+            >
+              <option value="">Selecteer client...</option>
+              {clients.map((client) => (
+                <option key={client._id} value={client._id}>
+                  {client.name} ({((client.networkCommissionRate || 0.1) * 100).toFixed(1)}%)
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Maand</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+            >
+              {Array.from({length: 12}, (_, i) => (
+                <option key={i+1} value={i+1}>
+                  {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Jaar</label>
+            <input
+              type="number"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+          
+          <div className="flex items-end">
+            <button
+              onClick={generateNetworkInvoice}
+              disabled={isLoading || !selectedClient}
+              className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center"
+            >
+              <icons.Plus />
+              <span className="ml-2">{isLoading ? 'Genereren...' : 'Network Factuur Genereren'}</span>
+            </button>
+          </div>
+        </div>
+        
+        <div className="text-sm text-gray-600">
+          <p><strong>Uitleg:</strong> Network facturen worden berekend over goedgekeurde sales rep commissies.</p>
+          <p>Voorbeeld: Sales rep factureert €2.500 commissie excl. BTW → bij 10% network commissie = €250 voor Recruiters Network</p>
+        </div>
+      </div>
+
+      {/* Generated Network Invoices */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">
+          Gegenereerde Network Facturen ({commissions.length})
+        </h3>
+        
+        {commissions.length === 0 ? (
+          <div className="text-center py-8">
+            <h4 className="text-lg font-medium text-gray-900 mt-4">Nog geen network facturen</h4>
+            <p className="text-gray-600 mt-2">Genereer je eerste network factuur om te beginnen</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {commissions.map((commission) => (
+              <div key={commission._id} className="border border-gray-200 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <icons.FileText />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">
+                        Factuur #{commission.invoiceNumber}
+                      </h4>
+                      <p className="text-gray-600">
+                        {commission.clientName} • {commission.monthName} {commission.year}
+                      </p>
+                      <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                        <span>Sales Rep Commissie: €{commission.totalSalesRepCommission.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</span>
+                        <span>Network Rate: {commission.networkRate * 100}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-gray-900">
+                        €{commission.networkAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
+                      </p>
+                      <p className="text-sm text-gray-500">excl. BTW</p>
+                    </div>
+                    
+                    <span className={'px-3 py-1 rounded-full text-sm font-medium ' + (
+                      commission.status === 'paid' ? 'bg-green-100 text-green-600' :
+                      commission.status === 'sent' ? 'bg-blue-100 text-blue-600' :
+                      'bg-gray-100 text-gray-600'
+                    )}>
+                      {commission.status === 'paid' ? 'Betaald' :
+                       commission.status === 'sent' ? 'Verstuurd' :
+                       'Concept'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// 🔥 NEW Admin Sales Rep Overview Component
+const AdminSalesRepOverview = () => {
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [overviewData, setOverviewData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    try {
+      const response = await apiCall('/admin/clients');
+      setClients(response);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const fetchSalesRepOverview = async (clientId) => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall(`/admin/clients/${clientId}/salesrep-overview`);
+      setOverviewData(response);
+      setSelectedClient(clientId);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getStatusBadge = (rep) => {
+    if (rep.hasSubmittedThisMonth) {
+      const status = rep.currentMonthStatus;
+      if (status === 'paid') return { text: '💰 Betaald', color: 'bg-green-100 text-green-600' };
+      if (status === 'approved') return { text: '✅ Goedgekeurd', color: 'bg-blue-100 text-blue-600' };
+      if (status === 'revision_requested') return { text: '🔄 Herzien', color: 'bg-yellow-100 text-yellow-600' };
+      return { text: '⏳ Te beoordelen', color: 'bg-orange-100 text-orange-600' };
+    }
+    return overviewData?.isAfterBillingDay 
+      ? { text: '🔴 Te laat', color: 'bg-red-100 text-red-600' }
+      : { text: '❌ Nog niet ingediend', color: 'bg-gray-100 text-gray-600' };
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">🔥 Sales Rep Facturatie Overzicht</h2>
+        <p className="text-gray-600">Bekijk de facturatie status van sales representatives per client</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Client Selection */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Selecteer Client</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {clients.map((client) => (
+            <button
+              key={client._id}
+              onClick={() => fetchSalesRepOverview(client._id)}
+              className="text-left p-6 border border-gray-200 rounded-xl hover:shadow-md transition-shadow hover:border-green-300"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold text-gray-900">{client.name}</h4>
+                <span className="bg-blue-100 text-blue-600 px-2 py-1 rounded-full text-xs">
+                  {client.salesRepCount} reps
+                </span>
+              </div>
+              <p className="text-gray-600 text-sm">{client.contactName}</p>
+              <p className="textimport React, { useState, useEffect } from 'react';
 
 console.log('🔥 COMPLETE APP.JS WITH ALL FEATURES LOADED 🔥');
 
@@ -2356,6 +2656,7 @@ const App = () => {
             <div>
               {currentPage === 'admin-dashboard' && <AdminDashboard />}
               {currentPage === 'clients' && <AdminDashboard />}
+              {currentPage === 'salesrep-overview' && <AdminSalesRepOverview />}
               {currentPage === 'network-commissions' && <AdminNetworkCommissions />}
               {currentPage === 'admin-settings' && <SimpleDashboard title="🔥 Admin Instellingen" />}
             </div>
