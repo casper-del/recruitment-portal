@@ -448,27 +448,43 @@ const Sidebar = ({ user, currentPage, setCurrentPage, sidebarCollapsed, setSideb
   );
 };
 
-// Admin Dashboard Component
-const AdminDashboard = ({ onClientClick }) => {
-  const [clients, setClients] = useState([]);
+// Admin Client Management Component
+const AdminClientManagement = ({ selectedClient, onClose }) => {
+  const [clientDetails, setClientDetails] = useState(null);
+  const [salesReps, setSalesReps] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showAddSalesRep, setShowAddSalesRep] = useState(false);
+  const [newSalesRep, setNewSalesRep] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    position: 'Sales Representative',
+    hireDate: new Date().toISOString().split('T')[0],
+    commissionRate: 0.10
+  });
 
   useEffect(() => {
-    fetchClients();
-  }, []);
+    if (selectedClient) {
+      fetchClientDetails();
+    }
+  }, [selectedClient]);
 
-  const fetchClients = async () => {
+  const fetchClientDetails = async () => {
     try {
       setIsLoading(true);
-      const response = await apiCall('/admin/clients');
-      setClients(response);
+      const response = await apiCall('/admin/clients/' + selectedClient._id);
+      setClientDetails(response.client);
+      setSalesReps(response.salesReps || []);
     } catch (err) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
   };
+
+  
 
   if (isLoading) {
     return (
@@ -2406,97 +2422,13 @@ const App = () => {
       </div>
 
       {showClientModal && selectedClient && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px',
-          zIndex: 9999
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: '32px',
-            maxWidth: '500px',
-            width: '100%',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '24px'
-            }}>
-              <h3 style={{
-                fontSize: '24px',
-                fontWeight: '700',
-                color: '#111827',
-                margin: 0
-              }}>
-                {selectedClient.name}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowClientModal(false);
-                  setSelectedClient(null);
-                }}
-                style={{
-                  backgroundColor: '#f3f4f6',
-                  border: 'none',
-                  borderRadius: '8px',
-                  width: '40px',
-                  height: '40px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <XIcon />
-              </button>
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <p style={{ 
-                fontSize: '18px', 
-                color: '#059669', 
-                fontWeight: '600',
-                margin: '0 0 16px 0'
-              }}>
-                MODAL WERKT!
-              </p>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                {'Client: ' + selectedClient.email + '\nContact: ' + selectedClient.contactName + '\nTeam: ' + (selectedClient.salesRepCount || 0) + ' sales reps\nFacturen: ' + (selectedClient.invoiceCount || 0)}
-              </p>
-            </div>
-
-            <button
-              onClick={() => {
-                setShowClientModal(false);
-                setSelectedClient(null);
-              }}
-              style={{
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '12px 24px',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: '600',
-                width: '100%'
-              }}
-            >
-              Sluit Modal
-            </button>
-          </div>
-        </div>
+        <AdminClientManagement
+          selectedClient={selectedClient}
+          onClose={() => {
+            setShowClientModal(false);
+            setSelectedClient(null);
+          }}
+        />
       )}
     </div>
   );
