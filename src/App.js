@@ -2653,11 +2653,21 @@ const SalesRepInvoices = ({ user }) => {
                   
                   <button
                     onClick={() => downloadInvoice(invoice._id, invoice.fileName)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center text-sm"
                   >
                     <DownloadIcon />
-                    <span className="ml-2">Download</span>
+                    <span className="ml-1">Download</span>
                   </button>
+
+                  {invoice.status !== 'paid' && (
+                    <button
+                      onClick={() => deleteInvoice(invoice._id, invoice.invoiceNumber)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center text-sm"
+                    >
+                      <XIcon />
+                      <span className="ml-1">Verwijder</span>
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
