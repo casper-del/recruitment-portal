@@ -1,4 +1,539 @@
-import React, { useState, useEffect } from 'react';
+// Client Dashboard - RESTORED WITH ALL TEAM MANAGEMENT FEATURES
+const ClientDashboard = ({ user }) => {
+  const [teamData, setTeamData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [selectedRep, setSelectedRep] = useState(null);
+  const [showRepModal, setShowRepModal] = useState(false);
+
+  useEffect(() => {
+    fetchTeamData();
+  }, []);
+
+  const fetchTeamData = async () => {
+    try {
+      setIsLoading(true);
+      console.log('Fetching team data for user:', user);
+      
+      const dashboardResponse = await apiCall('/client/dashboard');
+      console.log('Dashboard response:', dashboardResponse);
+      
+      const invoicesResponse = await apiCall('/client/invoices');
+      console.log('Invoices response:', invoicesResponse);
+
+      // Process sales reps with invoice data
+      const salesRepsWithInvoices = (dashboardResponse.salesReps || []).map((rep) => {
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear();
+        
+        const repInvoices = invoicesResponse.filter(invoice => 
+          invoice.salesRepId && invoice.salesRepId._id === rep._id
+        );
+        
+        const currentMonthInvoice = repInvoices.find(inv => 
+          inv.month === currentMonth && inv.year === currentYear
+        );
+        
+        return {
+          ...rep,
+          invoices: repInvoices,
+          currentMonthInvoice,
+          hasSubmittedThisMonth: !!currentMonthInvoice,
+          totalCommissionPaid: repInvoices
+            .filter(inv => inv.status === 'paid')
+            .reduce((sum, inv) => sum + (inv.amount || 0), 0),
+          pendingInvoices: repInvoices.filter(inv => inv.status === 'pending').length,
+          approvedInvoices: repInvoices.filter(inv => inv.status === 'approved').length
+        };
+      });
+
+      console.log('Processed sales reps:', salesRepsWithInvoices);
+
+      setTeamData({
+        ...dashboardResponse,
+        salesReps: salesRepsWithInvoices,
+        stats: {
+          totalRevenue: salesRepsWithInvoices.reduce((sum, rep) => sum + (rep.thisMonthRevenue || 0), 0),
+          totalCommission: salesRepsWithInvoices.reduce((sum, rep) => sum + (rep.thisMonthCommission || 0), 0),
+          submittedInvoices: salesRepsWithInvoices.filter(rep => rep.hasSubmittedThisMonth).length,
+          totalTeamMembers: salesRepsWithInvoices.length
+        }
+      });
+    } catch (err) {
+      console.error('Team data fetch error:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRepClick = (rep) => {
+    setSelectedRep(rep);
+    setShowRepModal(true);
+  };
+
+  const approveInvoice = async (invoiceId) => {
+    try {
+      setIsLoading(true);
+      await apiCall(`/client/invoices/${invoiceId}/approve`, { method: 'PUT' });
+      setSuccess('Factuur goedgekeurd!');
+      await fetchTeamData();
+    } catch (err) {
+      console.error('Approve error:', err);
+      setError(err.message || 'Kon factuur niet goedkeuren');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const requestRevision = async (invoiceId, reason) => {
+    try {
+      setIsLoading(true);
+      await apiCall(`/client/invoices/${invoiceId}/revision`, { 
+        method: 'PUT',
+        body: JSON.stringify({ reason })
+      });
+      setSuccess('Wijziging aangevraagd!');
+      await fetchTeamData();
+    } catch (err) {
+      console.error('Request revision error:', err);
+      setError(err.message || 'Kon wijziging niet aanvragen');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <p className="text-gray-600">Team dashboard laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const currentDate = new Date();
+  const billingDay = teamData?.client?.billingDay || 15;
+  const isAfterBillingDay = currentDate.getDate() > billingDay;
+
+  return (
+    <div className="space-y-6">
+      {/* Header with statistics */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Team Management</h2>
+            <p className="text-gray-600">
+              Beheer je recruitment team • Facturatie deadline: {billingDay}e van de maand
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center space-x-2 mb-2">
+              <span className="text-sm text-gray-500">
+                {isAfterBillingDay ? '🔴 Na deadline' : '🟢 Voor deadline'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Statistics Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <icons.DollarSign />
+              </div>
+              <div>
+                <p className="text-sm text-green-600">Deze Maand Omzet</p>
+                <p className="text-xl font-bold text-green-900">
+                  €{(teamData?.stats?.totalRevenue || 0).toLocaleString('nl-NL')}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <icons.TrendingUp />
+              </div>
+              <div>
+                <p className="text-sm text-blue-600">Deze Maand Commissie</p>
+                <p className="text-xl font-bold text-blue-900">
+                  €{(teamData?.stats?.totalCommission || 0).toLocaleString('nl-NL')}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                <icons.FileText />
+              </div>
+              <div>
+                <p className="text-sm text-purple-600">Facturen Ingediend</p>
+                <p className="text-xl font-bold text-purple-900">
+                  {teamData?.stats?.submittedInvoices || 0}/{teamData?.stats?.totalTeamMembers || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-orange-50 p-4 rounded-xl border border-orange-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                <icons.Users />
+              </div>
+              <div>
+                <p className="text-sm text-orange-600">Actieve Reps</p>
+                <p className="text-xl font-bold text-orange-900">
+                  {teamData?.salesReps?.filter(rep => rep.isConnected).length || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-green-700 text-sm">{success}</p>
+            <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Team Members Grid */}
+      {(!teamData || !teamData.salesReps || teamData.salesReps.length === 0) ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <icons.Users />
+          <h3 className="text-lg font-semibold text-gray-900 mt-4">Nog geen team leden</h3>
+          <p className="text-gray-600 mt-2">Je sales reps verschijnen hier zodra ze zijn toegevoegd door een admin</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {teamData.salesReps.map((rep) => {
+            const getStatusInfo = () => {
+              if (rep.hasSubmittedThisMonth) {
+                const invoice = rep.currentMonthInvoice;
+                if (invoice.status === 'paid') return { text: '💰 Betaald', color: 'green' };
+                if (invoice.status === 'approved') return { text: '✅ Goedgekeurd', color: 'blue' };
+                if (invoice.status === 'revision_requested') return { text: '🔄 Herzien', color: 'yellow' };
+                return { text: '⏳ Te beoordelen', color: 'yellow' };
+              }
+              return isAfterBillingDay 
+                ? { text: '🔴 Te laat', color: 'red' }
+                : { text: '❌ Nog niet ingediend', color: 'gray' };
+            };
+
+            const status = getStatusInfo();
+            
+            return (
+              <div 
+                key={rep._id} 
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => handleRepClick(rep)}
+              >
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                    <span className="text-green-600 font-semibold text-xl">
+                      {rep.name.charAt(0)}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900">{rep.name}</h3>
+                    <p className="text-sm text-gray-600">{rep.email}</p>
+                    <p className="text-xs text-gray-500">{rep.position || 'Sales Representative'}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Status Badge */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Status:</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      status.color === 'green' ? 'bg-green-100 text-green-600' :
+                      status.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                      status.color === 'yellow' ? 'bg-yellow-100 text-yellow-600' :
+                      status.color === 'red' ? 'bg-red-100 text-red-600' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {status.text}
+                    </span>
+                  </div>
+
+                  {/* Performance Stats */}
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-500">Deze maand:</span>
+                      <p className="font-semibold text-gray-900">
+                        €{(rep.thisMonthRevenue || 0).toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Commissie:</span>
+                      <p className="font-semibold text-gray-900">
+                        €{(rep.thisMonthCommission || 0).toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Facturen:</span>
+                      <p className="font-semibold text-gray-900">{rep.invoices.length}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Start:</span>
+                      <p className="font-semibold text-gray-900">
+                        {rep.hireDate ? new Date(rep.hireDate).toLocaleDateString('nl-NL', {
+                          month: 'short', year: '2-digit'
+                        }) : '-'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  {rep.hasSubmittedThisMonth && rep.currentMonthInvoice.status === 'pending' && (
+                    <div className="flex space-x-2 mt-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          approveInvoice(rep.currentMonthInvoice._id);
+                        }}
+                        disabled={isLoading}
+                        className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-xs px-3 py-2 rounded-lg transition-colors flex items-center justify-center"
+                      >
+                        <icons.CheckCircle />
+                        <span className="ml-1">{isLoading ? 'Bezig...' : 'Goedkeuren'}</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const reason = prompt('Reden voor wijziging:');
+                          if (reason) requestRevision(rep.currentMonthInvoice._id, reason);
+                        }}
+                        disabled={isLoading}
+                        className="flex-1 bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-400 text-white text-xs px-3 py-2 rounded-lg transition-colors flex items-center justify-center"
+                      >
+                        <icons.AlertTriangle />
+                        <span className="ml-1">Wijziging</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Sales Rep Detail Modal */}
+      {showRepModal && selectedRep && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-8 max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">{selectedRep.name}</h3>
+                <p className="text-gray-600">{selectedRep.email}</p>
+              </div>
+              <button
+                onClick={() => setShowRepModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <icons.X />
+              </button>
+            </div>
+
+            {/* Rep Details */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600">Positie</p>
+                <p className="font-semibold">{selectedRep.position}</p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600">Start Datum</p>
+                <p className="font-semibold">
+                  {selectedRep.hireDate ? new Date(selectedRep.hireDate).toLocaleDateString('nl-NL') : '-'}
+                </p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600">Commissie Rate</p>
+                <p className="font-semibold">{((selectedRep.commissionRate || 0.1) * 100).toFixed(1)}%</p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600">Status</p>
+                <p className="font-semibold">
+                  {selectedRep.isConnected ? '🟢 Actief' : '🔴 Offline'}
+                </p>
+              </div>
+            </div>
+
+            {/* Invoice History */}
+            <div>
+              <h4 className="text-xl font-semibold text-gray-900 mb-4">
+                Factuur Geschiedenis ({selectedRep.invoices.length})
+              </h4>
+              
+              {selectedRep.invoices.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <p className="text-gray-500">Nog geen facturen ingediend</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {selectedRep.invoices
+                    .sort((a, b) => b.year - a.year || b.month - a.month)
+                    .map((invoice) => (
+                    <div key={invoice._id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h5 className="font-semibold text-gray-900">
+                            #{invoice.invoiceNumber}
+                          </h5>
+                          <p className="text-sm text-gray-600">
+                            {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
+                          </p>
+                          <p className="text-lg font-bold text-gray-900">
+                            €{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3">
+                          <span className={'px-3 py-1 rounded-full text-sm font-medium ' + (
+                            invoice.status === 'paid' ? 'bg-green-100 text-green-600' :
+                            invoice.status === 'approved' ? 'bg-blue-100 text-blue-600' :
+                            invoice.status === 'revision_requested' ? 'bg-yellow-100 text-yellow-600' :
+                            'bg-gray-100 text-gray-600'
+                          )}>
+                            {invoice.status === 'paid' ? 'Betaald' :
+                             invoice.status === 'approved' ? 'Goedgekeurd' :
+                             invoice.status === 'revision_requested' ? 'Herzien' :
+                             'Te beoordelen'}
+                          </span>
+                          
+                          {invoice.status === 'pending' && (
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => approveInvoice(invoice._id)}
+                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center"
+                              >
+                                <icons.CheckCircle />
+                                <span className="ml-1">Goedkeuren</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const reason = prompt('Reden voor wijziging:');
+                                  if (reason) requestRevision(invoice._id, reason);
+                                }}
+                                className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm flex items-center"
+                              >
+                                <icons.AlertTriangle />
+                                <span className="ml-1">Wijziging</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Admin Network Commissions - RESTORED WITH FULL FUNCTIONALITY
+const AdminNetworkCommissions = () => {
+  const [commissions, setCommissions] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  console.log('🔥 AdminNetworkCommissions COMPONENT LOADED');
+
+  useEffect(() => {
+    fetchClients();
+    fetchCommissions();
+  }, []);
+
+  const fetchClients = async () => {
+    try {
+      const response = await apiCall('/admin/clients');
+      setClients(response);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const fetchCommissions = async () => {
+    try {
+      const response = await apiCall('/admin/network-commissions');
+      setCommissions(response);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const generateNetworkInvoice = async () => {
+    if (!selectedClient) {
+      setError('Selecteer een client');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/admin/generate-network-invoice', {
+        method: 'POST',
+        body: JSON.stringify({
+          clientId: selectedClient,
+          month: selectedMonth,
+          year: selectedYear
+        })
+      });
+      
+      setSuccess(`Network factuur gegenereerd: €${response.networkAmount.toFixed(2)}`);
+      await fetchCommissions();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">🔥 Network Commissie Facturen</h2>
+        <p className="text-gray-600">Genereer facturen voor Recruiters Network commissies</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={() => setError('')} classNameimport React, { useState, useEffect } from 'react';
 
 console.log('🔥 COMPLETELY NEW APP.JS LOADED 🔥');
 
@@ -943,8 +1478,8 @@ const App = () => {
         <div className="max-w-7xl mx-auto px-8 py-8">
           {user.role === 'admin' && (
             <div>
-              {currentPage === 'admin-dashboard' && <SimpleDashboard title="🔥 Admin Dashboard" />}
-              {currentPage === 'clients' && <SimpleDashboard title="🔥 Klanten Beheer" />}
+              {currentPage === 'admin-dashboard' && <AdminDashboard />}
+              {currentPage === 'clients' && <AdminDashboard />}
               {currentPage === 'network-commissions' && <AdminNetworkCommissions />}
               {currentPage === 'admin-settings' && <SimpleDashboard title="🔥 Admin Instellingen" />}
             </div>
@@ -961,7 +1496,7 @@ const App = () => {
 
           {user.role === 'client' && (
             <div>
-              {currentPage === 'dashboard' && <SimpleDashboard title="🔥 Client Dashboard" />}
+              {currentPage === 'dashboard' && <ClientDashboard user={user} />}
               {currentPage === 'invoices' && <SimpleDashboard title="🔥 Client Invoices" />}
               {currentPage === 'reports' && <SimpleDashboard title="🔥 Client Reports" />}
               {currentPage === 'settings' && <SimpleDashboard title="🔥 Client Settings" />}
