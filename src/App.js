@@ -189,13 +189,28 @@ const LoginForm = ({ onLogin, isLoading }) => {
   );
 };
 
-// Admin Dashboard - FIXED VERSION
+// Admin Dashboard - WITH ADD CLIENT FUNCTIONALITY
 const AdminDashboard = () => {
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showAddClient, setShowAddClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const [newClient, setNewClient] = useState({
+    name: '',
+    contactName: '',
+    email: '',
+    phone: '',
+    address: '',
+    kvkNumber: '',
+    vatNumber: '',
+    bankAccount: '',
+    networkCommissionRate: 0.10,
+    billingDay: 15
+  });
 
   useEffect(() => {
     fetchClients();
@@ -206,6 +221,35 @@ const AdminDashboard = () => {
       setIsLoading(true);
       const response = await apiCall('/admin/clients');
       setClients(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addClient = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/admin/clients', {
+        method: 'POST',
+        body: JSON.stringify(newClient)
+      });
+      setSuccess(`Client toegevoegd! Login: ${newClient.email} / ${response.tempPassword}`);
+      setNewClient({
+        name: '',
+        contactName: '',
+        email: '',
+        phone: '',
+        address: '',
+        kvkNumber: '',
+        vatNumber: '',
+        bankAccount: '',
+        networkCommissionRate: 0.10,
+        billingDay: 15
+      });
+      setShowAddClient(false);
+      await fetchClients();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -224,7 +268,7 @@ const AdminDashboard = () => {
     setSelectedClient(null);
   };
 
-  if (isLoading) {
+  if (isLoading && clients.length === 0) {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
@@ -237,13 +281,182 @@ const AdminDashboard = () => {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
-        <p className="text-gray-600">Beheer klanten en teams</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
+            <p className="text-gray-600">Beheer klanten en teams</p>
+          </div>
+          <button
+            onClick={() => setShowAddClient(!showAddClient)}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center"
+          >
+            <icons.Plus />
+            <span className="ml-2">Nieuwe Klant</span>
+          </button>
+        </div>
       </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-red-700 text-sm">{error}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-green-700 text-sm">{success}</p>
+            <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showAddClient && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Nieuwe Klant Toevoegen</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bedrijfsnaam *</label>
+              <input
+                type="text"
+                value={newClient.name}
+                onChange={(e) => setNewClient({...newClient, name: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                placeholder="Acme Corporation"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contactpersoon *</label>
+              <input
+                type="text"
+                value={newClient.contactName}
+                onChange={(e) => setNewClient({...newClient, contactName: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                placeholder="John Doe"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
+              <input
+                type="email"
+                value={newClient.email}
+                onChange={(e) => setNewClient({...newClient, email: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                placeholder="contact@acme.com"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Telefoon</label>
+              <input
+                type="tel"
+                value={newClient.phone}
+                onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                placeholder="+31 20 123 4567"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>
+              <input
+                type="text"
+                value={newClient.address}
+                onChange={(e) => setNewClient({...newClient, address: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                placeholder="Damrak 70, 1012 LM Amsterdam"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">KVK Nummer</label>
+              <input
+                type="text"
+                value={newClient.kvkNumber}
+                onChange={(e) => setNewClient({...newClient, kvkNumber: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                placeholder="12345678"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">BTW Nummer</label>
+              <input
+                type="text"
+                value={newClient.vatNumber}
+                onChange={(e) => setNewClient({...newClient, vatNumber: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                placeholder="NL123456789B01"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">IBAN</label>
+              <input
+                type="text"
+                value={newClient.bankAccount}
+                onChange={(e) => setNewClient({...newClient, bankAccount: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                placeholder="NL91 ABNA 0417 1643 00"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Network Commissie %</label>
+              <input
+                type="number"
+                step="0.01"
+                value={newClient.networkCommissionRate}
+                onChange={(e) => setNewClient({...newClient, networkCommissionRate: parseFloat(e.target.value)})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                placeholder="0.10"
+              />
+              <p className="text-xs text-gray-500 mt-1">% van sales rep commissie</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Facturatie Dag</label>
+              <select
+                value={newClient.billingDay}
+                onChange={(e) => setNewClient({...newClient, billingDay: parseInt(e.target.value)})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+              >
+                {Array.from({length: 28}, (_, i) => (
+                  <option key={i+1} value={i+1}>{i+1}e van de maand</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex space-x-4">
+            <button
+              onClick={addClient}
+              disabled={isLoading || !newClient.name || !newClient.contactName || !newClient.email}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Toevoegen...' : 'Klant Toevoegen'}
+            </button>
+            
+            <button
+              onClick={() => setShowAddClient(false)}
+              className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              Annuleren
+            </button>
+          </div>
         </div>
       )}
 
@@ -278,6 +491,10 @@ const AdminDashboard = () => {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Sales Reps:</span>
                     <span className="text-gray-900">{client.salesRepCount || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Network Commissie:</span>
+                    <span className="text-gray-900">{((client.networkCommissionRate || 0.10) * 100).toFixed(1)}%</span>
                   </div>
                 </div>
 
