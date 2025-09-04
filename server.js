@@ -826,6 +826,76 @@ app.put('/api/client/invoices/:invoiceId/revision', authenticateToken, async (re
   }
 });
 
+// Mark sales rep as paid
+app.put('/api/admin/mark-paid', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const { salesRepId, month, year } = req.body;
+    
+    const invoice = await Invoice.findOneAndUpdate(
+      {
+        salesRepId,
+        month: parseInt(month),
+        year: parseInt(year),
+        status: 'approved'
+      },
+      { 
+        status: 'paid',
+        paidAt: new Date()
+      },
+      { new: true }
+    );
+    
+    if (!invoice) {
+      return res.status(404).json({ message: 'Geen goedgekeurde factuur gevonden' });
+    }
+    
+    res.json({ message: 'Factuur gemarkeerd als betaald', invoice });
+  } catch (error) {
+    console.error('Mark as paid error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Upload Moneybird invoice
+app.post('/api/admin/upload-moneybird-invoice', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const { clientId, fileName, month, year, amount, description } = req.body;
+    
+    const networkInvoice = new Invoice({
+      clientId,
+      uploadedBy: req.user.userId,
+      invoiceNumber: `MB-${year}-${String(month).padStart(2, '0')}-${Date.now().toString().slice(-4)}`,
+      amount: parseFloat(amount) || 0,
+      month: parseInt(month),
+      year: parseInt(year),
+      status: 'paid',
+      type: 'moneybird',
+      description: description || `Moneybird factuur - ${fileName}`,
+      invoiceData: {
+        fileName,
+        uploadedAt: new Date()
+      }
+    });
+    
+    await networkInvoice.save();
+    
+    res.status(201).json({
+      message: 'Moneybird factuur succesvol geupload',
+      invoice: networkInvoice
+    });
+  } catch (error) {
+    console.error('Upload Moneybird invoice error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
+  }
+});
 // 🔥 FIXED NETWORK COMMISSION ENDPOINTS
 app.get('/api/admin/network-commissions', authenticateToken, async (req, res) => {
   try {
@@ -1193,4 +1263,5 @@ const startServer = async () => {
 };
 
 startServer();
+
 
