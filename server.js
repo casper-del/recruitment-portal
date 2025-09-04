@@ -685,8 +685,18 @@ app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, async (req
     
     await salesRepUser.save();
     
+    // EMAIL TRIGGER: Send welcome email to new sales rep
+    const client = await Client.findById(req.params.clientId);
+    const emailSent = await sendEmail(salesRep.email, emailTemplates.welcomeSalesRep, {
+      recipientName: salesRep.name,
+      email: salesRep.email,
+      tempPassword: tempPassword,
+      clientName: client?.name || 'Unknown Client',
+      loginUrl: `${process.env.FRONTEND_URL || 'https://recruitment-portal-2ai9.onrender.com'}/login`
+    });
+    
     res.status(201).json({ 
-      message: 'Sales representative added successfully',
+      message: 'Sales representative added successfully' + (emailSent ? ' and welcome email sent' : ''),
       salesRep,
       tempPassword
     });
@@ -796,7 +806,18 @@ app.put('/api/client/invoices/:invoiceId/approve', authenticateToken, async (req
       return res.status(404).json({ message: 'Invoice not found' });
     }
     
-    res.json({ message: 'Invoice approved successfully', invoice });
+    // EMAIL TRIGGER: Notify sales rep of approval
+    const salesRep = await User.findById(invoice.salesRepId);
+    const client = await Client.findById(req.user.clientId);
+    if (salesRep) {
+      await sendEmail(salesRep.email, emailTemplates.invoiceApproved, {
+        recipientName: salesRep.name,
+        invoiceNumber: invoice.invoiceNumber,
+        clientName: client?.name || 'Client'
+      });
+    }
+    
+    res.json({ message: 'Invoice approved and sales rep notified', invoice });
   } catch (error) {
     console.error('Approve invoice error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -827,7 +848,18 @@ app.put('/api/client/invoices/:invoiceId/revision', authenticateToken, async (re
       return res.status(404).json({ message: 'Invoice not found' });
     }
     
-    res.json({ message: 'Revision requested successfully', invoice });
+    // EMAIL TRIGGER: Notify sales rep of revision request
+    const salesRep = await User.findById(invoice.salesRepId);
+    if (salesRep) {
+      await sendEmail(salesRep.email, emailTemplates.invoiceRevision, {
+        recipientName: salesRep.name,
+        invoiceNumber: invoice.invoiceNumber,
+        reason: reason,
+        loginUrl: `${process.env.FRONTEND_URL || 'https://recruitment-portal-2ai9.onrender.com'}/login`
+      });
+    }
+    
+    res.json({ message: 'Revision requested and sales rep notified', invoice });
   } catch (error) {
     console.error('Request revision error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -895,8 +927,20 @@ app.post('/api/admin/upload-moneybird-invoice', authenticateToken, async (req, r
     
     await networkInvoice.save();
     
+    // EMAIL TRIGGER: Notify client of new network invoice
+    const client = await User.findOne({ clientId: clientId });
+    if (client) {
+      await sendEmail(client.email, emailTemplates.networkInvoice, {
+        recipientName: client.name,
+        amount: parseFloat(amount).toLocaleString('nl-NL'),
+        month: month,
+        year: year,
+        loginUrl: `${process.env.FRONTEND_URL || 'https://recruitment-portal-2ai9.onrender.com'}/login`
+      });
+    }
+    
     res.status(201).json({
-      message: 'Moneybird factuur succesvol geupload',
+      message: 'Moneybird factuur succesvol geupload and client notified',
       invoice: networkInvoice
     });
   } catch (error) {
@@ -1271,6 +1315,7 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
 
