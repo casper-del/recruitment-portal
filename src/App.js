@@ -1104,63 +1104,128 @@ const AdminNetworkCommissions = () => {
         </div>
       )}
 
-      {/* PDF Upload Section */}
+     {/* PDF Upload Section */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Moneybird Factuur Uploaden</h3>
-        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={handleFileUpload}
-            className="hidden"
-            id="pdf-upload"
-          />
-          <label
-            htmlFor="pdf-upload"
-            className="cursor-pointer flex flex-col items-center"
-          >
-            <icons.FileText />
-            <p className="mt-2 text-sm text-gray-600">
-              Klik om een PDF factuur te uploaden
-            </p>
-            <p className="text-xs text-gray-500">Alleen PDF bestanden</p>
-          </label>
-          {uploadedFile && (
-  <div className="mt-4 p-4 bg-blue-50 rounded-xl">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center">
-        <icons.FileText />
-        <div className="ml-3">
-          <p className="font-medium text-gray-900">Geüploade Factuur</p>
-          <p className="text-sm text-gray-600">{uploadedFile.name}</p>
-        </div>
-      </div>
-      <div className="flex space-x-2">
-        <button
-          onClick={() => {
-            const fileURL = URL.createObjectURL(uploadedFile);
-            window.open(fileURL, '_blank');
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm"
-        >
-          Preview
-        </button>
-        <button
-          onClick={() => {
-            const fileURL = URL.createObjectURL(uploadedFile);
-            const a = document.createElement('a');
-            a.href = fileURL;
-            a.download = uploadedFile.name;
-            a.click();
-          }}
-          className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm"
-        >
-          Download
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">Recruiters Network Factuur Uploaden</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Upload sectie */}
+          <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handleFileUpload}
+              className="hidden"
+              id="pdf-upload"
+            />
+            <label
+              htmlFor="pdf-upload"
+              className="cursor-pointer flex flex-col items-center"
+            >
+              <icons.FileText />
+              <p className="mt-2 text-sm text-gray-600">
+                Klik om een PDF factuur te uploaden
+              </p>
+              <p className="text-xs text-gray-500">Alleen PDF bestanden</p>
+            </label>
+            
+            {uploadedFile && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <icons.FileText />
+                    <div className="ml-3">
+                      <p className="font-medium text-gray-900">Geüploade Factuur</p>
+                      <p className="text-sm text-gray-600">{uploadedFile.name}</p>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        const fileURL = URL.createObjectURL(uploadedFile);
+                        window.open(fileURL, '_blank');
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm"
+                    >
+                      Preview
+                    </button>
+                    <button
+                      onClick={() => {
+                        const fileURL = URL.createObjectURL(uploadedFile);
+                        const a = document.createElement('a');
+                        a.href = fileURL;
+                        a.download = uploadedFile.name;
+                        a.click();
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm"
+                    >
+                      Download
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Factuur details */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Factuur Bedrag (€) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="2500.00"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                id="invoice-amount"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Omschrijving
+              </label>
+              <textarea
+                placeholder="Recruiters Network commissie november 2024"
+                rows="3"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                id="invoice-description"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Maand</label>
+                <select className="w-full px-4 py-2 border border-gray-200 rounded-lg" id="invoice-month">
+                  {Array.from({length: 12}, (_, i) => (
+                    <option key={i+1} value={i+1}>
+                      {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Jaar</label>
+                <input
+                  type="number"
+                  defaultValue={new Date().getFullYear()}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                  id="invoice-year"
+                />
+              </div>
+            </div>
+
+            {uploadedFile && selectedClient && (
+              <button
+                onClick={submitInvoiceToClient}
+                disabled={isLoading}
+                className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg transition-colors font-medium disabled:opacity-50"
+              >
+                {isLoading ? 'Indienen...' : `Factuur Indienen bij ${selectedClient.name}`}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -2889,6 +2954,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
