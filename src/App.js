@@ -974,8 +974,6 @@ const fetchClientDetails = async (clientId) => {
                     />
                     <p className="text-xs text-gray-500 mt-1">Totale vergoeding die gefactureerd kan worden</p>
                   </div>
-                    <p className="text-xs text-gray-500 mt-1">Totale vergoeding die gefactureerd kan worden</p>
-                  </div>
                 </div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Telefoon</label>
                   <input
@@ -3042,6 +3040,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
