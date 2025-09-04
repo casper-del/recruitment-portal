@@ -1126,10 +1126,41 @@ const AdminNetworkCommissions = () => {
             <p className="text-xs text-gray-500">Alleen PDF bestanden</p>
           </label>
           {uploadedFile && (
-            <div className="mt-4 p-3 bg-green-50 rounded-lg">
-              <p className="text-green-700 font-medium">{uploadedFile.name}</p>
-            </div>
-          )}
+  <div className="mt-4 p-4 bg-blue-50 rounded-xl">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center">
+        <icons.FileText />
+        <div className="ml-3">
+          <p className="font-medium text-gray-900">Geüploade Factuur</p>
+          <p className="text-sm text-gray-600">{uploadedFile.name}</p>
+        </div>
+      </div>
+      <div className="flex space-x-2">
+        <button
+          onClick={() => {
+            const fileURL = URL.createObjectURL(uploadedFile);
+            window.open(fileURL, '_blank');
+          }}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm"
+        >
+          Preview
+        </button>
+        <button
+          onClick={() => {
+            const fileURL = URL.createObjectURL(uploadedFile);
+            const a = document.createElement('a');
+            a.href = fileURL;
+            a.download = uploadedFile.name;
+            a.click();
+          }}
+          className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm"
+        >
+          Download
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         </div>
       </div>
 
@@ -2536,6 +2567,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
