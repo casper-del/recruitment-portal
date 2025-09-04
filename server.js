@@ -7,7 +7,119 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 
 dotenv.config();
+const nodemailer = require('nodemailer');
 
+// Email configuration
+const transporter = nodemailer.createTransporter({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+// Email templates
+const emailTemplates = {
+  welcomeClient: (recipientName, email, tempPassword, loginUrl) => ({
+    subject: 'Welkom bij Recruiters Network - Je account is aangemaakt',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #16a34a;">Welkom bij Recruiters Network</h2>
+        <p>Hallo ${recipientName},</p>
+        <p>Je account is succesvol aangemaakt. Hier zijn je inloggegevens:</p>
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Tijdelijk wachtwoord:</strong> ${tempPassword}</p>
+        </div>
+        <p><a href="${loginUrl}" style="background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Inloggen</a></p>
+        <p>Met vriendelijke groet,<br>Recruiters Network Team</p>
+      </div>
+    `
+  }),
+
+  welcomeSalesRep: (recipientName, email, tempPassword, clientName, loginUrl) => ({
+    subject: 'Welkom als Sales Representative - Je account is klaar',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #16a34a;">Welkom als Sales Representative</h2>
+        <p>Hallo ${recipientName},</p>
+        <p>Je bent toegevoegd als Sales Representative voor <strong>${clientName}</strong>.</p>
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Tijdelijk wachtwoord:</strong> ${tempPassword}</p>
+        </div>
+        <p><a href="${loginUrl}" style="background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Inloggen en Aan de Slag</a></p>
+        <p>Met vriendelijke groet,<br>Recruiters Network Team</p>
+      </div>
+    `
+  }),
+
+  invoiceApproved: (recipientName, invoiceNumber, clientName) => ({
+    subject: `Factuur ${invoiceNumber} goedgekeurd door ${clientName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #16a34a;">Goed nieuws!</h2>
+        <p>Hallo ${recipientName},</p>
+        <p>Je factuur <strong>${invoiceNumber}</strong> is goedgekeurd door ${clientName}.</p>
+        <p>Je commissie wordt binnenkort uitbetaald.</p>
+        <p>Met vriendelijke groet,<br>Recruiters Network</p>
+      </div>
+    `
+  }),
+
+  invoiceRevision: (recipientName, invoiceNumber, reason, loginUrl) => ({
+    subject: `Wijziging gevraagd voor factuur ${invoiceNumber}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #f59e0b;">Wijziging gevraagd</h2>
+        <p>Hallo ${recipientName},</p>
+        <p>Er is een wijziging gevraagd voor je factuur <strong>${invoiceNumber}</strong>.</p>
+        <div style="background-color: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Reden:</strong> ${reason}</p>
+        </div>
+        <p><a href="${loginUrl}" style="background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Inloggen en Factuur Aanpassen</a></p>
+        <p>Met vriendelijke groet,<br>Recruiters Network</p>
+      </div>
+    `
+  }),
+
+  networkInvoice: (recipientName, amount, month, year, loginUrl) => ({
+    subject: `Nieuwe factuur van Recruiters Network - €${amount}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #16a34a;">Nieuwe factuur beschikbaar</h2>
+        <p>Hallo ${recipientName},</p>
+        <p>Er is een nieuwe factuur voor je klaar van Recruiters Network.</p>
+        <div style="background-color: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Bedrag:</strong> €${amount}</p>
+          <p><strong>Periode:</strong> ${month}/${year}</p>
+        </div>
+        <p><a href="${loginUrl}" style="background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Inloggen en Factuur Bekijken</a></p>
+        <p>Met vriendelijke groet,<br>Recruiters Network</p>
+      </div>
+    `
+  })
+};
+
+// Email sending function
+const sendEmail = async (to, template, data) => {
+  try {
+    const emailContent = template(...Object.values(data));
+    
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: to,
+      subject: emailContent.subject,
+      html: emailContent.html
+    });
+    
+    console.log(`✅ Email sent to ${to}: ${emailContent.subject}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Email send failed:', error);
+    return false;
+  }
+};
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -1315,6 +1427,7 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
 
