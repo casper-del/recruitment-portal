@@ -1024,31 +1024,56 @@ const AdminNetworkCommissions = () => {
   };
 
   const markAsPaid = async (salesRepId, month, year) => {
-    try {
-      setIsLoading(true);
-      // Dit zou een nieuwe API call zijn om te markeren als betaald
-      await apiCall(`/admin/mark-paid`, {
-        method: 'POST',
-        body: JSON.stringify({ salesRepId, month, year })
-      });
-      setSuccess('Gemarkeerd als betaald');
-      await fetchTeamData(selectedClient._id);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  try {
+    setIsLoading(true);
+    await apiCall('/admin/mark-paid', {
+      method: 'PUT',
+      body: JSON.stringify({ salesRepId, month, year })
+    });
+    setSuccess(`Factuur gemarkeerd als betaald voor ${month}/${year}`);
+    await fetchTeamData(selectedClient._id);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (file && file.type === 'application/pdf') {
-      setUploadedFile(file);
-      setSuccess(`PDF "${file.name}" geselecteerd voor upload`);
+  const handleFileUpload = async (event) => {
+  const file = event.target.files[0];
+  if (file && file.type === 'application/pdf') {
+    setUploadedFile(file);
+    
+    if (selectedClient) {
+      try {
+        // Voor nu uploaden we metadata - later kun je file storage toevoegen
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear();
+        
+        await apiCall('/admin/upload-moneybird-invoice', {
+          method: 'POST',
+          body: JSON.stringify({
+            clientId: selectedClient._id,
+            fileName: file.name,
+            month: currentMonth,
+            year: currentYear,
+            amount: 0, // Je kunt dit later uitbreiden met een amount input
+            description: `Moneybird factuur voor ${selectedClient.name}`
+          })
+        });
+        
+        setSuccess(`PDF "${file.name}" geüpload en gekoppeld aan ${selectedClient.name}`);
+        await fetchTeamData(selectedClient._id); // Refresh data
+      } catch (err) {
+        setError('Kon factuur niet uploaden: ' + err.message);
+      }
     } else {
-      setError('Alleen PDF bestanden zijn toegestaan');
+      setSuccess(`PDF "${file.name}" geselecteerd - selecteer eerst een team om te koppelen`);
     }
-  };
+  } else {
+    setError('Alleen PDF bestanden zijn toegestaan');
+  }
+};
 
   return (
     <div className="space-y-6">
@@ -2511,6 +2536,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
