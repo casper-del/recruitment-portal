@@ -963,18 +963,17 @@ const fetchClientDetails = async (clientId) => {
                     />
                   </div>
                   <div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">Max Recruitment Vergoeding (€)</label>
-  <input
-    type="number"
-    step="100"
-    value={newSalesRep.maxRecruitmentFee}
-    onChange={(e) => setNewSalesRep({ ...newSalesRep, maxRecruitmentFee: e.target.value })}
-    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-    placeholder="Bijvoorbeeld: 5000"
-  />
-  <p className="text-xs text-gray-500 mt-1">Totale vergoeding die gefactureerd kan worden aan deze client voor deze sales rep</p>
-</div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Max Recruitment Vergoeding (€)</label>
+                    <input
+                      type="number"
+                      step="100"
+                      value={newSalesRep.maxRecruitmentFee}
+                      onChange={(e) => setNewSalesRep({ ...newSalesRep, maxRecruitmentFee: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="Bijvoorbeeld: 5000"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Totale vergoeding die gefactureerd kan worden</p>
+                  </div>
                     <p className="text-xs text-gray-500 mt-1">Totale vergoeding die gefactureerd kan worden</p>
                   </div>
                 </div>
@@ -3043,6 +3042,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
