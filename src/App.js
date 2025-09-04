@@ -2488,7 +2488,157 @@ const ClientInvoicesAndPayments = ({ user }) => {
                   </div>
                   
                   <div className="flex items-center space-x-3">
-                    <span class
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      invoice.status === 'paid' 
+                        ? 'bg-green-100 text-green-600' 
+                        : invoice.status === 'approved'
+                        ? 'bg-blue-100 text-blue-600'
+                        : invoice.status === 'revision_requested'
+                        ? 'bg-yellow-100 text-yellow-600'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {invoice.status === 'paid' ? 'Betaald' : 
+                       invoice.status === 'approved' ? 'Goedgekeurd' :
+                       invoice.status === 'revision_requested' ? 'Herzien' :
+                       'Te beoordelen'}
+                    </span>
+
+                    <button
+                      onClick={() => downloadInvoicePDF(invoice)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors text-sm flex items-center"
+                    >
+                      <icons.Download />
+                      <span className="ml-1">PDF</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+
+      {/* RECRUITERS NETWORK FACTUREN SECTIE */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+              <icons.Building2 />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-xl font-semibold text-gray-900">Recruiters Network Facturen</h3>
+              <p className="text-sm text-gray-600">Network commissie facturen ({networkInvoices.length})</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-500">Totaal bedrag</p>
+            <p className="text-lg font-semibold text-gray-900">
+              €{networkInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0).toLocaleString('nl-NL')}
+            </p>
+          </div>
+        </div>
+
+        {networkInvoices.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <icons.Building2 />
+            </div>
+            <h4 className="text-lg font-medium text-gray-900">Nog geen network facturen</h4>
+            <p className="text-gray-600 mt-2">Recruiters Network heeft nog geen facturen verstuurd</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {networkInvoices
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .map((invoice) => (
+                <div key={invoice._id} className="flex items-center justify-between p-4 border border-green-200 rounded-xl hover:shadow-sm transition-shadow bg-green-50">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <icons.Building2 />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">
+                        Recruiters Network - #{invoice.invoiceNumber}
+                      </h4>
+                      <p className="text-gray-600">€{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</p>
+                      <div className="flex items-center space-x-2 text-sm text-gray-500">
+                        <span>
+                          {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
+                        </span>
+                        <span>•</span>
+                        <span>Verstuurd: {new Date(invoice.createdAt).toLocaleDateString('nl-NL')}</span>
+                      </div>
+                      {invoice.description && (
+                        <p className="text-xs text-gray-500 mt-1">{invoice.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      invoice.status === 'paid' 
+                        ? 'bg-green-100 text-green-600' 
+                        : 'bg-yellow-100 text-yellow-600'
+                    }`}>
+                      {invoice.status === 'paid' ? 'Betaald' : 'Te betalen'}
+                    </span>
+
+                    <button
+                      onClick={() => downloadInvoicePDF(invoice)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-colors text-sm flex items-center"
+                    >
+                      <icons.Download />
+                      <span className="ml-1">PDF</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+
+      {/* SAMENVATTING SECTIE */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">Samenvatting</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="text-center p-4 bg-blue-50 rounded-xl">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <icons.Users />
+            </div>
+            <p className="text-sm text-gray-600">Sales Rep Facturen</p>
+            <p className="text-2xl font-bold text-blue-600">{salesRepInvoices.length}</p>
+            <p className="text-xs text-gray-500">
+              €{salesRepInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0).toLocaleString('nl-NL')}
+            </p>
+          </div>
+
+          <div className="text-center p-4 bg-green-50 rounded-xl">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <icons.Building2 />
+            </div>
+            <p className="text-sm text-gray-600">Network Facturen</p>
+            <p className="text-2xl font-bold text-green-600">{networkInvoices.length}</p>
+            <p className="text-xs text-gray-500">
+              €{networkInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0).toLocaleString('nl-NL')}
+            </p>
+          </div>
+
+          <div className="text-center p-4 bg-gray-50 rounded-xl">
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <icons.FileText />
+            </div>
+            <p className="text-sm text-gray-600">Totaal</p>
+            <p className="text-2xl font-bold text-gray-600">{salesRepInvoices.length + networkInvoices.length}</p>
+            <p className="text-xs text-gray-500">
+              €{(salesRepInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0) + 
+                 networkInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)).toLocaleString('nl-NL')}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Simple Dashboard Components for placeholder pages
 const SimpleDashboard = ({ title }) => (
   <div className="space-y-6">
@@ -2739,6 +2889,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
