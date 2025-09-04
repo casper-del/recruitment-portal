@@ -1089,7 +1089,81 @@ app.get('*', (req, res) => {
     res.status(404).json({ message: 'Route not found' });
   }
 });
+// Mark sales rep as paid
+app.put('/api/admin/mark-paid', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const { salesRepId, month, year } = req.body;
+    
+    // Find the invoice and update status to paid
+    const invoice = await Invoice.findOneAndUpdate(
+      {
+        salesRepId,
+        month: parseInt(month),
+        year: parseInt(year),
+        status: 'approved'
+      },
+      { 
+        status: 'paid',
+        paidAt: new Date()
+      },
+      { new: true }
+    );
+    
+    if (!invoice) {
+      return res.status(404).json({ message: 'Geen goedgekeurde factuur gevonden voor deze periode' });
+    }
+    
+    res.json({ 
+      message: 'Factuur gemarkeerd als betaald',
+      invoice 
+    });
+  } catch (error) {
+    console.error('Mark as paid error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
+// Upload Moneybird invoice
+app.post('/api/admin/upload-moneybird-invoice', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const { clientId, fileName, month, year, amount, description } = req.body;
+    
+    // Create a network invoice record
+    const networkInvoice = new Invoice({
+      clientId,
+      uploadedBy: req.user.userId,
+      invoiceNumber: `MB-${year}-${String(month).padStart(2, '0')}-${Date.now().toString().slice(-4)}`,
+      amount: parseFloat(amount),
+      month: parseInt(month),
+      year: parseInt(year),
+      status: 'paid', // Moneybird invoices are already sent/paid
+      type: 'moneybird',
+      description: description || `Moneybird factuur - ${fileName}`,
+      invoiceData: {
+        fileName,
+        uploadedAt: new Date()
+      }
+    });
+    
+    await networkInvoice.save();
+    
+    res.status(201).json({
+      message: 'Moneybird factuur succesvol geüpload',
+      invoice: networkInvoice
+    });
+  } catch (error) {
+    console.error('Upload Moneybird invoice error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 // Start server
 const startServer = async () => {
   try {
@@ -1119,3 +1193,4 @@ const startServer = async () => {
 };
 
 startServer();
+
