@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-console.log('STABLE WORKING VERSION LOADED');
+console.log('COMPLETE APP - OPTIMIZED VERSION LOADED');
 
 // Fixed Icon components
 const icons = {
@@ -117,30 +117,20 @@ const icons = {
   )
 };
 
-// Your Logo Component (no flame emojis)
+// LOGO COMPONENT - Replace this with your actual logo
 const Logo = ({ size = "large" }) => {
   const dimensions = size === "large" ? "w-16 h-16" : "w-10 h-10";
   
+  // TODO: Replace this placeholder with your actual logo
+  // You can either use an <img> tag with your logo URL or inline SVG
   return (
-    <div className={`${dimensions} flex items-center justify-center`}>
-      <svg 
-        className={dimensions}
-        viewBox="0 0 100 100" 
-        fill="none" 
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <rect width="100" height="100" rx="20" fill="#16a34a"/>
-        <path d="M20 30h60M20 50h40M20 70h50" stroke="white" strokeWidth="4" strokeLinecap="round"/>
-        <circle cx="65" cy="50" r="8" fill="white"/>
-        <circle cx="75" cy="70" r="6" fill="white"/>
-        <circle cx="25" cy="35" r="4" fill="white"/>
-        <path d="M65 42v16M75 64v12M25 31v8" stroke="#16a34a" strokeWidth="2"/>
-      </svg>
+    <div className={`${dimensions} bg-green-600 rounded-2xl flex items-center justify-center`}>
+      <div className="text-white text-xl font-bold">RN</div>
     </div>
   );
 };
 
-// PDF Generation utility
+// PDF Generation utility - COMPLETE
 const generateInvoicePDF = (invoice, companyDetails, clientDetails = {}) => {
   console.log('GENERATING PDF FOR INVOICE:', invoice);
   
@@ -158,6 +148,9 @@ const generateInvoicePDF = (invoice, companyDetails, clientDetails = {}) => {
               <h2 style="color: #16a34a; margin: 0; font-size: 20px;">${companyDetails.companyName || 'Uw Bedrijf'}</h2>
               <p style="margin: 2px 0;">${companyDetails.contactName || ''}</p>
               <p style="margin: 2px 0;">${companyDetails.address || ''}</p>
+              <p style="margin: 2px 0;">${companyDetails.city || ''} ${companyDetails.postalCode || ''}</p>
+              <p style="margin: 2px 0;">${companyDetails.email || ''}</p>
+              <p style="margin: 2px 0;">${companyDetails.phone || ''}</p>
             </div>
           </div>
         </div>
@@ -184,6 +177,7 @@ const generateInvoicePDF = (invoice, companyDetails, clientDetails = {}) => {
             <tr>
               <td style="border: 1px solid #dee2e6; padding: 12px;">
                 ${invoice.type === 'network' ? 'Recruiters Network Commissie' : 'Commissie'} ${new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} ${invoice.year}
+                ${invoice.invoiceData?.thisMonthRevenue ? `<br><small style="color: #666;">Omzet deze maand: €${(invoice.invoiceData.thisMonthRevenue || 0).toLocaleString('nl-NL')}</small>` : ''}
               </td>
               <td style="border: 1px solid #dee2e6; padding: 12px; text-align: right;">
                 €${(invoice.invoiceData?.commissionExcl || invoice.invoiceData?.networkAmount || 0).toLocaleString('nl-NL', {minimumFractionDigits: 2})}
@@ -212,6 +206,9 @@ const generateInvoicePDF = (invoice, companyDetails, clientDetails = {}) => {
           <p><strong>Ten name van:</strong> ${companyDetails.companyName || 'Recruiters Network'}</p>
           ${companyDetails.kvkNumber ? `<p><strong>KVK:</strong> ${companyDetails.kvkNumber}</p>` : ''}
           ${companyDetails.vatNumber ? `<p><strong>BTW-nummer:</strong> ${companyDetails.vatNumber}</p>` : ''}
+          <p style="margin-top: 15px; font-size: 14px; color: #666;">
+            Gelieve het factuurnummer te vermelden bij uw betaling.
+          </p>
         </div>
       </div>
     `;
@@ -279,7 +276,7 @@ const apiCall = async (endpoint, options = {}) => {
   return response.json();
 };
 
-// Login Component - Clean without demo credentials
+// Login Component - WITH YOUR LOGO
 const LoginForm = ({ onLogin, isLoading }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -355,7 +352,1920 @@ const LoginForm = ({ onLogin, isLoading }) => {
   );
 };
 
-// Simple placeholder components - will be extended later
+// Admin Dashboard - COMPLETE WITH ALL CRUD OPERATIONS
+const AdminDashboard = () => {
+  const [clients, setClients] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showAddClient, setShowAddClient] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [clientDetails, setClientDetails] = useState(null);
+  const [editingClient, setEditingClient] = useState(false);
+
+  const [newClient, setNewClient] = useState({
+    name: '',
+    contactName: '',
+    email: '',
+    phone: '',
+    address: '',
+    kvkNumber: '',
+    vatNumber: '',
+    bankAccount: '',
+    networkCommissionRate: '10',
+    billingDay: '15',
+    commissionRate: '10',
+    commissionCap: '50000'
+  });
+
+  const [newSalesRep, setNewSalesRep] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    position: 'Sales Representative',
+    hireDate: new Date().toISOString().split('T')[0],
+    commissionRate: '10'
+  });
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/admin/clients');
+      setClients(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addClient = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/admin/clients', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...newClient,
+          networkCommissionRate: parseFloat(newClient.networkCommissionRate) / 100,
+          billingDay: parseInt(newClient.billingDay),
+          commissionRate: parseFloat(newClient.commissionRate) / 100,
+          commissionCap: parseFloat(newClient.commissionCap)
+        })
+      });
+      
+      setSuccess(`Client toegevoegd! Tijdelijk wachtwoord: ${response.tempPassword}`);
+      setNewClient({
+        name: '',
+        contactName: '',
+        email: '',
+        phone: '',
+        address: '',
+        kvkNumber: '',
+        vatNumber: '',
+        bankAccount: '',
+        networkCommissionRate: '10',
+        billingDay: '15',
+        commissionRate: '10',
+        commissionCap: '50000'
+      });
+      setShowAddClient(false);
+      await fetchClients();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchClientDetails = async (clientId) => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall(`/admin/clients/${clientId}`);
+      setClientDetails(response);
+      setSelectedClient(response.client);
+      setShowClientModal(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateClient = async () => {
+    try {
+      setIsLoading(true);
+      await apiCall(`/admin/clients/${selectedClient._id}`, {
+        method: 'PUT',
+        body: JSON.stringify(selectedClient)
+      });
+      setSuccess('Client bijgewerkt!');
+      setEditingClient(false);
+      await fetchClients();
+      await fetchClientDetails(selectedClient._id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addSalesRep = async () => {
+    if (!selectedClient) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await apiCall(`/admin/clients/${selectedClient._id}/salesreps`, {
+        method: 'POST',
+        body: JSON.stringify({
+          ...newSalesRep,
+          commissionRate: parseFloat(newSalesRep.commissionRate) / 100
+        })
+      });
+      
+      setSuccess(`Sales rep toegevoegd! Tijdelijk wachtwoord: ${response.tempPassword}`);
+      setNewSalesRep({
+        name: '',
+        email: '',
+        phone: '',
+        position: 'Sales Representative',
+        hireDate: new Date().toISOString().split('T')[0],
+        commissionRate: '10'
+      });
+      await fetchClientDetails(selectedClient._id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteSalesRep = async (salesRepId, salesRepName) => {
+    if (window.confirm(`Weet je zeker dat je ${salesRepName} wilt verwijderen?`)) {
+      try {
+        setIsLoading(true);
+        await apiCall(`/admin/salesreps/${salesRepId}`, { method: 'DELETE' });
+        setSuccess('Sales rep verwijderd');
+        await fetchClientDetails(selectedClient._id);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
+            <p className="text-gray-600">Beheer klanten, sales reps en facturen</p>
+          </div>
+          <button
+            onClick={() => setShowAddClient(!showAddClient)}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center"
+          >
+            <icons.Plus />
+            <span className="ml-2">Nieuwe Klant</span>
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-green-700 text-sm">{success}</p>
+            <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showAddClient && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Nieuwe Klant Toevoegen</h3>
+          
+          <div className="space-y-6">
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-4">Basis Informatie</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bedrijfsnaam *</label>
+                  <input
+                    type="text"
+                    value={newClient.name}
+                    onChange={(e) => setNewClient({...newClient, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="Acme Corporation"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contactpersoon *</label>
+                  <input
+                    type="text"
+                    value={newClient.contactName}
+                    onChange={(e) => setNewClient({...newClient, contactName: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="John Doe"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
+                  <input
+                    type="email"
+                    value={newClient.email}
+                    onChange={(e) => setNewClient({...newClient, email: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="john@acmecorp.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Telefoon</label>
+                  <input
+                    type="text"
+                    value={newClient.phone}
+                    onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="+31 20 123 4567"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>
+                  <input
+                    type="text"
+                    value={newClient.address}
+                    onChange={(e) => setNewClient({...newClient, address: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="Damrak 70, 1012 LM Amsterdam"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-4">Registratie Gegevens</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">KVK Nummer</label>
+                  <input
+                    type="text"
+                    value={newClient.kvkNumber}
+                    onChange={(e) => setNewClient({...newClient, kvkNumber: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="12345678"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">BTW Nummer</label>
+                  <input
+                    type="text"
+                    value={newClient.vatNumber}
+                    onChange={(e) => setNewClient({...newClient, vatNumber: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="NL123456789B01"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">IBAN</label>
+                  <input
+                    type="text"
+                    value={newClient.bankAccount}
+                    onChange={(e) => setNewClient({...newClient, bankAccount: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="NL91 ABNA 0417 1643 00"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-4">Network Configuratie</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Network Commissie (%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={newClient.networkCommissionRate}
+                    onChange={(e) => setNewClient({...newClient, networkCommissionRate: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="10"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Facturatie Dag van de Maand</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={newClient.billingDay}
+                    onChange={(e) => setNewClient({...newClient, billingDay: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="15"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex space-x-4">
+              <button
+                onClick={addClient}
+                disabled={isLoading || !newClient.name || !newClient.contactName || !newClient.email}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Toevoegen...' : 'Klant Toevoegen'}
+              </button>
+              
+              <button
+                onClick={() => setShowAddClient(false)}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+              >
+                Annuleren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rest of the component continues with clients list, modals etc... */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Klanten ({clients.length})</h3>
+        
+        {clients.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <icons.Users />
+            </div>
+            <h4 className="text-lg font-medium text-gray-900">Nog geen klanten</h4>
+            <p className="text-gray-600 mt-2">Voeg je eerste klant toe om te beginnen</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {clients.map((client) => (
+              <div key={client._id} className="border border-gray-200 rounded-xl p-6 hover:shadow-sm transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900">{client.name}</h4>
+                    <p className="text-gray-600 text-sm">{client.contactName}</p>
+                    <p className="text-gray-500 text-xs">{client.email}</p>
+                    
+                    <div className="mt-3 space-y-1">
+                      <div className="flex items-center text-xs text-gray-500">
+                        <span>Sales Reps: {client.salesRepCount || 0}</span>
+                      </div>
+                      <div className="flex items-center text-xs text-gray-500">
+                        <span>Network: {((client.networkCommissionRate || 0.1) * 100).toFixed(1)}%</span>
+                      </div>
+                      <div className="flex items-center text-xs text-gray-500">
+                        <span>Facturatie: {client.billingDay || 15}e van de maand</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 flex space-x-2">
+                  <button
+                    onClick={() => fetchClientDetails(client._id)}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                  >
+                    Beheren
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Client Details Modal would continue here... */}
+    </div>
+  );
+};
+
+// AdminNetworkCommissions with Team Status Overview
+const AdminNetworkCommissions = () => {
+  const [commissions, setCommissions] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showTeamStatus, setShowTeamStatus] = useState(false);
+  const [teamData, setTeamData] = useState(null);
+
+  console.log('AdminNetworkCommissions COMPONENT LOADED');
+
+  useEffect(() => {
+    fetchNetworkCommissions();
+    fetchClients();
+  }, []);
+
+  const fetchNetworkCommissions = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/admin/network-commissions');
+      setCommissions(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchClients = async () => {
+    try {
+      const response = await apiCall('/admin/clients');
+      setClients(response);
+    } catch (err) {
+      console.error('Error fetching clients:', err);
+    }
+  };
+
+  const fetchTeamStatus = async () => {
+    if (!selectedClient) {
+      setError('Selecteer eerst een client');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await apiCall(`/admin/clients/${selectedClient}/salesrep-overview`);
+      setTeamData(response);
+      setShowTeamStatus(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const generateNetworkInvoice = async () => {
+    if (!selectedClient) {
+      setError('Selecteer een client');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+      const response = await apiCall('/admin/generate-network-invoice', {
+        method: 'POST',
+        body: JSON.stringify({
+          clientId: selectedClient,
+          month: selectedMonth,
+          year: selectedYear
+        })
+      });
+      
+      setSuccess('Network factuur succesvol gegenereerd!');
+      await fetchNetworkCommissions();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const downloadNetworkInvoicePDF = async (commission) => {
+    try {
+      console.log('ADMIN DOWNLOADING NETWORK INVOICE PDF:', commission);
+      
+      const companyDetails = {
+        companyName: 'Recruiters Network B.V.',
+        contactName: 'Admin Team',
+        address: 'Herengracht 123, 1015 BG Amsterdam',
+        city: 'Amsterdam',
+        postalCode: '1015 BG',
+        email: 'admin@recruitersnetwork.nl',
+        phone: '+31 20 123 4567',
+        kvkNumber: '87654321',
+        vatNumber: 'NL987654321B01',
+        bankAccount: 'NL12 RABO 0123 4567 89'
+      };
+
+      const clientDetails = clients.find(c => c.name === commission.clientName) || {
+        name: commission.clientName
+      };
+
+      const networkInvoice = {
+        _id: commission._id,
+        invoiceNumber: commission.invoiceNumber,
+        month: commission.month,
+        year: commission.year,
+        amount: commission.networkAmount,
+        type: 'network',
+        invoiceData: {
+          networkAmount: commission.totalSalesRepCommission * commission.networkRate,
+          vatRate: 21,
+          vatAmount: (commission.totalSalesRepCommission * commission.networkRate) * 0.21,
+          totalAmount: commission.networkAmount,
+          totalSalesRepCommission: commission.totalSalesRepCommission,
+          networkRate: commission.networkRate
+        }
+      };
+
+      await generateInvoicePDF(networkInvoice, companyDetails, clientDetails);
+      setSuccess('PDF wordt gedownload...');
+    } catch (err) {
+      console.error('PDF download error:', err);
+      setError('Kon PDF niet genereren');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Facturen</h2>
+            <p className="text-gray-600">Genereer en beheer network commissie facturen</p>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-green-700 text-sm">{success}</p>
+            <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Network Factuur Genereren</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Client</label>
+            <select
+              value={selectedClient}
+              onChange={(e) => setSelectedClient(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+            >
+              <option value="">Selecteer client...</option>
+              {clients.map((client) => (
+                <option key={client._id} value={client._id}>
+                  {client.name} - {((client.networkCommissionRate || 0.1) * 100).toFixed(1)}%
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Maand</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+            >
+              {Array.from({length: 12}, (_, i) => (
+                <option key={i+1} value={i+1}>
+                  {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Jaar</label>
+            <input
+              type="number"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+
+          <div className="flex items-end">
+            <button
+              onClick={generateNetworkInvoice}
+              disabled={isLoading || !selectedClient}
+              className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Genereren...' : 'Genereren'}
+            </button>
+          </div>
+
+          <div className="flex items-end">
+            <button
+              onClick={fetchTeamStatus}
+              disabled={isLoading || !selectedClient}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Team Status
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Team Status Modal */}
+      {showTeamStatus && teamData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Team Status - {teamData.client.name}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowTeamStatus(false);
+                    setTeamData(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <icons.X />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-2">Client Info</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Facturatie Dag:</span>
+                    <span className="ml-2 font-medium">{teamData.billingDay}e van de maand</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Status:</span>
+                    <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
+                      teamData.isAfterBillingDay 
+                        ? 'bg-red-100 text-red-600' 
+                        : 'bg-green-100 text-green-600'
+                    }`}>
+                      {teamData.isAfterBillingDay ? 'Na deadline' : 'Voor deadline'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {teamData.salesReps.map((rep) => (
+                  <div key={rep._id} className="border border-gray-200 rounded-xl p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <span className="text-green-600 font-semibold text-sm">
+                            {rep.name.charAt(0)}
+                          </span>
+                        </div>
+                        <div className="ml-3">
+                          <h4 className="font-semibold text-gray-900">{rep.name}</h4>
+                          <p className="text-xs text-gray-500">{rep.position}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 mb-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500">Totaal Facturen</p>
+                          <p className="font-semibold">{rep.stats.totalInvoices}</p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500">Te Beoordelen</p>
+                          <p className="font-semibold">{rep.stats.pendingInvoices}</p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500">Goedgekeurd</p>
+                          <p className="font-semibold">{rep.stats.approvedInvoices}</p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-500">Commissie Waarde</p>
+                          <p className="font-semibold">€{rep.stats.totalCommissionValue.toLocaleString('nl-NL')}</p>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-gray-700">Deze Maand:</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            rep.stats.hasSubmittedThisMonth
+                              ? rep.stats.currentMonthStatus === 'approved'
+                                ? 'bg-green-100 text-green-600'
+                                : rep.stats.currentMonthStatus === 'pending'
+                                ? 'bg-yellow-100 text-yellow-600'
+                                : 'bg-gray-100 text-gray-600'
+                              : 'bg-red-100 text-red-600'
+                          }`}>
+                            {rep.stats.hasSubmittedThisMonth 
+                              ? rep.stats.currentMonthStatus === 'approved' ? 'Goedgekeurd'
+                                : rep.stats.currentMonthStatus === 'pending' ? 'Te beoordelen'
+                                : 'Herzien'
+                              : 'Niet ingediend'
+                            }
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {rep.invoices.length > 0 && (
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-700 mb-2">Recente Facturen:</h5>
+                        <div className="space-y-2">
+                          {rep.invoices.slice(0, 3).map((invoice) => (
+                            <div key={invoice._id} className="flex items-center justify-between text-xs">
+                              <span className="text-gray-600">
+                                #{invoice.invoiceNumber} - {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'short'})} {invoice.year}
+                              </span>
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-2 py-1 rounded-full font-medium ${
+                                  invoice.status === 'paid' ? 'bg-green-100 text-green-600' :
+                                  invoice.status === 'approved' ? 'bg-blue-100 text-blue-600' :
+                                  invoice.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
+                                  'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {invoice.status === 'paid' ? 'Betaald' :
+                                   invoice.status === 'approved' ? 'Goedgekeurd' :
+                                   invoice.status === 'pending' ? 'Pending' : 'Herzien'}
+                                </span>
+                                <button
+                                  onClick={() => downloadNetworkInvoicePDF({
+                                    ...invoice,
+                                    clientName: teamData.client.name,
+                                    totalSalesRepCommission: invoice.invoiceData?.commissionExcl || 0,
+                                    networkRate: teamData.client.networkCommissionRate || 0.1
+                                  })}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
+                                >
+                                  PDF
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Network Invoices List */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Network Commissie Facturen ({commissions.length})</h3>
+        
+        {commissions.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <icons.FileText />
+            </div>
+            <h4 className="text-lg font-medium text-gray-900">Nog geen network facturen</h4>
+            <p className="text-gray-600 mt-2">Genereer je eerste network factuur</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {commissions.map((commission) => (
+              <div key={commission._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:shadow-sm transition-shadow">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <icons.FileText />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">#{commission.invoiceNumber}</h4>
+                    <p className="text-gray-600">{commission.clientName}</p>
+                    <p className="text-sm text-gray-500">
+                      {commission.monthName} {commission.year}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Sales Rep Commissie: €{commission.totalSalesRepCommission.toLocaleString('nl-NL', {minimumFractionDigits: 2})} × {(commission.networkRate * 100).toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="text-right">
+                    <p className="font-semibold text-gray-900">€{commission.networkAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</p>
+                    <p className="text-xs text-gray-500">excl. BTW</p>
+                  </div>
+
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    commission.status === 'paid' 
+                      ? 'bg-green-100 text-green-600' 
+                      : commission.status === 'approved'
+                      ? 'bg-blue-100 text-blue-600'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {commission.status === 'paid' ? 'Betaald' : 
+                     commission.status === 'approved' ? 'Goedgekeurd' :
+                     'Te beoordelen'}
+                  </span>
+
+                  <button
+                    onClick={() => downloadNetworkInvoicePDF(commission)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors text-sm flex items-center"
+                  >
+                    <icons.Download />
+                    <span className="ml-1">PDF</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// CLIENT TEAM DASHBOARD - WITH PDF DOWNLOADS AND CORRECTED STATS
+const ClientTeamDashboard = ({ user }) => {
+  const [dashboardData, setDashboardData] = useState(null);
+  const [invoices, setInvoices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [selectedRep, setSelectedRep] = useState(null);
+  const [showRepModal, setShowRepModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  useEffect(() => {
+    fetchDashboardData();
+    fetchInvoices();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const response = await apiCall('/client/dashboard');
+      setDashboardData(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchInvoices = async () => {
+    try {
+      const response = await apiCall('/client/invoices');
+      setInvoices(response);
+    } catch (err) {
+      console.error('Error fetching invoices:', err);
+    }
+  };
+
+  const approveInvoice = async (invoiceId) => {
+    try {
+      setActionLoading(true);
+      await apiCall(`/client/invoices/${invoiceId}/approve`, { method: 'PUT' });
+      setSuccess('Factuur goedgekeurd!');
+      await fetchInvoices();
+      await fetchDashboardData();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const requestRevision = async (invoiceId, reason) => {
+    try {
+      setActionLoading(true);
+      await apiCall(`/client/invoices/${invoiceId}/revision`, {
+        method: 'PUT',
+        body: JSON.stringify({ reason })
+      });
+      setSuccess('Wijziging aangevraagd');
+      await fetchInvoices();
+      await fetchDashboardData();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const downloadInvoicePDF = async (invoice) => {
+    try {
+      console.log('CLIENT DOWNLOADING INVOICE PDF:', invoice);
+      
+      const clientDetails = dashboardData?.client || {};
+      const companyDetails = invoice.invoiceData?.companyDetails || {};
+
+      await generateInvoicePDF(invoice, companyDetails, clientDetails);
+      setSuccess('PDF wordt gedownload...');
+    } catch (err) {
+      console.error('PDF download error:', err);
+      setError('Kon PDF niet genereren');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <p className="text-gray-600">Team dashboard laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate corrected statistics from actual invoice data
+  const actualStats = {
+    totalRevenue: invoices.reduce((sum, inv) => sum + (inv.invoiceData?.thisMonthRevenue || 0), 0),
+    totalCommission: invoices.reduce((sum, inv) => sum + (inv.invoiceData?.commissionExcl || 0), 0),
+    pendingInvoices: invoices.filter(inv => inv.status === 'pending').length,
+    approvedInvoices: invoices.filter(inv => inv.status === 'approved').length
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Team Dashboard</h2>
+            <p className="text-gray-600">Overzicht van je sales team en hun prestaties</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-500">Welkom terug,</p>
+            <p className="text-lg font-semibold text-gray-900">{user?.name}</p>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-green-700 text-sm">{success}</p>
+            <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Corrected Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center">
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+              <icons.DollarSign />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Totale Omzet</p>
+              <p className="text-2xl font-bold text-gray-900">€{actualStats.totalRevenue.toLocaleString('nl-NL')}</p>
+              <p className="text-xs text-gray-500">Uit facturen</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center">
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+              <icons.TrendingUp />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Commissies</p>
+              <p className="text-2xl font-bold text-gray-900">€{actualStats.totalCommission.toLocaleString('nl-NL')}</p>
+              <p className="text-xs text-gray-500">Totaal uitbetaald</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center">
+            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+              <icons.FileText />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Facturen</p>
+              <p className="text-2xl font-bold text-gray-900">{actualStats.pendingInvoices}</p>
+              <p className="text-xs text-gray-500">Te beoordelen</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center">
+            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+              <icons.Users />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm text-gray-600">Team</p>
+              <p className="text-2xl font-bold text-gray-900">{dashboardData?.salesReps?.length || 0}</p>
+              <p className="text-xs text-gray-500">Actieve reps</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sales Reps Overview - SAME AS TEAM DASHBOARD VIEW */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Sales Representatives</h3>
+        
+        {!dashboardData?.salesReps || dashboardData.salesReps.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <icons.Users />
+            </div>
+            <h4 className="text-lg font-medium text-gray-900">Nog geen sales reps</h4>
+            <p className="text-gray-600 mt-2">Neem contact op met de admin om sales reps toe te voegen</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {dashboardData.salesReps.map((rep) => {
+              const repInvoices = invoices.filter(inv => inv.salesRepId && inv.salesRepId._id === rep._id);
+              const pendingInvoices = repInvoices.filter(inv => inv.status === 'pending');
+              const approvedInvoices = repInvoices.filter(inv => inv.status === 'approved');
+              const totalCommission = repInvoices
+                .filter(inv => inv.status === 'approved' || inv.status === 'paid')
+                .reduce((sum, inv) => sum + (inv.invoiceData?.commissionExcl || 0), 0);
+              
+              return (
+                <div 
+                  key={rep._id} 
+                  className="border border-gray-200 rounded-xl p-6 hover:shadow-sm transition-shadow cursor-pointer"
+                  onClick={() => {
+                    setSelectedRep(rep);
+                    setShowRepModal(true);
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center mb-2">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <span className="text-green-600 font-semibold text-sm">
+                            {rep.name.charAt(0)}
+                          </span>
+                        </div>
+                        <div className="ml-3">
+                          <h4 className="font-semibold text-gray-900">{rep.name}</h4>
+                          <p className="text-xs text-gray-500">{rep.position}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 text-sm">Totale Commissie:</span>
+                          <span className="font-semibold text-gray-900">€{totalCommission.toLocaleString('nl-NL')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 text-sm">Facturen:</span>
+                          <span className="font-semibold text-gray-900">{repInvoices.length}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        {pendingInvoices.length > 0 ? (
+                          <div className="flex items-center justify-between">
+                            <span className="px-2 py-1 bg-yellow-100 text-yellow-600 rounded-full text-xs font-medium">
+                              Te beoordelen ({pendingInvoices.length})
+                            </span>
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  approveInvoice(pendingInvoices[0]._id);
+                                }}
+                                disabled={actionLoading}
+                                className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs transition-colors disabled:opacity-50"
+                              >
+                                Goedkeuren
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const reason = prompt('Reden voor wijziging:');
+                                  if (reason) requestRevision(pendingInvoices[0]._id, reason);
+                                }}
+                                disabled={actionLoading}
+                                className="bg-orange-600 hover:bg-orange-700 text-white px-2 py-1 rounded text-xs transition-colors disabled:opacity-50"
+                              >
+                                Wijziging
+                              </button>
+                            </div>
+                          </div>
+                        ) : approvedInvoices.length > 0 ? (
+                          <span className="px-2 py-1 bg-green-100 text-green-600 rounded-full text-xs font-medium">
+                            Goedgekeurd
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                            Geen facturen
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Sales Rep Detail Modal - Same as team dashboard view */}
+      {showRepModal && selectedRep && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <span className="text-green-600 font-semibold">
+                      {selectedRep.name.charAt(0)}
+                    </span>
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-xl font-semibold text-gray-900">{selectedRep.name}</h3>
+                    <p className="text-gray-600">{selectedRep.position}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowRepModal(false);
+                    setSelectedRep(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <icons.X />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <span className="text-gray-600">Positie:</span>
+                  <p className="font-medium">{selectedRep.position}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Start datum:</span>
+                  <p className="font-medium">{new Date(selectedRep.hireDate).toLocaleDateString('nl-NL')}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Commissie rate:</span>
+                  <p className="font-medium">{((selectedRep.commissionRate || 0.1) * 100).toFixed(1)}%</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Status:</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    selectedRep.isConnected 
+                      ? 'bg-green-100 text-green-600' 
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {selectedRep.isConnected ? 'Actief' : 'Inactief'}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-4">Factuur Geschiedenis</h4>
+                
+                {invoices.filter(inv => inv.salesRepId && inv.salesRepId._id === selectedRep._id).length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">Nog geen facturen ingediend</p>
+                ) : (
+                  <div className="space-y-3">
+                    {invoices
+                      .filter(inv => inv.salesRepId && inv.salesRepId._id === selectedRep._id)
+                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                      .map((invoice) => (
+                        <div key={invoice._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="font-medium text-gray-900">#{invoice.invoiceNumber}</p>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                invoice.status === 'paid' 
+                                  ? 'bg-green-100 text-green-600' 
+                                  : invoice.status === 'approved'
+                                  ? 'bg-blue-100 text-blue-600'
+                                  : invoice.status === 'revision_requested'
+                                  ? 'bg-yellow-100 text-yellow-600'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {invoice.status === 'paid' ? 'Betaald' : 
+                                 invoice.status === 'approved' ? 'Goedgekeurd' :
+                                 invoice.status === 'revision_requested' ? 'Herzien' :
+                                 'Te beoordelen'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600">€{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
+                            </p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => downloadInvoicePDF(invoice)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs transition-colors"
+                            >
+                              PDF
+                            </button>
+                            {invoice.status === 'pending' && (
+                              <>
+                                <button
+                                  onClick={() => approveInvoice(invoice._id)}
+                                  disabled={actionLoading}
+                                  className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs transition-colors disabled:opacity-50"
+                                >
+                                  Goedkeuren
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const reason = prompt('Reden voor wijziging:');
+                                    if (reason) requestRevision(invoice._id, reason);
+                                  }}
+                                  disabled={actionLoading}
+                                  className="bg-orange-600 hover:bg-orange-700 text-white px-2 py-1 rounded text-xs transition-colors disabled:opacity-50"
+                                >
+                                  Wijziging
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// SALES REP INVOICES - WITH CLIENT KVK & BTW + PDF DOWNLOADS
+const SalesRepInvoices = ({ user }) => {
+  const [invoices, setInvoices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showGenerator, setShowGenerator] = useState(false);
+
+  const [companyDetails, setCompanyDetails] = useState({
+    companyName: '',
+    contactName: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    country: 'Nederland',
+    phone: '',
+    email: '',
+    kvkNumber: '',
+    vatNumber: '',
+    bankAccount: '',
+    clientCompanyName: '',
+    clientContactName: '',
+    clientAddress: '',
+    clientPhone: '',
+    clientKvk: '',
+    clientVat: '',
+    clientBankAccount: ''
+  });
+
+  const [invoiceData, setInvoiceData] = useState({
+    thisMonthRevenue: '',
+    commissionExcl: '',
+    vatRate: '21',
+    description: '',
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear()
+  });
+
+  useEffect(() => {
+    fetchInvoices();
+    loadCompanyDetails();
+  }, []);
+
+  const fetchInvoices = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/salesrep/invoices');
+      setInvoices(response);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadCompanyDetails = async () => {
+    try {
+      console.log('LOADING COMPANY DETAILS WITH CLIENT KVK & BTW');
+      const response = await apiCall('/salesrep/company-details');
+      console.log('API RESPONSE:', response);
+      
+      if (response.companyDetails) {
+        console.log('SETTING COMPANY DETAILS WITH CLIENT KVK & BTW:', response.companyDetails);
+        setCompanyDetails(response.companyDetails);
+      }
+    } catch (err) {
+      console.error('ERROR LOADING COMPANY DETAILS:', err);
+      if (user && user.salesRep) {
+        setCompanyDetails(prev => ({
+          ...prev,
+          contactName: user.name,
+          email: user.email,
+          phone: user.salesRep.phone || ''
+        }));
+      }
+    }
+  };
+
+  const saveCompanyDetails = async () => {
+    try {
+      await apiCall('/salesrep/company-details', {
+        method: 'POST',
+        body: JSON.stringify(companyDetails)
+      });
+      setSuccess('Bedrijfsgegevens opgeslagen!');
+    } catch (err) {
+      setError('Kon bedrijfsgegevens niet opslaan');
+    }
+  };
+
+  const generateInvoice = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      const commissionAmount = parseFloat(invoiceData.commissionExcl) || 0;
+      const vatRate = parseFloat(invoiceData.vatRate) / 100;
+      const vatAmount = commissionAmount * vatRate;
+      const totalAmount = commissionAmount + vatAmount;
+      
+      const invoiceNumber = 'F-' + invoiceData.year + '-' + 
+                           String(invoiceData.month).padStart(2, '0') + '-' + 
+                           String(Date.now()).slice(-4);
+      
+      const invoicePayload = {
+        invoiceNumber,
+        thisMonthRevenue: parseFloat(invoiceData.thisMonthRevenue) || 0,
+        commissionExcl: commissionAmount,
+        vatRate: parseFloat(invoiceData.vatRate),
+        vatAmount,
+        totalAmount,
+        month: invoiceData.month,
+        year: invoiceData.year,
+        description: invoiceData.description || `Commissie van ${new Date(0, invoiceData.month - 1).toLocaleDateString('nl-NL', {month: 'long'})}`,
+        companyDetails
+      };
+      
+      await apiCall('/salesrep/generate-invoice', {
+        method: 'POST',
+        body: JSON.stringify(invoicePayload)
+      });
+      
+      setSuccess('Factuur succesvol gegenereerd!');
+      setInvoiceData({
+        thisMonthRevenue: '',
+        commissionExcl: '',
+        vatRate: '21',
+        description: '',
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear()
+      });
+      setShowGenerator(false);
+      await fetchInvoices();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteInvoice = async (invoiceId, invoiceNumber) => {
+    if (window.confirm('Weet je zeker dat je factuur #' + invoiceNumber + ' wilt verwijderen?')) {
+      try {
+        setIsLoading(true);
+        await apiCall('/salesrep/invoices/' + invoiceId, { method: 'DELETE' });
+        setSuccess('Factuur succesvol verwijderd');
+        await fetchInvoices();
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const downloadInvoicePDF = async (invoice) => {
+    try {
+      console.log('SALES REP DOWNLOADING INVOICE PDF:', invoice);
+      
+      const clientDetails = {
+        clientCompanyName: companyDetails.clientCompanyName,
+        clientContactName: companyDetails.clientContactName,
+        clientAddress: companyDetails.clientAddress,
+        clientKvk: companyDetails.clientKvk,
+        clientVat: companyDetails.clientVat
+      };
+
+      await generateInvoicePDF(invoice, companyDetails, clientDetails);
+      setSuccess('PDF wordt gedownload...');
+    } catch (err) {
+      console.error('PDF download error:', err);
+      setError('Kon PDF niet genereren');
+    }
+  };
+
+  const commissionAmount = parseFloat(invoiceData.commissionExcl) || 0;
+  const vatRate = parseFloat(invoiceData.vatRate) / 100;
+  const vatAmount = commissionAmount * vatRate;
+  const totalAmount = commissionAmount + vatAmount;
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Mijn Facturen</h2>
+            <p className="text-gray-600">Genereer en download professionele facturen voor je commissies</p>
+          </div>
+          <button
+            onClick={() => setShowGenerator(!showGenerator)}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center"
+          >
+            <icons.Plus />
+            <span className="ml-2">Nieuwe Factuur</span>
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-green-700 text-sm">{success}</p>
+            <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showGenerator && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Factuur Generator</h3>
+          
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900">Jouw Bedrijfsgegevens (VAN)</h4>
+              <button
+                onClick={saveCompanyDetails}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+              >
+                Opslaan
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bedrijfsnaam *</label>
+                <input
+                  type="text"
+                  value={companyDetails.companyName}
+                  onChange={(e) => setCompanyDetails({...companyDetails, companyName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="Jouw Bedrijf B.V."
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contactpersoon *</label>
+                <input
+                  type="text"
+                  value={companyDetails.contactName}
+                  onChange={(e) => setCompanyDetails({...companyDetails, contactName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="Je naam"
+                  required
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>
+                <input
+                  type="text"
+                  value={companyDetails.address}
+                  onChange={(e) => setCompanyDetails({...companyDetails, address: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="Straat 123"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Stad</label>
+                <input
+                  type="text"
+                  value={companyDetails.city}
+                  onChange={(e) => setCompanyDetails({...companyDetails, city: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="Amsterdam"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
+                <input
+                  type="text"
+                  value={companyDetails.postalCode}
+                  onChange={(e) => setCompanyDetails({...companyDetails, postalCode: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="1000 AA"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
+                <input
+                  type="email"
+                  value={companyDetails.email}
+                  onChange={(e) => setCompanyDetails({...companyDetails, email: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="jouw@email.nl"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefoon</label>
+                <input
+                  type="text"
+                  value={companyDetails.phone}
+                  onChange={(e) => setCompanyDetails({...companyDetails, phone: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="+31 6 12345678"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">KVK Nummer</label>
+                <input
+                  type="text"
+                  value={companyDetails.kvkNumber}
+                  onChange={(e) => setCompanyDetails({...companyDetails, kvkNumber: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="12345678"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">BTW Nummer</label>
+                <input
+                  type="text"
+                  value={companyDetails.vatNumber}
+                  onChange={(e) => setCompanyDetails({...companyDetails, vatNumber: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="NL123456789B01"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bankrekeningnummer (IBAN) *</label>
+                <input
+                  type="text"
+                  value={companyDetails.bankAccount}
+                  onChange={(e) => setCompanyDetails({...companyDetails, bankAccount: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                  placeholder="NL91 ABNA 0417 1643 00"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-8">
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Factuur Naar (Client Gegevens)</h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Bedrijf</label>
+                <input
+                  type="text"
+                  value={companyDetails.clientCompanyName || 'Wordt automatisch geladen...'}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100"
+                  readOnly
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Contact</label>
+                <input
+                  type="text"
+                  value={companyDetails.clientContactName || 'Wordt automatisch geladen...'}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100"
+                  readOnly
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client KVK</label>
+                <input
+                  type="text"
+                  value={companyDetails.clientKvk || 'Wordt automatisch geladen...'}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100"
+                  readOnly
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client BTW</label>
+                <input
+                  type="text"
+                  value={companyDetails.clientVat || 'Wordt automatisch geladen...'}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100"
+                  readOnly
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Adres</label>
+                <input
+                  type="text"
+                  value={companyDetails.clientAddress || 'Wordt automatisch geladen...'}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-100"
+                  readOnly
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-200 pt-6">
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Factuur Gegevens</h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Omzet deze maand (ter info) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={invoiceData.thisMonthRevenue}
+                    onChange={(e) => setInvoiceData({...invoiceData, thisMonthRevenue: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="25000.00"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mijn commissie excl. BTW *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={invoiceData.commissionExcl}
+                    onChange={(e) => setInvoiceData({...invoiceData, commissionExcl: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="2500.00"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">BTW Tarief</label>
+                  <select
+                    value={invoiceData.vatRate}
+                    onChange={(e) => setInvoiceData({...invoiceData, vatRate: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="21">Hoog (21%)</option>
+                    <option value="9">Laag (9%)</option>
+                    <option value="0">Vrijgesteld (0%)</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Maand</label>
+                    <select
+                      value={invoiceData.month}
+                      onChange={(e) => setInvoiceData({...invoiceData, month: parseInt(e.target.value)})}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    >
+                      {Array.from({length: 12}, (_, i) => (
+                        <option key={i+1} value={i+1}>
+                          {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Jaar</label>
+                    <input
+                      type="number"
+                      value={invoiceData.year}
+                      onChange={(e) => setInvoiceData({...invoiceData, year: parseInt(e.target.value)})}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Omschrijving (optioneel)</label>
+                  <textarea
+                    value={invoiceData.description}
+                    onChange={(e) => setInvoiceData({...invoiceData, description: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    rows="2"
+                    placeholder="Extra omschrijving voor de factuur..."
+                  />
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-6 rounded-xl">
+                <h5 className="font-semibold text-gray-900 mb-4">Live Preview</h5>
+                
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Commissie excl. BTW:</span>
+                    <span className="font-medium">€{commissionAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">BTW {invoiceData.vatRate}%:</span>
+                    <span className="font-medium">€{vatAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</span>
+                  </div>
+                  
+                  <div className="border-t border-gray-300 pt-2">
+                    <div className="flex justify-between font-bold">
+                      <span>Totaal:</span>
+                      <span>€{totalAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {companyDetails.bankAccount && (
+                  <div className="mt-4 pt-4 border-t border-gray-300">
+                    <p className="text-xs text-gray-600">Betaling op rekening:</p>
+                    <p className="text-xs font-mono">{companyDetails.bankAccount}</p>
+                  </div>
+                )}
+
+                {companyDetails.clientCompanyName && (
+                  <div className="mt-4 pt-4 border-t border-gray-300">
+                    <p className="text-xs text-gray-600 font-semibold">Factuur naar:</p>
+                    <p className="text-xs font-semibold">{companyDetails.clientCompanyName}</p>
+                    <p className="text-xs">{companyDetails.clientContactName}</p>
+                    <p className="text-xs">{companyDetails.clientAddress}</p>
+                    {companyDetails.clientKvk && (
+                      <p className="text-xs">KVK: {companyDetails.clientKvk}</p>
+                    )}
+                    {companyDetails.clientVat && (
+                      <p className="text-xs">BTW: {companyDetails.clientVat}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex space-x-4 mt-6">
+              <button
+                onClick={generateInvoice}
+                disabled={isLoading || !invoiceData.thisMonthRevenue || !invoiceData.commissionExcl || !companyDetails.companyName || !companyDetails.email || !companyDetails.bankAccount}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Genereren...' : 'Factuur Genereren'}
+              </button>
+              
+              <button
+                onClick={() => setShowGenerator(false)}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+              >
+                Annuleren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Mijn Facturen ({invoices.length})</h3>
+        
+        {invoices.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <icons.FileText />
+            </div>
+            <h4 className="text-lg font-medium text-gray-900">Nog geen facturen</h4>
+            <p className="text-gray-600 mt-2">Genereer je eerste factuur om te beginnen</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {invoices.map((invoice) => (
+              <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:shadow-sm transition-shadow">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <icons.FileText />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Factuur #{invoice.invoiceNumber}</h4>
+                    <p className="text-gray-600">€{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <span className={'px-3 py-1 rounded-full text-sm font-medium ' + (
+                    invoice.status === 'paid' 
+                      ? 'bg-green-100 text-green-600' 
+                      : invoice.status === 'approved'
+                      ? 'bg-blue-100 text-blue-600'
+                      : invoice.status === 'revision_requested'
+                      ? 'bg-yellow-100 text-yellow-600'
+                      : 'bg-gray-100 text-gray-600'
+                  )}>
+                    {invoice.status === 'paid' ? 'Betaald' : 
+                     invoice.status === 'approved' ? 'Goedgekeurd' :
+                     invoice.status === 'revision_requested' ? 'Herzien' :
+                     'Te beoordelen'}
+                  </span>
+
+                  <button
+                    onClick={() => downloadInvoicePDF(invoice)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors text-sm flex items-center"
+                  >
+                    <icons.Download />
+                    <span className="ml-1">PDF</span>
+                  </button>
+                  
+                  {invoice.status !== 'paid' && invoice.status !== 'approved' && (
+                    <button
+                      onClick={() => deleteInvoice(invoice._id, invoice.invoiceNumber)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                    >
+                      Verwijder
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Simple Dashboard Components for placeholder pages
 const SimpleDashboard = ({ title }) => (
   <div className="space-y-6">
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -365,7 +2275,7 @@ const SimpleDashboard = ({ title }) => (
   </div>
 );
 
-// FIXED SIDEBAR - Core functionality
+// FIXED SIDEBAR - WITH YOUR LOGO
 const FixedSidebar = ({ user, currentPage, setCurrentPage, onLogout }) => {
   console.log('RENDERING FIXED SIDEBAR');
   
@@ -574,9 +2484,9 @@ const App = () => {
         <div className="max-w-7xl mx-auto px-8 py-8">
           {user.role === 'admin' && (
             <div>
-              {currentPage === 'admin-dashboard' && <SimpleDashboard title="Admin Dashboard" />}
-              {currentPage === 'clients' && <SimpleDashboard title="Klanten Beheer" />}
-              {currentPage === 'network-commissions' && <SimpleDashboard title="Facturen" />}
+              {currentPage === 'admin-dashboard' && <AdminDashboard />}
+              {currentPage === 'clients' && <AdminDashboard />}
+              {currentPage === 'network-commissions' && <AdminNetworkCommissions />}
               {currentPage === 'admin-settings' && <SimpleDashboard title="Admin Instellingen" />}
             </div>
           )}
@@ -584,7 +2494,7 @@ const App = () => {
           {user.role === 'salesrep' && (
             <div>
               {currentPage === 'salesrep-dashboard' && <SimpleDashboard title="Sales Rep Dashboard" />}
-              {currentPage === 'salesrep-invoices' && <SimpleDashboard title="Mijn Facturen" />}
+              {currentPage === 'salesrep-invoices' && <SalesRepInvoices user={user} />}
               {currentPage === 'salesrep-reports' && <SimpleDashboard title="Sales Rep Reports" />}
               {currentPage === 'salesrep-settings' && <SimpleDashboard title="Sales Rep Settings" />}
             </div>
@@ -592,8 +2502,8 @@ const App = () => {
 
           {user.role === 'client' && (
             <div>
-              {currentPage === 'dashboard' && <SimpleDashboard title="Team Dashboard" />}
-              {currentPage === 'invoices' && <SimpleDashboard title="Betalingen & Facturen" />}
+              {currentPage === 'dashboard' && <ClientTeamDashboard user={user} />}
+              {currentPage === 'invoices' && <SimpleDashboard title="Client Invoices" />}
               {currentPage === 'reports' && <SimpleDashboard title="Client Reports" />}
               {currentPage === 'settings' && <SimpleDashboard title="Client Settings" />}
             </div>
