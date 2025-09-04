@@ -1003,7 +1003,7 @@ const fetchClientDetails = async (clientId) => {
                       onChange={(e) => setNewSalesRep({ ...newSalesRep, maxRecruitmentFee: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Bijvoorbeeld: 5000"
-                
+                    />
                     <p className="text-xs text-gray-500 mt-1">Totale vergoeding die gefactureerd kan worden</p>
                   </div>
                 </div>
@@ -3042,6 +3042,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
