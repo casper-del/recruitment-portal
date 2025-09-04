@@ -986,86 +986,36 @@ const fetchClientDetails = async (clientId) => {
 
 // AdminNetworkCommissions with Team Status Overview
 const AdminNetworkCommissions = () => {
-  const [commissions, setCommissions] = useState([]);
   const [clients, setClients] = useState([]);
-  const [selectedClient, setSelectedClient] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [teamData, setTeamData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [showTeamStatus, setShowTeamStatus] = useState(false);
-  const [teamData, setTeamData] = useState(null);
-
-  console.log('AdminNetworkCommissions COMPONENT LOADED');
+  const [uploadedFile, setUploadedFile] = useState(null);
 
   useEffect(() => {
-    fetchNetworkCommissions();
     fetchClients();
   }, []);
 
-  const fetchNetworkCommissions = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall('/admin/network-commissions');
-      setCommissions(response);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-const fetchClientDetails = async (clientId) => {
-  try {
-    setIsLoading(true);
-    const response = await apiCall(`/admin/clients/${clientId}`);
-    setClientDetails(response);
-    setSelectedClient(response.client);
-    setShowClientModal(true);
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-const updateClient = async () => {
-  try {
-    setIsLoading(true);
-    await apiCall(`/admin/clients/${selectedClient._id}`, {
-      method: 'PUT',
-      body: JSON.stringify(selectedClient)
-    });
-    setSuccess('Client bijgewerkt!');
-    setEditingClient(false);
-    await fetchClients();
-    await fetchClientDetails(selectedClient._id);
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setIsLoading(false);
-  }
-};
   const fetchClients = async () => {
     try {
+      setIsLoading(true);
       const response = await apiCall('/admin/clients');
       setClients(response);
     } catch (err) {
-      console.error('Error fetching clients:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const fetchTeamStatus = async () => {
-    if (!selectedClient) {
-      setError('Selecteer eerst een client');
-      return;
-    }
-
+  const fetchTeamData = async (clientId) => {
     try {
       setIsLoading(true);
-      const response = await apiCall(`/admin/clients/${selectedClient}/salesrep-overview`);
+      const response = await apiCall(`/admin/clients/${clientId}/salesrep-overview`);
       setTeamData(response);
-      setShowTeamStatus(true);
+      setSelectedClient(response.client);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1073,26 +1023,16 @@ const updateClient = async () => {
     }
   };
 
-  const generateNetworkInvoice = async () => {
-    if (!selectedClient) {
-      setError('Selecteer een client');
-      return;
-    }
-
+  const markAsPaid = async (salesRepId, month, year) => {
     try {
       setIsLoading(true);
-      setError('');
-      const response = await apiCall('/admin/generate-network-invoice', {
+      // Dit zou een nieuwe API call zijn om te markeren als betaald
+      await apiCall(`/admin/mark-paid`, {
         method: 'POST',
-        body: JSON.stringify({
-          clientId: selectedClient,
-          month: selectedMonth,
-          year: selectedYear
-        })
+        body: JSON.stringify({ salesRepId, month, year })
       });
-      
-      setSuccess('Network factuur succesvol gegenereerd!');
-      await fetchNetworkCommissions();
+      setSuccess('Gemarkeerd als betaald');
+      await fetchTeamData(selectedClient._id);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1100,61 +1040,21 @@ const updateClient = async () => {
     }
   };
 
-  const downloadNetworkInvoicePDF = async (commission) => {
-    try {
-      console.log('ADMIN DOWNLOADING NETWORK INVOICE PDF:', commission);
-      
-      const companyDetails = {
-        companyName: 'Recruiters Network B.V.',
-        contactName: 'Admin Team',
-        address: 'Herengracht 123, 1015 BG Amsterdam',
-        city: 'Amsterdam',
-        postalCode: '1015 BG',
-        email: 'admin@recruitersnetwork.nl',
-        phone: '+31 20 123 4567',
-        kvkNumber: '87654321',
-        vatNumber: 'NL987654321B01',
-        bankAccount: 'NL12 RABO 0123 4567 89'
-      };
-
-      const clientDetails = clients.find(c => c.name === commission.clientName) || {
-        name: commission.clientName
-      };
-
-      const networkInvoice = {
-        _id: commission._id,
-        invoiceNumber: commission.invoiceNumber,
-        month: commission.month,
-        year: commission.year,
-        amount: commission.networkAmount,
-        type: 'network',
-        invoiceData: {
-          networkAmount: commission.totalSalesRepCommission * commission.networkRate,
-          vatRate: 21,
-          vatAmount: (commission.totalSalesRepCommission * commission.networkRate) * 0.21,
-          totalAmount: commission.networkAmount,
-          totalSalesRepCommission: commission.totalSalesRepCommission,
-          networkRate: commission.networkRate
-        }
-      };
-
-      await generateInvoicePDF(networkInvoice, companyDetails, clientDetails);
-      setSuccess('PDF wordt gedownload...');
-    } catch (err) {
-      console.error('PDF download error:', err);
-      setError('Kon PDF niet genereren');
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'application/pdf') {
+      setUploadedFile(file);
+      setSuccess(`PDF "${file.name}" geselecteerd voor upload`);
+    } else {
+      setError('Alleen PDF bestanden zijn toegestaan');
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Facturen</h2>
-            <p className="text-gray-600">Genereer en beheer network commissie facturen</p>
-          </div>
-        </div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Facturen</h2>
+        <p className="text-gray-600">Upload je Moneybird facturen en beheer betalingsstatus per team</p>
       </div>
 
       {error && (
@@ -1179,287 +1079,132 @@ const updateClient = async () => {
         </div>
       )}
 
+      {/* PDF Upload Section */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h3 className="text-xl font-semibold text-gray-900 mb-6">Network Factuur Genereren</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Client</label>
-            <select
-              value={selectedClient}
-              onChange={(e) => setSelectedClient(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-            >
-              <option value="">Selecteer client...</option>
-              {clients.map((client) => (
-                <option key={client._id} value={client._id}>
-                  {client.name} - {((client.networkCommissionRate || 0.1) * 100).toFixed(1)}%
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Maand</label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-            >
-              {Array.from({length: 12}, (_, i) => (
-                <option key={i+1} value={i+1}>
-                  {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Jaar</label>
-            <input
-              type="number"
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-            />
-          </div>
-
-          <div className="flex items-end">
-            <button
-              onClick={generateNetworkInvoice}
-              disabled={isLoading || !selectedClient}
-              className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Genereren...' : 'Genereren'}
-            </button>
-          </div>
-
-          <div className="flex items-end">
-            <button
-              onClick={fetchTeamStatus}
-              disabled={isLoading || !selectedClient}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Team Status
-            </button>
-          </div>
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">Moneybird Factuur Uploaden</h3>
+        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
+          <input
+            type="file"
+            accept=".pdf"
+            onChange={handleFileUpload}
+            className="hidden"
+            id="pdf-upload"
+          />
+          <label
+            htmlFor="pdf-upload"
+            className="cursor-pointer flex flex-col items-center"
+          >
+            <icons.FileText />
+            <p className="mt-2 text-sm text-gray-600">
+              Klik om een PDF factuur te uploaden
+            </p>
+            <p className="text-xs text-gray-500">Alleen PDF bestanden</p>
+          </label>
+          {uploadedFile && (
+            <div className="mt-4 p-3 bg-green-50 rounded-lg">
+              <p className="text-green-700 font-medium">{uploadedFile.name}</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Team Status Modal */}
-      {showTeamStatus && teamData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Team Status - {teamData.client.name}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowTeamStatus(false);
-                    setTeamData(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <icons.X />
-                </button>
-              </div>
-            </div>
+      {/* Client Team Selection */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">Selecteer Team</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {clients.map((client) => (
+            <button
+              key={client._id}
+              onClick={() => fetchTeamData(client._id)}
+              className="p-4 border border-gray-200 rounded-xl hover:shadow-sm transition-shadow text-left"
+            >
+              <h4 className="font-semibold text-gray-900">{client.name}</h4>
+              <p className="text-sm text-gray-600">{client.contactName}</p>
+              <p className="text-xs text-gray-500">
+                {client.salesRepCount || 0} sales reps
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
 
-            <div className="p-6">
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-semibold text-gray-900 mb-2">Client Info</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Facturatie Dag:</span>
-                    <span className="ml-2 font-medium">{teamData.billingDay}e van de maand</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Status:</span>
-                    <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
-                      teamData.isAfterBillingDay 
-                        ? 'bg-red-100 text-red-600' 
-                        : 'bg-green-100 text-green-600'
-                    }`}>
-                      {teamData.isAfterBillingDay ? 'Na deadline' : 'Voor deadline'}
+      {/* Team Status Overview */}
+      {teamData && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">
+            Team Status - {teamData.client.name}
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {teamData.salesReps.map((rep) => (
+              <div key={rep._id} className="border border-gray-200 rounded-xl p-6">
+                <div className="flex items-center mb-4">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-blue-600 font-semibold text-sm">
+                      {rep.name.charAt(0)}
                     </span>
                   </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {teamData.salesReps.map((rep) => (
-                  <div key={rep._id} className="border border-gray-200 rounded-xl p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                          <span className="text-green-600 font-semibold text-sm">
-                            {rep.name.charAt(0)}
-                          </span>
-                        </div>
-                        <div className="ml-3">
-                          <h4 className="font-semibold text-gray-900">{rep.name}</h4>
-                          <p className="text-xs text-gray-500">{rep.position}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 mb-4">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-500">Totaal Facturen</p>
-                          <p className="font-semibold">{rep.stats.totalInvoices}</p>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-500">Te Beoordelen</p>
-                          <p className="font-semibold">{rep.stats.pendingInvoices}</p>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-500">Goedgekeurd</p>
-                          <p className="font-semibold">{rep.stats.approvedInvoices}</p>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-500">Commissie Waarde</p>
-                          <p className="font-semibold">€{rep.stats.totalCommissionValue.toLocaleString('nl-NL')}</p>
-                        </div>
-                      </div>
-
-                      <div className="pt-3 border-t">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium text-gray-700">Deze Maand:</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            rep.stats.hasSubmittedThisMonth
-                              ? rep.stats.currentMonthStatus === 'approved'
-                                ? 'bg-green-100 text-green-600'
-                                : rep.stats.currentMonthStatus === 'pending'
-                                ? 'bg-yellow-100 text-yellow-600'
-                                : 'bg-gray-100 text-gray-600'
-                              : 'bg-red-100 text-red-600'
-                          }`}>
-                            {rep.stats.hasSubmittedThisMonth 
-                              ? rep.stats.currentMonthStatus === 'approved' ? 'Goedgekeurd'
-                                : rep.stats.currentMonthStatus === 'pending' ? 'Te beoordelen'
-                                : 'Herzien'
-                              : 'Niet ingediend'
-                            }
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {rep.invoices.length > 0 && (
-                      <div>
-                        <h5 className="text-sm font-medium text-gray-700 mb-2">Recente Facturen:</h5>
-                        <div className="space-y-2">
-                          {rep.invoices.slice(0, 3).map((invoice) => (
-                            <div key={invoice._id} className="flex items-center justify-between text-xs">
-                              <span className="text-gray-600">
-                                #{invoice.invoiceNumber} - {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'short'})} {invoice.year}
-                              </span>
-                              <div className="flex items-center space-x-2">
-                                <span className={`px-2 py-1 rounded-full font-medium ${
-                                  invoice.status === 'paid' ? 'bg-green-100 text-green-600' :
-                                  invoice.status === 'approved' ? 'bg-blue-100 text-blue-600' :
-                                  invoice.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
-                                  'bg-gray-100 text-gray-600'
-                                }`}>
-                                  {invoice.status === 'paid' ? 'Betaald' :
-                                   invoice.status === 'approved' ? 'Goedgekeurd' :
-                                   invoice.status === 'pending' ? 'Pending' : 'Herzien'}
-                                </span>
-                                <button
-                                  onClick={() => downloadNetworkInvoicePDF({
-                                    ...invoice,
-                                    clientName: teamData.client.name,
-                                    totalSalesRepCommission: invoice.invoiceData?.commissionExcl || 0,
-                                    networkRate: teamData.client.networkCommissionRate || 0.1
-                                  })}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
-                                >
-                                  PDF
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Network Invoices List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <h3 className="text-xl font-semibold text-gray-900 mb-6">Network Commissie Facturen ({commissions.length})</h3>
-        
-        {commissions.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <icons.FileText />
-            </div>
-            <h4 className="text-lg font-medium text-gray-900">Nog geen network facturen</h4>
-            <p className="text-gray-600 mt-2">Genereer je eerste network factuur</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {commissions.map((commission) => (
-              <div key={commission._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:shadow-sm transition-shadow">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                    <icons.FileText />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">#{commission.invoiceNumber}</h4>
-                    <p className="text-gray-600">{commission.clientName}</p>
-                    <p className="text-sm text-gray-500">
-                      {commission.monthName} {commission.year}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Sales Rep Commissie: €{commission.totalSalesRepCommission.toLocaleString('nl-NL', {minimumFractionDigits: 2})} × {(commission.networkRate * 100).toFixed(1)}%
-                    </p>
+                  <div className="ml-3">
+                    <h4 className="font-semibold text-gray-900">{rep.name}</h4>
+                    <p className="text-xs text-gray-500">{rep.position}</p>
                   </div>
                 </div>
-                
-                <div className="flex items-center space-x-3">
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">€{commission.networkAmount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</p>
-                    <p className="text-xs text-gray-500">excl. BTW</p>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Factuur Status:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      rep.stats.hasSubmittedThisMonth
+                        ? rep.stats.currentMonthStatus === 'approved'
+                          ? 'bg-green-100 text-green-600'
+                          : rep.stats.currentMonthStatus === 'pending'
+                          ? 'bg-yellow-100 text-yellow-600'
+                          : 'bg-gray-100 text-gray-600'
+                        : 'bg-red-100 text-red-600'
+                    }`}>
+                      {rep.stats.hasSubmittedThisMonth
+                        ? rep.stats.currentMonthStatus === 'approved' ? 'Goedgekeurd'
+                          : rep.stats.currentMonthStatus === 'pending' ? 'Te beoordelen'
+                          : 'Herzien'
+                        : 'Niet ingediend'
+                      }
+                    </span>
                   </div>
 
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    commission.status === 'paid' 
-                      ? 'bg-green-100 text-green-600' 
-                      : commission.status === 'approved'
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {commission.status === 'paid' ? 'Betaald' : 
-                     commission.status === 'approved' ? 'Goedgekeurd' :
-                     'Te beoordelen'}
-                  </span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Client Goedkeuring:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      rep.stats.approvedInvoices > 0 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {rep.stats.approvedInvoices > 0 ? 'Ja' : 'Nee'}
+                    </span>
+                  </div>
 
-                  <button
-                    onClick={() => downloadNetworkInvoicePDF(commission)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors text-sm flex items-center"
-                  >
-                    <icons.Download />
-                    <span className="ml-1">PDF</span>
-                  </button>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Commissie:</span>
+                    <span className="font-medium">€{rep.stats.totalCommissionValue.toLocaleString('nl-NL')}</span>
+                  </div>
+
+                  {rep.stats.hasSubmittedThisMonth && rep.stats.currentMonthStatus === 'approved' && (
+                    <div className="pt-3 border-t">
+                      <button
+                        onClick={() => markAsPaid(rep._id, new Date().getMonth() + 1, new Date().getFullYear())}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                        disabled={isLoading}
+                      >
+                        Markeer als Betaald
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
-
 // CLIENT TEAM DASHBOARD - WITH PDF DOWNLOADS AND CORRECTED STATS
 const ClientTeamDashboard = ({ user }) => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -2766,5 +2511,6 @@ const App = () => {
 };
 
 export default App;
+
 
 
