@@ -877,7 +877,7 @@ app.post('/api/admin/upload-moneybird-invoice', authenticateToken, async (req, r
       month: parseInt(month),
       year: parseInt(year),
       status: 'paid',
-      type: 'moneybird',
+      type: 'network',
       description: description || `Moneybird factuur - ${fileName}`,
       invoiceData: {
         fileName,
@@ -1263,5 +1263,6 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
