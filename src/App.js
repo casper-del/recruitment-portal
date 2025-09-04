@@ -1074,7 +1074,50 @@ const AdminNetworkCommissions = () => {
     setError('Alleen PDF bestanden zijn toegestaan');
   }
 };
-
+const submitInvoiceToClient = async () => {
+    if (!uploadedFile || !selectedClient) return;
+    
+    const amount = document.getElementById('invoice-amount').value;
+    const description = document.getElementById('invoice-description').value;
+    const month = document.getElementById('invoice-month').value;
+    const year = document.getElementById('invoice-year').value;
+    
+    if (!amount) {
+      setError('Vul het factuur bedrag in');
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      await apiCall('/admin/upload-moneybird-invoice', {
+        method: 'POST',
+        body: JSON.stringify({
+          clientId: selectedClient._id,
+          fileName: uploadedFile.name,
+          month: parseInt(month),
+          year: parseInt(year),
+          amount: parseFloat(amount),
+          description: description || `Recruiters Network factuur ${uploadedFile.name}`
+        })
+      });
+      
+      setSuccess(`Factuur van €${parseFloat(amount).toLocaleString('nl-NL')} succesvol ingediend bij ${selectedClient.name}`);
+      
+      // Reset form
+      setUploadedFile(null);
+      document.getElementById('invoice-amount').value = '';
+      document.getElementById('invoice-description').value = '';
+      
+      // Refresh team data
+      await fetchTeamData(selectedClient._id);
+      
+    } catch (err) {
+      setError('Kon factuur niet indienen: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -2954,6 +2997,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
