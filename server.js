@@ -10,7 +10,7 @@ dotenv.config();
 const nodemailer = require('nodemailer');
 
 // Email configuration
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
@@ -1427,6 +1427,7 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
 
