@@ -492,8 +492,16 @@ app.post('/api/admin/clients', authenticateToken, async (req, res) => {
     
     await clientUser.save();
     
+    // EMAIL TRIGGER: Send welcome email to new client
+    const emailSent = await sendEmail(client.email, emailTemplates.welcomeClient, {
+      recipientName: client.contactName,
+      email: client.email,
+      tempPassword: tempPassword,
+      loginUrl: `${process.env.FRONTEND_URL || 'https://recruitment-portal-2ai9.onrender.com'}/login`
+    });
+    
     res.status(201).json({ 
-      message: 'Client created successfully',
+      message: 'Client created successfully' + (emailSent ? ' and welcome email sent' : ''),
       client,
       tempPassword
     });
@@ -1263,6 +1271,7 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
 
