@@ -2336,7 +2336,159 @@ const SalesRepInvoices = ({ user }) => {
     </div>
   );
 };
+// CLIENT INVOICES AND PAYMENTS - COMPLETE OVERVIEW
+const ClientInvoicesAndPayments = ({ user }) => {
+  const [salesRepInvoices, setSalesRepInvoices] = useState([]);
+  const [networkInvoices, setNetworkInvoices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
+  useEffect(() => {
+    fetchAllInvoices();
+  }, []);
+
+  const fetchAllInvoices = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiCall('/client/invoices');
+      
+      // Split invoices by type
+      const salesRep = response.filter(inv => inv.type === 'commission');
+      const network = response.filter(inv => inv.type === 'network');
+      
+      setSalesRepInvoices(salesRep);
+      setNetworkInvoices(network);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const downloadInvoicePDF = async (invoice) => {
+    try {
+      const clientDetails = {
+        name: user.client?.name || 'Client',
+        contactName: user.client?.contactName || user.name,
+        address: user.client?.address || '',
+        kvkNumber: user.client?.kvkNumber || '',
+        vatNumber: user.client?.vatNumber || ''
+      };
+
+      const companyDetails = invoice.invoiceData?.companyDetails || {};
+      
+      await generateInvoicePDF(invoice, companyDetails, clientDetails);
+      setSuccess('PDF wordt gedownload...');
+    } catch (err) {
+      setError('Kon PDF niet genereren');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <p className="text-gray-600">Facturen laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Betalingen & Facturen</h2>
+            <p className="text-gray-600">Overzicht van alle facturen van je sales team en Recruiters Network</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-500">Totaal facturen</p>
+            <p className="text-2xl font-bold text-gray-900">{salesRepInvoices.length + networkInvoices.length}</p>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-green-700 text-sm">{success}</p>
+            <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">
+              <icons.X />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* SALES REP FACTUREN SECTIE */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <icons.Users />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-xl font-semibold text-gray-900">Sales Rep Facturen</h3>
+              <p className="text-sm text-gray-600">Facturen van je sales team ({salesRepInvoices.length})</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-500">Totaal bedrag</p>
+            <p className="text-lg font-semibold text-gray-900">
+              €{salesRepInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0).toLocaleString('nl-NL')}
+            </p>
+          </div>
+        </div>
+
+        {salesRepInvoices.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <icons.FileText />
+            </div>
+            <h4 className="text-lg font-medium text-gray-900">Nog geen sales rep facturen</h4>
+            <p className="text-gray-600 mt-2">Sales reps hebben nog geen facturen ingediend</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {salesRepInvoices
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .map((invoice) => (
+                <div key={invoice._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:shadow-sm transition-shadow">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-semibold text-sm">
+                        {invoice.salesRepId?.name?.charAt(0) || 'S'}
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">
+                        {invoice.salesRepId?.name || 'Sales Rep'} - #{invoice.invoiceNumber}
+                      </h4>
+                      <p className="text-gray-600">€{invoice.amount.toLocaleString('nl-NL', {minimumFractionDigits: 2})}</p>
+                      <div className="flex items-center space-x-2 text-sm text-gray-500">
+                        <span>
+                          {new Date(0, invoice.month - 1).toLocaleDateString('nl-NL', {month: 'long'})} {invoice.year}
+                        </span>
+                        <span>•</span>
+                        <span>Ingediend: {new Date(invoice.createdAt).toLocaleDateString('nl-NL')}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <span class
 // Simple Dashboard Components for placeholder pages
 const SimpleDashboard = ({ title }) => (
   <div className="space-y-6">
@@ -2575,7 +2727,7 @@ const App = () => {
           {user.role === 'client' && (
             <div>
               {currentPage === 'dashboard' && <ClientTeamDashboard user={user} />}
-              {currentPage === 'invoices' && <SimpleDashboard title="Client Invoices" />}
+              {currentPage === 'invoices' && <ClientInvoicesAndPayments user={user} />}
               {currentPage === 'reports' && <SimpleDashboard title="Client Reports" />}
               {currentPage === 'settings' && <SimpleDashboard title="Client Settings" />}
             </div>
@@ -2587,6 +2739,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
