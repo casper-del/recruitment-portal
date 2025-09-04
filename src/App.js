@@ -442,19 +442,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchClientDetails = async (clientId) => {
-    try {
-      setIsLoading(true);
-      const response = await apiCall(`/admin/clients/${clientId}`);
-      setClientDetails(response);
-      setSelectedClient(response.client);
-      setShowClientModal(true);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 const fetchClientDetails = async (clientId) => {
   try {
     setIsLoading(true);
@@ -2779,4 +2766,5 @@ const App = () => {
 };
 
 export default App;
+
 
