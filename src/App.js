@@ -455,7 +455,19 @@ const AdminDashboard = () => {
       setIsLoading(false);
     }
   };
-
+const fetchClientDetails = async (clientId) => {
+  try {
+    setIsLoading(true);
+    const response = await apiCall(`/admin/clients/${clientId}`);
+    setClientDetails(response);
+    setSelectedClient(response.client);
+    setShowClientModal(true);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
   const updateClient = async () => {
     try {
       setIsLoading(true);
@@ -758,7 +770,229 @@ const AdminDashboard = () => {
         )}
       </div>
 
-      {/* Client Details Modal would continue here... */}
+      {/* Client Details Modal */}
+{showClientModal && selectedClient && clientDetails && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-semibold text-gray-900">{selectedClient.name}</h3>
+          <button
+            onClick={() => {
+              setShowClientModal(false);
+              setSelectedClient(null);
+              setClientDetails(null);
+              setEditingClient(false);
+            }}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <icons.X />
+          </button>
+        </div>
+      </div>
+
+      <div className="p-6">
+        <div className="space-y-8">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900">Klantgegevens</h4>
+              <button
+                onClick={() => setEditingClient(!editingClient)}
+                className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+              >
+                <icons.Edit />
+                <span className="ml-2">{editingClient ? 'Annuleren' : 'Bewerken'}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Bedrijfsnaam</label>
+                <input
+                  type="text"
+                  value={selectedClient.name || ''}
+                  onChange={(e) => setSelectedClient({ ...selectedClient, name: e.target.value })}
+                  disabled={!editingClient}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Contactpersoon</label>
+                <input
+                  type="text"
+                  value={selectedClient.contactName || ''}
+                  onChange={(e) => setSelectedClient({ ...selectedClient, contactName: e.target.value })}
+                  disabled={!editingClient}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">E-mail</label>
+                <input
+                  type="email"
+                  value={selectedClient.email || ''}
+                  onChange={(e) => setSelectedClient({ ...selectedClient, email: e.target.value })}
+                  disabled={!editingClient}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Telefoon</label>
+                <input
+                  type="tel"
+                  value={selectedClient.phone || ''}
+                  onChange={(e) => setSelectedClient({ ...selectedClient, phone: e.target.value })}
+                  disabled={!editingClient}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">KVK Nummer</label>
+                <input
+                  type="text"
+                  value={selectedClient.kvkNumber || ''}
+                  onChange={(e) => setSelectedClient({ ...selectedClient, kvkNumber: e.target.value })}
+                  disabled={!editingClient}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">BTW Nummer</label>
+                <input
+                  type="text"
+                  value={selectedClient.vatNumber || ''}
+                  onChange={(e) => setSelectedClient({ ...selectedClient, vatNumber: e.target.value })}
+                  disabled={!editingClient}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">IBAN</label>
+                <input
+                  type="text"
+                  value={selectedClient.bankAccount || ''}
+                  onChange={(e) => setSelectedClient({ ...selectedClient, bankAccount: e.target.value })}
+                  disabled={!editingClient}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Network Commissie (%)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={((selectedClient.networkCommissionRate || 0.1) * 100).toFixed(1)}
+                  onChange={(e) => setSelectedClient({ ...selectedClient, networkCommissionRate: parseFloat(e.target.value) / 100 })}
+                  disabled={!editingClient}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+                />
+              </div>
+            </div>
+            
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Adres</label>
+              <textarea
+                value={selectedClient.address || ''}
+                onChange={(e) => setSelectedClient({ ...selectedClient, address: e.target.value })}
+                disabled={!editingClient}
+                rows="2"
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+              />
+            </div>
+
+            {editingClient && (
+              <div className="mt-4">
+                <button
+                  onClick={updateClient}
+                  disabled={isLoading}
+                  className="flex items-center px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors disabled:opacity-50"
+                >
+                  <icons.Save />
+                  <span className="ml-2">Opslaan</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Sales Representatives</h4>
+            
+            <div className="space-y-4 mb-6">
+              {clientDetails.salesReps?.map((rep) => (
+                <div key={rep._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
+                  <div>
+                    <p className="font-semibold text-gray-900">{rep.name}</p>
+                    <p className="text-sm text-gray-600">{rep.email}</p>
+                    <p className="text-xs text-gray-500">{rep.position} • Sinds {new Date(rep.hireDate).toLocaleDateString('nl-NL')}</p>
+                  </div>
+                  <button
+                    onClick={() => deleteSalesRep(rep._id, rep.name)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                  >
+                    <icons.Trash2 />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-gray-200 pt-6">
+              <h5 className="font-semibold text-gray-900 mb-4">Nieuwe Sales Rep Toevoegen</h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Naam *</label>
+                  <input
+                    type="text"
+                    value={newSalesRep.name}
+                    onChange={(e) => setNewSalesRep({ ...newSalesRep, name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">E-mail *</label>
+                  <input
+                    type="email"
+                    value={newSalesRep.email}
+                    onChange={(e) => setNewSalesRep({ ...newSalesRep, email: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Telefoon</label>
+                  <input
+                    type="tel"
+                    value={newSalesRep.phone}
+                    onChange={(e) => setNewSalesRep({ ...newSalesRep, phone: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Startdatum</label>
+                  <input
+                    type="date"
+                    value={newSalesRep.hireDate}
+                    onChange={(e) => setNewSalesRep({ ...newSalesRep, hireDate: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <button
+                  onClick={addSalesRep}
+                  disabled={!newSalesRep.name || !newSalesRep.email || isLoading}
+                  className="flex items-center px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors disabled:opacity-50"
+                >
+                  <icons.Plus />
+                  <span className="ml-2">Toevoegen</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
@@ -794,7 +1028,37 @@ const AdminNetworkCommissions = () => {
       setIsLoading(false);
     }
   };
+const fetchClientDetails = async (clientId) => {
+  try {
+    setIsLoading(true);
+    const response = await apiCall(`/admin/clients/${clientId}`);
+    setClientDetails(response);
+    setSelectedClient(response.client);
+    setShowClientModal(true);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
+const updateClient = async () => {
+  try {
+    setIsLoading(true);
+    await apiCall(`/admin/clients/${selectedClient._id}`, {
+      method: 'PUT',
+      body: JSON.stringify(selectedClient)
+    });
+    setSuccess('Client bijgewerkt!');
+    setEditingClient(false);
+    await fetchClients();
+    await fetchClientDetails(selectedClient._id);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
   const fetchClients = async () => {
     try {
       const response = await apiCall('/admin/clients');
@@ -2515,3 +2779,4 @@ const App = () => {
 };
 
 export default App;
+
