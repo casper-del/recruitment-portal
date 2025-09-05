@@ -275,7 +275,225 @@ const apiCall = async (endpoint, options = {}) => {
 
   return response.json();
 };
+// Forgot Password Component
+const ForgotPasswordForm = () => {
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+    
+    try {
+      setIsLoading(true);
+      const response = await fetch(API_BASE + '/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMessage(data.message);
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError('Er ging iets mis. Probeer het opnieuw.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Logo size="large" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Wachtwoord Vergeten</h1>
+          <p className="text-gray-600">Vul je e-mailadres in om een reset link te ontvangen</p>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
+            
+            {message && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <p className="text-green-700 text-sm">{message}</p>
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">E-mailadres</label>
+              <input
+                type="email"
+                placeholder="jouw@email.nl"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading || !email}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-xl transition-all duration-200 disabled:opacity-50"
+            >
+              {isLoading ? 'Verzenden...' : 'Reset Link Verzenden'}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => window.location.href = '/'}
+              className="text-green-600 hover:text-green-700 text-sm font-medium"
+            >
+              Terug naar inloggen
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Reset Password Component
+const ResetPasswordForm = () => {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+
+  useEffect(() => {
+    if (!token) {
+      setError('Ongeldige reset link');
+    }
+  }, [token]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+    
+    if (password !== confirmPassword) {
+      setError('Wachtwoorden komen niet overeen');
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError('Wachtwoord moet minimaal 6 karakters zijn');
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      const response = await fetch(API_BASE + '/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword: password })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMessage(data.message);
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 3000);
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError('Er ging iets mis. Probeer het opnieuw.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Logo size="large" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Nieuw Wachtwoord</h1>
+          <p className="text-gray-600">Kies een nieuw wachtwoord voor je account</p>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
+            
+            {message && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <p className="text-green-700 text-sm">{message}</p>
+                <p className="text-green-600 text-xs mt-1">Je wordt automatisch doorgestuurd...</p>
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nieuw Wachtwoord</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                required
+                disabled={isLoading || !token}
+                minLength={6}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Bevestig Wachtwoord</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                required
+                disabled={isLoading || !token}
+                minLength={6}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading || !password || !confirmPassword || !token}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-xl transition-all duration-200 disabled:opacity-50"
+            >
+              {isLoading ? 'Opslaan...' : 'Wachtwoord Opslaan'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
 // Login Component - WITH YOUR LOGO
 const LoginForm = ({ onLogin, isLoading }) => {
   const [email, setEmail] = useState('');
@@ -3011,6 +3229,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
