@@ -153,6 +153,8 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
   salesRepId: { type: mongoose.Schema.Types.ObjectId, ref: 'SalesRep' },
+  resetToken: { type: String },
+  resetExpires: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -728,7 +730,101 @@ app.put('/api/admin/clients/:clientId/reset-password', authenticateToken, async 
     res.status(500).json({ message: 'Server error' });
   }
 });
+// Self-service password reset request
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email is verplicht' });
+    }
+    
+    // Find user by email
+    const user = await User.findOne({ email });
+    
+    if (!user) {
+      // Don't reveal if email exists for security
+      return res.json({ message: 'Als dit email adres bestaat, ontvang je een reset link.' });
+    }
+    
+    // Generate reset token (expires in 1 hour)
+    const resetToken = Math.random().toString(36).slice(-12) + Date.now().toString(36);
+    const resetExpires = new Date(Date.now() + 3600000); // 1 hour
+    
+    // Save reset token to user
+    user.resetToken = resetToken;
+    user.resetExpires = resetExpires;
+    await user.save();
+    
+    // Send reset email
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    
+    const resetEmail = {
+      subject: 'Wachtwoord Reset - Recruiters Network',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #16a34a;">Wachtwoord Reset</h2>
+          <p>Hallo ${user.name},</p>
+          <p>Je hebt een wachtwoord reset aangevraagd voor je Recruiters Network account.</p>
+          <p><a href="${resetUrl}" style="background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Reset Wachtwoord</a></p>
+          <p>Deze link is 1 uur geldig. Als je geen reset hebt aangevraagd, kun je deze email negeren.</p>
+          <p>Met vriendelijke groet,<br>Recruiters Network Team</p>
+        </div>
+      `
+    };
+    
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: resetEmail.subject,
+      html: resetEmail.html
+    });
+    
+    res.json({ message: 'Als dit email adres bestaat, ontvang je een reset link.' });
+    
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
+// Reset password with token
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: 'Token en nieuw wachtwoord zijn verplicht' });
+    }
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Wachtwoord moet minimaal 6 karakters zijn' });
+    }
+    
+    // Find user with valid reset token
+    const user = await User.findOne({
+      resetToken: token,
+      resetExpires: { $gt: new Date() }
+    });
+    
+    if (!user) {
+      return res.status(400).json({ message: 'Ongeldige of verlopen reset token' });
+    }
+    
+    // Update password
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    user.password = hashedPassword;
+    user.resetToken = undefined;
+    user.resetExpires = undefined;
+    await user.save();
+    
+    res.json({ message: 'Wachtwoord succesvol gereset. Je kunt nu inloggen.' });
+    
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 // 🔥 NEW ADMIN SALES REP OVERVIEW ENDPOINT
 app.get('/api/admin/clients/:clientId/salesrep-overview', authenticateToken, async (req, res) => {
   try {
@@ -1467,6 +1563,7 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
 
