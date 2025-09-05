@@ -688,6 +688,46 @@ app.put('/api/admin/clients/:clientId', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+// Reset client password
+app.put('/api/admin/clients/:clientId/reset-password', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    // Generate new temporary password
+    const newPassword = Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    
+    // Update user password
+    const updatedUser = await User.findOneAndUpdate(
+      { clientId: req.params.clientId },
+      { password: hashedPassword },
+      { new: true }
+    );
+    
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'Client user not found' });
+    }
+    
+    // Send email with new password
+    const emailSent = await sendEmail(updatedUser.email, emailTemplates.welcomeClient, {
+      recipientName: updatedUser.name,
+      email: updatedUser.email,
+      tempPassword: newPassword,
+      loginUrl: `${process.env.FRONTEND_URL || 'https://recruitment-portal-2ai9.onrender.com'}/login`
+    });
+    
+    res.json({ 
+      message: 'Wachtwoord gereset' + (emailSent ? ' en email verstuurd' : ''),
+      tempPassword: newPassword
+    });
+    
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 // 🔥 NEW ADMIN SALES REP OVERVIEW ENDPOINT
 app.get('/api/admin/clients/:clientId/salesrep-overview', authenticateToken, async (req, res) => {
@@ -1427,6 +1467,7 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
 
