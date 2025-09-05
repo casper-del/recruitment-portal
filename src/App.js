@@ -3174,6 +3174,17 @@ const App = () => {
     setCurrentPage('dashboard');
   };
 
+  // Handle different routes
+  const currentPath = window.location.pathname;
+  
+  if (currentPath === '/forgot-password') {
+    return <ForgotPasswordForm />;
+  }
+  
+  if (currentPath === '/reset-password') {
+    return <ResetPasswordForm />;
+  }
+  
   if (!user) {
     return <LoginForm onLogin={login} isLoading={isLoading} />;
   }
@@ -3229,6 +3240,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
