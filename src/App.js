@@ -346,11 +346,20 @@ const LoginForm = ({ onLogin, isLoading }) => {
               {isLoading ? 'Inloggen...' : 'Inloggen'}
             </button>
           </form>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => window.location.href = '/forgot-password'}
+              className="text-green-600 hover:text-green-700 text-sm font-medium"
+            >
+              Wachtwoord vergeten?
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
-};
 
 // Admin Dashboard - COMPLETE WITH ALL CRUD OPERATIONS
 const AdminDashboard = () => {
@@ -3002,6 +3011,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
