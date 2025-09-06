@@ -183,6 +183,8 @@ const salesRepSchema = new mongoose.Schema({
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
   hireDate: { type: Date, required: true },
   commissionRate: { type: Number, default: 0.10 },
+  maxRecruitmentFee: { type: Number, default: 5000 }, // Maximum vergoeding
+  totalPaidAmount: { type: Number, default: 0 }, // Totaal al betaalde vergoeding
   isConnected: { type: Boolean, default: false },
   companyDetails: {
     companyName: String,
@@ -1142,15 +1144,41 @@ app.put('/api/client/invoices/:invoiceId/revision', authenticateToken, async (re
   }
 });
 
-// Mark sales rep as paid
-app.put('/api/admin/mark-paid', authenticateToken, async (req, res) => {
+// Add recruitment fee payment
+app.put('/api/admin/add-recruitment-fee', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
     
-    const { salesRepId, month, year } = req.body;
+    const { salesRepId, amount, month, year, description } = req.body;
     
+    if (!salesRepId || !amount || amount <= 0) {
+      return res.status(400).json({ message: 'Sales rep ID en geldig bedrag zijn verplicht' });
+    }
+    
+    // Find the sales rep
+    const salesRep = await SalesRep.findById(salesRepId);
+    if (!salesRep) {
+      return res.status(404).json({ message: 'Sales rep niet gevonden' });
+    }
+    
+    // Update total paid amount
+    const newTotalPaid = (salesRep.totalPaidAmount || 0) + parseFloat(amount);
+    
+    // Check if it exceeds max recruitment fee
+    if (newTotalPaid > salesRep.maxRecruitmentFee) {
+      return res.status(400).json({ 
+        message: `Bedrag overschrijdt maximum vergoeding van €${salesRep.maxRecruitmentFee}. Huidige totaal: €${salesRep.totalPaidAmount || 0}` 
+      });
+    }
+    
+    // Update sales rep
+    await SalesRep.findByIdAndUpdate(salesRepId, {
+      totalPaidAmount: newTotalPaid
+    });
+    
+    // Mark related invoice as paid if exists
     const invoice = await Invoice.findOneAndUpdate(
       {
         salesRepId,
@@ -1160,18 +1188,62 @@ app.put('/api/admin/mark-paid', authenticateToken, async (req, res) => {
       },
       { 
         status: 'paid',
-        paidAt: new Date()
+        paidAt: new Date(),
+        recruitmentFeeAmount: parseFloat(amount),
+        recruitmentFeeDescription: description || `Recruitment vergoeding ${month}/${year}`
       },
       { new: true }
     );
     
-    if (!invoice) {
-      return res.status(404).json({ message: 'Geen goedgekeurde factuur gevonden' });
+    res.json({ 
+      message: `€${amount} toegevoegd aan recruitment vergoeding`,
+      newTotal: newTotalPaid,
+      maxAmount: salesRep.maxRecruitmentFee,
+      invoice 
+    });
+    
+  } catch (error) {
+    console.error('Add recruitment fee error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get recruitment fee overview
+app.get('/api/admin/recruitment-fees/:salesRepId', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
     }
     
-    res.json({ message: 'Factuur gemarkeerd als betaald', invoice });
+    const salesRep = await SalesRep.findById(req.params.salesRepId);
+    if (!salesRep) {
+      return res.status(404).json({ message: 'Sales rep niet gevonden' });
+    }
+    
+    const paidInvoices = await Invoice.find({
+      salesRepId: req.params.salesRepId,
+      status: 'paid',
+      recruitmentFeeAmount: { $exists: true }
+    }).sort({ year: -1, month: -1 });
+    
+    res.json({
+      salesRep: {
+        name: salesRep.name,
+        totalPaidAmount: salesRep.totalPaidAmount || 0,
+        maxRecruitmentFee: salesRep.maxRecruitmentFee || 5000,
+        remainingAmount: (salesRep.maxRecruitmentFee || 5000) - (salesRep.totalPaidAmount || 0)
+      },
+      payments: paidInvoices.map(inv => ({
+        month: inv.month,
+        year: inv.year,
+        amount: inv.recruitmentFeeAmount,
+        description: inv.recruitmentFeeDescription,
+        paidAt: inv.paidAt
+      }))
+    });
+    
   } catch (error) {
-    console.error('Mark as paid error:', error);
+    console.error('Get recruitment fees error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -1626,6 +1698,7 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
 
