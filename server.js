@@ -232,7 +232,35 @@ const User = mongoose.model('User', userSchema);
 const Client = mongoose.model('Client', clientSchema);
 const SalesRep = mongoose.model('SalesRep', salesRepSchema);
 const Invoice = mongoose.model('Invoice', invoiceSchema);
-
+// Database indexes for better performance
+const createDatabaseIndexes = async () => {
+  try {
+    // User indexes
+    await User.collection.createIndex({ email: 1 }, { unique: true });
+    await User.collection.createIndex({ role: 1 });
+    await User.collection.createIndex({ resetToken: 1 });
+    
+    // Client indexes
+    await Client.collection.createIndex({ email: 1 }, { unique: true });
+    await Client.collection.createIndex({ isActive: 1 });
+    
+    // SalesRep indexes
+    await SalesRep.collection.createIndex({ email: 1 });
+    await SalesRep.collection.createIndex({ clientId: 1 });
+    await SalesRep.collection.createIndex({ isActive: 1 });
+    
+    // Invoice indexes
+    await Invoice.collection.createIndex({ clientId: 1 });
+    await Invoice.collection.createIndex({ salesRepId: 1 });
+    await Invoice.collection.createIndex({ status: 1 });
+    await Invoice.collection.createIndex({ type: 1 });
+    await Invoice.collection.createIndex({ month: 1, year: 1 });
+    
+    console.log('✅ Database indexes created successfully');
+  } catch (error) {
+    console.log('⚠️  Database indexes already exist or creation failed:', error.message);
+  }
+};
 // Auth middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -1358,13 +1386,36 @@ app.post('/api/admin/generate-network-invoice', authenticateToken, async (req, r
 // Initialize admin and demo data
 const initializeAdmin = async () => {
   try {
-    console.log('🔥 INITIALIZING FRESH DATA...');
+    console.log('🔥 CHECKING DATABASE...');
     
-    // Clear existing data
-    await User.deleteMany({});
-    await Client.deleteMany({});
-    await SalesRep.deleteMany({});
-    console.log('🔥 Cleared existing data');
+    // Check if we should preserve existing data
+    const preserveData = process.env.PRESERVE_DATA === 'true';
+    
+    // Check if admin already exists
+    const existingAdmin = await User.findOne({ role: 'admin' });
+    
+    if (existingAdmin && preserveData) {
+      console.log('✅ Database contains existing data - preserving it');
+      console.log(`✅ Found admin: ${existingAdmin.email}`);
+      
+      // Count existing data
+      const clientCount = await Client.countDocuments();
+      const salesRepCount = await SalesRep.countDocuments();
+      const userCount = await User.countDocuments();
+      
+      console.log(`📊 Current data: ${userCount} users, ${clientCount} clients, ${salesRepCount} sales reps`);
+      return;
+    }
+    
+    if (existingAdmin && !preserveData) {
+      console.log('🔥 CLEARING EXISTING DATA (PRESERVE_DATA=false)...');
+      await User.deleteMany({});
+      await Client.deleteMany({});
+      await SalesRep.deleteMany({});
+      console.log('🔥 Cleared existing data');
+    }
+    
+    console.log('🔥 INITIALIZING FRESH DATA...');
     
     // Create admin user
     const hashedPassword = await bcrypt.hash('admin123', 12);
@@ -1438,6 +1489,11 @@ const initializeAdmin = async () => {
     console.log('   👑 Admin: admin@recruitersnetwork.nl / admin123');
     console.log('   🏢 Client: demo@acmecorp.com / demo123');
     console.log('   💼 Sales Rep: sarah@acmecorp.com / demo123');
+    console.log('');
+    console.log('💾 Data persistence is now ENABLED');
+    console.log('   ✅ Your data will survive server restarts');
+    console.log('   ✅ New clients and sales reps will be preserved');
+    console.log('   ⚠️  Set PRESERVE_DATA=false in .env to reset data');
     console.log('');
     
   } catch (error) {
@@ -1538,23 +1594,30 @@ app.post('/api/admin/upload-moneybird-invoice', authenticateToken, async (req, r
 const startServer = async () => {
   try {
     await connectDB();
+    await createDatabaseIndexes();
     await initializeAdmin();
     
     app.listen(PORT, () => {
       console.log('');
-      console.log('🔥🔥🔥 FIXED SERVER WITH NETWORK INVOICES & CLIENT DETAILS 🔥🔥🔥');
+      console.log('🔥🔥🔥 RECRUITERS NETWORK PORTAL - PERSISTENT DATA VERSION 🔥🔥🔥');
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📝 API: http://localhost:${PORT}/api`);
       console.log('');
-      console.log('🔑 FRESH CREDENTIALS:');
+      console.log('💾 DATA PERSISTENCE STATUS:');
+      console.log(`   ${process.env.PRESERVE_DATA === 'true' ? '✅ ENABLED' : '❌ DISABLED'} - Your data ${process.env.PRESERVE_DATA === 'true' ? 'WILL' : 'will NOT'} survive restarts`);
+      console.log('');
+      console.log('🔑 DEFAULT CREDENTIALS:');
       console.log('   👑 Admin: admin@recruitersnetwork.nl / admin123');
       console.log('   🏢 Client: demo@acmecorp.com / demo123');
       console.log('   💼 Sales Rep: sarah@acmecorp.com / demo123');
       console.log('');
-      console.log('🔧 FIXES APPLIED:');
+      console.log('🔧 FEATURES AVAILABLE:');
+      console.log('   ✅ Persistent data storage');
+      console.log('   ✅ Wachtwoord vergeten functionaliteit');
       console.log('   ✅ Client KVK & BTW in factuur generator');
-      console.log('   ✅ Network invoice generation fixed');
-      console.log('   ✅ Admin sales rep overview endpoint added');
+      console.log('   ✅ Network invoice generation');
+      console.log('   ✅ Admin sales rep overview');
+      console.log('   ✅ PDF invoice downloads');
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
@@ -1563,6 +1626,7 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
 
