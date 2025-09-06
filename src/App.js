@@ -282,7 +282,7 @@ const apiCall = async (endpoint, options = {}) => {
   return response.json();
 };
 // Forgot Password Component
-const ForgotPasswordForm = () => {
+const ForgotPasswordForm = ({ onBack }) => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -364,7 +364,7 @@ const ForgotPasswordForm = () => {
 
           <div className="mt-6 text-center">
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={onBack}
               className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center justify-center"
             >
               <icons.ArrowLeft />
@@ -378,17 +378,14 @@ const ForgotPasswordForm = () => {
 };
 
 // Reset Password Component
-const ResetPasswordForm = () => {
+const ResetPasswordForm = ({ token, onBack }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const urlParams = new URLSearchParams(window.location.search);
-  const token = urlParams.get('token');
-
-  useEffect(() => {
+ useEffect(() => {
     if (!token) {
       setError('Ongeldige reset link');
     }
@@ -422,7 +419,7 @@ const ResetPasswordForm = () => {
       if (response.ok) {
         setMessage(data.message);
         setTimeout(() => {
-          window.location.href = '/';
+          onBack();
         }, 3000);
       } else {
         setError(data.message);
@@ -502,7 +499,7 @@ const ResetPasswordForm = () => {
   );
 };
 // Login Component - WITH YOUR LOGO
-const LoginForm = ({ onLogin, isLoading }) => {
+const LoginForm = ({ onLogin, isLoading, onForgotPassword }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -572,10 +569,10 @@ const LoginForm = ({ onLogin, isLoading }) => {
             </button>
           </form>
 
-          <div className="mt-4 text-center">
+         <div className="mt-4 text-center">
             <button
               type="button"
-              onClick={() => window.location.href = '/forgot-password'}
+              onClick={onForgotPassword}
               className="text-green-600 hover:text-green-700 text-sm font-medium"
             >
               Wachtwoord vergeten?
@@ -3115,6 +3112,9 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetToken, setResetToken] = useState('');
 
   useEffect(() => {
     // Load PDF library
@@ -3182,19 +3182,33 @@ const App = () => {
     setCurrentPage('dashboard');
   };
 
-  // Handle different routes
-  const currentPath = window.location.pathname;
-  
-  if (currentPath === '/forgot-password') {
-    return <ForgotPasswordForm />;
+  // Check for reset token in URL on load
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    if (token) {
+      setResetToken(token);
+      setShowResetPassword(true);
+      // Clear the URL
+      window.history.replaceState({}, document.title, '/');
+    }
+  }, []);
+
+  // Show forgot password form
+  if (showForgotPassword) {
+    return <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />;
   }
   
-  if (currentPath === '/reset-password') {
-    return <ResetPasswordForm />;
+  // Show reset password form
+  if (showResetPassword) {
+    return <ResetPasswordForm token={resetToken} onBack={() => {
+      setShowResetPassword(false);
+      setResetToken('');
+    }} />;
   }
   
   if (!user) {
-    return <LoginForm onLogin={login} isLoading={isLoading} />;
+    return <LoginForm onLogin={login} isLoading={isLoading} onForgotPassword={() => setShowForgotPassword(true)} />;
   }
 
   return (
@@ -3248,6 +3262,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
