@@ -1924,14 +1924,31 @@ const ClientTeamDashboard = ({ user }) => {
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-gray-500 text-sm">Totale Commissie:</span>
-                          <span className="font-semibold text-gray-900">€{totalCommission.toLocaleString('nl-NL')}</span>
-                        </div>
+                      <div className="space-y-3">
                         <div className="flex justify-between">
                           <span className="text-gray-500 text-sm">Facturen:</span>
                           <span className="font-semibold text-gray-900">{repInvoices.length}</span>
+                        </div>
+                        
+                        {/* Recruitment Fee Progress Bar */}
+                        <div className="bg-gray-50 rounded-lg p-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-gray-600">Recruitment Vergoeding</span>
+                            <span className="text-xs font-semibold text-gray-800">
+                              €{(rep.totalPaidAmount || 0).toLocaleString('nl-NL')} / €{(rep.maxRecruitmentFee || 5000).toLocaleString('nl-NL')}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-green-500 h-2 rounded-full transition-all duration-300" 
+                              style={{
+                                width: `${Math.min(((rep.totalPaidAmount || 0) / (rep.maxRecruitmentFee || 5000)) * 100, 100)}%`
+                              }}
+                            ></div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {((rep.totalPaidAmount || 0) / (rep.maxRecruitmentFee || 5000) * 100).toFixed(1)}% gefactureerd
+                          </p>
                         </div>
                       </div>
 
@@ -2036,6 +2053,29 @@ const ClientTeamDashboard = ({ user }) => {
                   }`}>
                     {selectedRep.isConnected ? 'Actief' : 'Inactief'}
                   </span>
+                </div>
+              </div>
+
+              {/* Recruitment Fee Progress Section */}
+              <div className="bg-blue-50 rounded-xl p-4 mb-6">
+                <h5 className="font-semibold text-gray-900 mb-3">Recruitment Vergoeding Overzicht</h5>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Voortgang</span>
+                  <span className="text-sm font-semibold text-gray-900">
+                    €{(selectedRep.totalPaidAmount || 0).toLocaleString('nl-NL')} / €{(selectedRep.maxRecruitmentFee || 5000).toLocaleString('nl-NL')}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                  <div 
+                    className="bg-blue-500 h-3 rounded-full transition-all duration-300" 
+                    style={{
+                      width: `${Math.min(((selectedRep.totalPaidAmount || 0) / (selectedRep.maxRecruitmentFee || 5000)) * 100, 100)}%`
+                    }}
+                  ></div>
+                </div>
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>{((selectedRep.totalPaidAmount || 0) / (selectedRep.maxRecruitmentFee || 5000) * 100).toFixed(1)}% gefactureerd</span>
+                  <span>Nog €{Math.max((selectedRep.maxRecruitmentFee || 5000) - (selectedRep.totalPaidAmount || 0), 0).toLocaleString('nl-NL')} beschikbaar</span>
                 </div>
               </div>
 
@@ -3323,6 +3363,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
