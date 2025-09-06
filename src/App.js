@@ -1299,7 +1299,38 @@ const AdminNetworkCommissions = () => {
     setIsLoading(false);
   }
 };
-
+const addRecruitmentFee = async (salesRepId, month, year) => {
+  const inputId = `fee-${salesRepId}-${month}-${year}`;
+  const amountInput = document.getElementById(inputId);
+  const amount = parseFloat(amountInput?.value);
+  
+  if (!amount || amount <= 0) {
+    setError('Vul een geldig bedrag in');
+    return;
+  }
+  
+  try {
+    setIsLoading(true);
+    const response = await apiCall('/admin/add-recruitment-fee', {
+      method: 'PUT',
+      body: JSON.stringify({ 
+        salesRepId, 
+        amount, 
+        month, 
+        year,
+        description: `Recruitment vergoeding ${month}/${year}`
+      })
+    });
+    
+    setSuccess(`€${amount} toegevoegd. Nieuw totaal: €${response.newTotal}/${response.maxAmount}`);
+    amountInput.value = ''; // Clear input
+    await fetchTeamData(selectedClient._id);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
   const handleFileUpload = async (event) => {
   const file = event.target.files[0];
   if (file && file.type === 'application/pdf') {
@@ -1539,22 +1570,45 @@ const submitInvoiceToClient = async () => {
             {teamData.salesReps.map((rep) => (
               <div key={rep._id} className="bg-white border border-gray-200 rounded-xl p-6">
                 {/* Sales Rep Header */}
-                <div className="flex items-center justify-between mb-4 pb-4 border-b">
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 font-semibold">
-                        {rep.name.charAt(0)}
-                      </span>
+                <div className="mb-4 pb-4 border-b">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center">
+                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 font-semibold">
+                          {rep.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="ml-4">
+                        <h4 className="text-lg font-semibold text-gray-900">{rep.name}</h4>
+                        <p className="text-sm text-gray-600">{rep.position}</p>
+                      </div>
                     </div>
-                    <div className="ml-4">
-                      <h4 className="text-lg font-semibold text-gray-900">{rep.name}</h4>
-                      <p className="text-sm text-gray-600">{rep.position}</p>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">Totale Commissie</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        €{rep.stats.totalCommissionValue.toLocaleString('nl-NL')}
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-600">Totale Commissie</p>
-                    <p className="text-lg font-semibold text-gray-900">
-                      €{rep.stats.totalCommissionValue.toLocaleString('nl-NL')}
+                  
+                  {/* Recruitment Fee Progress Bar */}
+                  <div className="bg-gray-100 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Recruitment Vergoeding</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        €{(rep.totalPaidAmount || 0).toLocaleString('nl-NL')} / €{(rep.maxRecruitmentFee || 5000).toLocaleString('nl-NL')}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div 
+                        className="bg-green-500 h-3 rounded-full transition-all duration-300" 
+                        style={{
+                          width: `${Math.min(((rep.totalPaidAmount || 0) / (rep.maxRecruitmentFee || 5000)) * 100, 100)}%`
+                        }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Nog €{Math.max((rep.maxRecruitmentFee || 5000) - (rep.totalPaidAmount || 0), 0).toLocaleString('nl-NL')} beschikbaar
                     </p>
                   </div>
                 </div>
@@ -1602,13 +1656,22 @@ const submitInvoiceToClient = async () => {
                             </p>
                             
                             {invoice.status === 'approved' && (
-                              <button
-                                onClick={() => markAsPaid(rep._id, invoice.month, invoice.year)}
-                                className="w-full mt-2 text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded transition-colors"
-                                disabled={isLoading}
-                              >
-                                Markeer Betaald
-                              </button>
+                              <div className="mt-2 space-y-2">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Vergoeding €"
+                                  className="w-full text-xs px-2 py-1 border border-gray-200 rounded"
+                                  id={`fee-${rep._id}-${invoice.month}-${invoice.year}`}
+                                />
+                                <button
+                                  onClick={() => addRecruitmentFee(rep._id, invoice.month, invoice.year)}
+                                  className="w-full text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded transition-colors"
+                                  disabled={isLoading}
+                                >
+                                  Vergoeding Toevoegen
+                                </button>
+                              </div>
                             )}
                           </div>
                         )}
@@ -3260,6 +3323,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
