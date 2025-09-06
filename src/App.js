@@ -617,7 +617,7 @@ const AdminDashboard = () => {
     phone: '',
     position: 'Sales Representative',
     hireDate: new Date().toISOString().split('T')[0],
-    commissionRate: '10',
+    commissionRate: '',
     maxRecruitmentFee: ''
   });
 
@@ -1195,34 +1195,32 @@ const fetchClientDetails = async (clientId) => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Telefoon</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Commissie Rate (%) *</label>
                     <input
-                      type="tel"
-                      value={newSalesRep.phone}
-                      onChange={(e) => setNewSalesRep({ ...newSalesRep, phone: e.target.value })}
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={newSalesRep.commissionRate}
+                      onChange={(e) => setNewSalesRep({ ...newSalesRep, commissionRate: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="Bijvoorbeeld: 10.5"
+                      required
                     />
+                    <p className="text-xs text-gray-500 mt-1">Het afgesproken commissie percentage voor deze sales rep</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Startdatum</label>
-                    <input
-                      type="date"
-                      value={newSalesRep.hireDate}
-                      onChange={(e) => setNewSalesRep({ ...newSalesRep, hireDate: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Max Recruitment Vergoeding (€)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Max Recruitment Vergoeding (€) *</label>
                     <input
                       type="number"
                       step="100"
                       value={newSalesRep.maxRecruitmentFee}
                       onChange={(e) => setNewSalesRep({ ...newSalesRep, maxRecruitmentFee: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                      placeholder="Bijvoorbeeld: 5000"
+                      placeholder="Vul het afgesproken bedrag in"
+                      required
                     />
-                    <p className="text-xs text-gray-500 mt-1">Totale vergoeding die gefactureerd kan worden</p>
+                    <p className="text-xs text-gray-500 mt-1">Het maximum bedrag dat Recruiters Network kan factureren voor deze sales rep</p>
                   </div>
                 </div>
               
@@ -3262,6 +3260,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
