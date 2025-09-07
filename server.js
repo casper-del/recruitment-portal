@@ -475,19 +475,8 @@ app.post('/api/salesrep/generate-invoice', authenticateToken, async (req, res) =
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Check for duplicate invoice
-    const existingInvoice = await Invoice.findOne({
-      salesRepId: req.user.salesRepId,
-      month: parseInt(month),
-      year: parseInt(year),
-      type: 'commission'
-    });
-
-    if (existingInvoice) {
-      return res.status(400).json({ 
-        message: `Factuur bestaat al voor ${new Date(0, month - 1).toLocaleDateString('nl-NL', {month: 'long'})} ${year}` 
-      });
-    }
+    // Note: Multiple invoices per month are now allowed
+    // Sales reps can submit corrections or additional invoices
 
     const invoice = new Invoice({
       clientId: req.user.clientId,
@@ -519,6 +508,52 @@ app.post('/api/salesrep/generate-invoice', authenticateToken, async (req, res) =
   } catch (error) {
     console.error('Generate invoice error:', error);
     res.status(500).json({ message: 'Server error' });
+    // Upload invoice endpoint for sales reps
+app.post('/api/salesrep/upload-invoice', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'salesrep') {
+      return res.status(403).json({ message: 'Sales representative access required' });
+    }
+    
+    const { fileName, amount, month, year, description } = req.body;
+    
+    if (!fileName || !amount || !month || !year) {
+      return res.status(400).json({ message: 'Bestand, bedrag, maand en jaar zijn verplicht' });
+    }
+    
+    const invoiceNumber = 'UPL-' + year + '-' + 
+                         String(month).padStart(2, '0') + '-' + 
+                         String(Date.now()).slice(-4);
+    
+    const invoice = new Invoice({
+      clientId: req.user.clientId,
+      salesRepId: req.user.salesRepId,
+      uploadedBy: req.user.userId,
+      invoiceNumber,
+      amount: parseFloat(amount),
+      month: parseInt(month),
+      year: parseInt(year),
+      status: 'pending',
+      type: 'commission',
+      description: description || `Geüploade factuur - ${fileName}`,
+      invoiceData: {
+        fileName,
+        uploadedAt: new Date(),
+        isUploaded: true
+      }
+    });
+    
+    await invoice.save();
+    
+    res.status(201).json({ 
+      message: 'Factuur succesvol geüpload',
+      invoice
+    });
+  } catch (error) {
+    console.error('Upload invoice error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
   }
 });
 
@@ -1702,6 +1737,7 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
 
