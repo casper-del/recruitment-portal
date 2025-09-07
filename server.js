@@ -904,7 +904,9 @@ app.get('/api/admin/clients/:clientId/salesrep-overview', authenticateToken, asy
           ...rep.toObject(),
           invoices: invoices.slice(0, 5), // Last 5 invoices for preview
           stats,
-          currentMonthInvoice
+          currentMonthInvoice,
+          totalPaidAmount: rep.totalPaidAmount || 0,
+          maxRecruitmentFee: rep.maxRecruitmentFee || 5000
         };
       })
     );
@@ -929,7 +931,7 @@ app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, async (req
       return res.status(403).json({ message: 'Admin access required' });
     }
 
-    const { name, email, phone, position, hireDate, commissionRate } = req.body;
+    const { name, email, phone, position, hireDate, commissionRate, maxRecruitmentFee } = req.body;
     
     // Check if email already exists
     const existingUser = await User.findOne({ email });
@@ -944,7 +946,9 @@ app.post('/api/admin/clients/:clientId/salesreps', authenticateToken, async (req
       position: position || 'Sales Representative',
       clientId: req.params.clientId,
       hireDate: new Date(hireDate),
-      commissionRate: commissionRate || 0.10
+      commissionRate: commissionRate || 0.10,
+      maxRecruitmentFee: parseFloat(maxRecruitmentFee) || 5000,
+      totalPaidAmount: 0
     });
     
     await salesRep.save();
@@ -1698,6 +1702,7 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
 
