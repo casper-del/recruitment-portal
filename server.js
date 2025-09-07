@@ -557,8 +557,6 @@ app.post('/api/salesrep/upload-invoice', authenticateToken, async (req, res) => 
     res.status(500).json({ message: 'Server error' });
   }
 });
-  }
-});
 
 app.delete('/api/salesrep/invoices/:invoiceId', authenticateToken, async (req, res) => {
   try {
@@ -1740,6 +1738,7 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
 
