@@ -508,7 +508,10 @@ app.post('/api/salesrep/generate-invoice', authenticateToken, async (req, res) =
   } catch (error) {
     console.error('Generate invoice error:', error);
     res.status(500).json({ message: 'Server error' });
-    // Upload invoice endpoint for sales reps
+  }
+});
+
+// Upload invoice endpoint for sales reps
 app.post('/api/salesrep/upload-invoice', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'salesrep') {
@@ -1737,6 +1740,7 @@ const startServer = async () => {
 };
 
 startServer();
+
 
 
 
