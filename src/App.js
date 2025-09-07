@@ -58,6 +58,13 @@ const icons = {
       <path d="M12 15V3"/>
     </svg>
   ),
+Upload: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17,8 12,3 7,8"/>
+      <path d="M12 3v12"/>
+    </svg>
+  ),
   FileText: () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
@@ -2163,6 +2170,14 @@ const SalesRepInvoices = ({ user }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showGenerator, setShowGenerator] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadData, setUploadData] = useState({
+    amount: '',
+    description: '',
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear()
+  });
 
   const [companyDetails, setCompanyDetails] = useState({
     companyName: '',
@@ -2310,7 +2325,52 @@ const SalesRepInvoices = ({ user }) => {
       }
     }
   };
+const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'application/pdf') {
+      setUploadedFile(file);
+      setSuccess(`PDF "${file.name}" geselecteerd - vul bedrag in en klik 'Factuur Uploaden'`);
+    } else {
+      setError('Alleen PDF bestanden zijn toegestaan');
+    }
+  };
 
+  const uploadInvoice = async () => {
+    if (!uploadedFile || !uploadData.amount) {
+      setError('Selecteer een PDF en vul het bedrag in');
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      await apiCall('/salesrep/upload-invoice', {
+        method: 'POST',
+        body: JSON.stringify({
+          fileName: uploadedFile.name,
+          amount: parseFloat(uploadData.amount),
+          month: uploadData.month,
+          year: uploadData.year,
+          description: uploadData.description || `Geüploade factuur - ${uploadedFile.name}`
+        })
+      });
+      
+      setSuccess('Factuur succesvol geüpload!');
+      setUploadedFile(null);
+      setUploadData({
+        amount: '',
+        description: '',
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear()
+      });
+      setShowUpload(false);
+      await fetchInvoices();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const downloadInvoicePDF = async (invoice) => {
     try {
       console.log('SALES REP DOWNLOADING INVOICE PDF:', invoice);
@@ -2344,13 +2404,22 @@ const SalesRepInvoices = ({ user }) => {
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Mijn Facturen</h2>
             <p className="text-gray-600">Genereer en download professionele facturen voor je commissies</p>
           </div>
-          <button
-            onClick={() => setShowGenerator(!showGenerator)}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center"
-          >
-            <icons.Plus />
-            <span className="ml-2">Nieuwe Factuur</span>
-          </button>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => setShowGenerator(!showGenerator)}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center"
+            >
+              <icons.Plus />
+              <span className="ml-2">Factuur Genereren</span>
+            </button>
+            <button
+              onClick={() => setShowUpload(!showUpload)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center"
+            >
+              <icons.Upload />
+              <span className="ml-2">Factuur Uploaden</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -2712,7 +2781,117 @@ const SalesRepInvoices = ({ user }) => {
           </div>
         </div>
       )}
+{showUpload && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">Factuur Uploaden</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={handleFileUpload}
+                className="hidden"
+                id="pdf-upload-salesrep"
+              />
+              <label
+                htmlFor="pdf-upload-salesrep"
+                className="cursor-pointer flex flex-col items-center"
+              >
+                <icons.Upload />
+                <p className="mt-2 text-sm text-gray-600">
+                  Klik om een PDF factuur te uploaden
+                </p>
+                <p className="text-xs text-gray-500">Alleen PDF bestanden</p>
+              </label>
+              
+              {uploadedFile && (
+                <div className="mt-4 p-4 bg-blue-50 rounded-xl">
+                  <div className="flex items-center justify-center">
+                    <icons.FileText />
+                    <div className="ml-3">
+                      <p className="font-medium text-gray-900">Geselecteerd</p>
+                      <p className="text-sm text-gray-600">{uploadedFile.name}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Factuur Bedrag (€) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={uploadData.amount}
+                  onChange={(e) => setUploadData({...uploadData, amount: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="2500.00"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Omschrijving
+                </label>
+                <textarea
+                  value={uploadData.description}
+                  onChange={(e) => setUploadData({...uploadData, description: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  rows="3"
+                  placeholder="Extra omschrijving voor de factuur..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Maand</label>
+                  <select 
+                    value={uploadData.month}
+                    onChange={(e) => setUploadData({...uploadData, month: parseInt(e.target.value)})}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                  >
+                    {Array.from({length: 12}, (_, i) => (
+                      <option key={i+1} value={i+1}>
+                        {new Date(0, i).toLocaleDateString('nl-NL', {month: 'long'})}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Jaar</label>
+                  <input
+                    type="number"
+                    value={uploadData.year}
+                    onChange={(e) => setUploadData({...uploadData, year: parseInt(e.target.value)})}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="flex space-x-4">
+                <button
+                  onClick={uploadInvoice}
+                  disabled={isLoading || !uploadedFile || !uploadData.amount}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? 'Uploaden...' : 'Factuur Uploaden'}
+                </button>
+                
+                <button
+                  onClick={() => setShowUpload(false)}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+                >
+                  Annuleren
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h3 className="text-xl font-semibold text-gray-900 mb-6">Mijn Facturen ({invoices.length})</h3>
         
@@ -3105,10 +3284,8 @@ const FixedSidebar = ({ user, currentPage, setCurrentPage, onLogout }) => {
     { id: 'network-commissions', label: 'Facturen', icon: icons.CreditCard },
     { id: 'admin-settings', label: 'Instellingen', icon: icons.Settings }
   ] : user && user.role === 'salesrep' ? [
-    { id: 'salesrep-dashboard', label: 'Mijn Dashboard', icon: icons.Home },
-    { id: 'salesrep-invoices', label: 'Mijn Facturen', icon: icons.CreditCard },
-    { id: 'salesrep-reports', label: 'Mijn Prestaties', icon: icons.Users },
-    { id: 'salesrep-settings', label: 'Instellingen', icon: icons.Settings }
+    { id: 'salesrep-dashboard', label: 'Dashboard', icon: icons.Home },
+    { id: 'salesrep-invoices', label: 'Facturen', icon: icons.CreditCard }
   ] : [
     { id: 'dashboard', label: 'Team Dashboard', icon: icons.Home },
     { id: 'invoices', label: 'Betalingen & Facturen', icon: icons.CreditCard },
@@ -3363,6 +3540,7 @@ const App = () => {
 };
 
 export default App;
+
 
 
 
